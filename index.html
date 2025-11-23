@@ -7,11 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-        /* Fallback styles & Layout */
         body { 
             font-family: 'Inter', sans-serif; 
-            background-color: #0f172a; /* Dark Slate 900 */
-            color: #f8fafc; /* Slate 50 */
+            background-color: #0f172a; 
+            color: #f8fafc; 
             margin: 0;
             padding: 20px;
         }
@@ -21,6 +20,9 @@
         .input-style { background-color: #334155; border: 1px solid #475569; color: #f8fafc; }
         .glow-shadow { box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); }
         .scrollable-content { max-height: 60vh; overflow-y: auto; }
+        .scrollable-content::-webkit-scrollbar { width: 8px; }
+        .scrollable-content::-webkit-scrollbar-track { background: #1e293b; }
+        .scrollable-content::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 20px; border: 2px solid #1e293b; }
         .loading-spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #334155; border-radius: 8px; }
@@ -29,7 +31,6 @@
         .arrow-icon { transition: transform 0.3s ease; }
         .expanded .arrow-icon { transform: rotate(90deg); }
         
-        /* Error Banner */
         #error-console {
             display: none;
             background: #7f1d1d;
@@ -42,40 +43,24 @@
             white-space: pre-wrap;
         }
     </style>
-
-    <!-- Crash Reporter: Shows errors on screen if app fails to load -->
-    <script>
-        window.onerror = function(msg, url, line, col, error) {
-            const consoleDiv = document.getElementById('error-console');
-            if (consoleDiv) {
-                consoleDiv.style.display = 'block';
-                consoleDiv.innerText += `Error: ${msg}\nLine: ${line}\n\n`;
-            }
-            return false; 
-        };
-    </script>
 </head>
 <body class="p-4 sm:p-8">
 
     <div id="error-console"></div>
 
     <div class="max-w-4xl mx-auto">
-        <!-- Header with Login and Settings -->
+        <!-- Header -->
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-3xl font-bold text-indigo-400 flex items-center gap-2">
                 🛡️ Aegis DM Toolkit
                 <div id="db-status-indicator" class="w-3 h-3 rounded-full bg-gray-500" title="Checking Database Status..."></div>
             </h1>
-            
             <div class="flex space-x-2">
-                <!-- Settings Button -->
-                <button onclick="openSettingsModal()" class="flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-600 p-2 rounded-lg transition duration-300" title="API & Database Settings">
+                <button onclick="openSettingsModal()" class="flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-600 p-2 rounded-lg transition duration-300" title="Settings">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
                     </svg>
                 </button>
-
-                <!-- Login Button -->
                 <button onclick="openLoginModal()" class="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-4 py-2 rounded-lg transition duration-300">
                     <div class="w-3 h-3 rounded-full bg-green-500" id="auth-status-dot"></div>
                     <span id="account-name-display" class="text-sm font-semibold text-gray-300">Guest Session</span>
@@ -83,242 +68,185 @@
             </div>
         </div>
 
-        <!-- Tab Navigation -->
+        <!-- Navigation -->
         <div class="flex border-b border-gray-600 mb-6">
-            <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active" onclick="switchTab('improv')">
-                🔮 Prep & Improv
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('combat')">
-                ⚔️ Combat Tracker
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('statblocks')">
-                👹 Statblocks
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('monsters')">
-                🐲 Monsters
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('notes')">
-                📜 Rulings & Notes
-            </button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active" onclick="switchTab('improv')">🔮 Prep & Improv</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('combat')">⚔️ Combat Tracker</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('statblocks')">👹 Statblocks</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('monsters')">🐲 Monsters</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('notes')">📜 Rulings & Notes</button>
         </div>
 
-        <!-- Content Area -->
+        <!-- Content -->
         <div id="content-area">
-            <!-- 1. Prep & Improv Engine (Gemini API) -->
+            <!-- Improv Tab -->
             <div id="improv" class="tab-content">
-
-                <!-- Structured Combat NPC Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Structured Combat NPC Stats</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="npc-level" class="block text-xs font-medium text-gray-400 mb-1">Level or CR (e.g., 5 or 1/2)</label>
-                            <input type="text" id="npc-level" value="3" placeholder="Level/CR"
-                                class="w-full p-2 rounded-lg input-style transition text-sm">
-                        </div>
-                        <div>
-                            <label for="npc-type" class="block text-xs font-medium text-gray-400 mb-1">NPC Type (e.g., Goblin Shaman)</label>
-                            <input type="text" id="npc-type" value="Shadow Rogue" placeholder="Type or Vibe"
-                                class="w-full p-2 rounded-lg input-style transition text-sm">
-                        </div>
+                        <div><label class="block text-xs text-gray-400 mb-1">Level/CR</label><input type="text" id="npc-level" value="3" class="w-full p-2 rounded-lg input-style text-sm"></div>
+                        <div><label class="block text-xs text-gray-400 mb-1">Type</label><input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
-                    <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
-                        <span id="generate-combat-text">Generate Combat Stats</span>
-                        <div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+                    <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex justify-center items-center">
+                        <span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div>
                     </button>
-                    <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
 
-                <!-- Free-Form Creative Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore & Backstory</h2>
-                    <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g., A grumpy female blacksmith..."></textarea>
-                    <button onclick="generateCreativeIdea()" id="generate-button" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
-                        <span id="generate-text">Generate Idea</span>
-                        <div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+                    <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none mb-4" placeholder="e.g., A grumpy female blacksmith..."></textarea>
+                    <button onclick="generateCreativeIdea()" id="generate-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg flex justify-center items-center">
+                        <span id="generate-text">Generate Idea</span><div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div>
                     </button>
                 </div>
 
-                <!-- Settlement Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="settlement-type" class="block text-xs font-medium text-gray-400 mb-1">Settlement Type</label>
-                            <select id="settlement-type" class="w-full p-2 rounded-lg input-style transition text-sm">
-                                <option value="Village" selected>Village</option>
-                                <option value="Town">Town</option>
-                                <option value="City">City</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="settlement-vibe" class="block text-xs font-medium text-gray-400 mb-1">Vibe/Description</label>
-                            <input type="text" id="settlement-vibe" value="haunted fishing village" placeholder="e.g., 'desert trade post'"
-                                class="w-full p-2 rounded-lg input-style transition text-sm">
-                        </div>
+                        <div><label class="block text-xs text-gray-400 mb-1">Type</label><select id="settlement-type" class="w-full p-2 rounded-lg input-style text-sm"><option>Village</option><option>Town</option><option>City</option></select></div>
+                        <div><label class="block text-xs text-gray-400 mb-1">Vibe</label><input type="text" id="settlement-vibe" value="haunted fishing village" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
-                    <button onclick="generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
-                        <span id="generate-settlement-text">Generate Settlement</span>
-                        <div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+                    <button onclick="generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg flex justify-center items-center">
+                        <span id="generate-settlement-text">Generate Settlement</span><div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div>
                     </button>
                 </div>
 
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Generated Idea</h2>
-                    <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden shadow-lg">
-                        <img id="generated-image" src="" alt="Generated Settlement Image" class="w-full h-auto object-cover bg-gray-700/30 min-h-[150px]">
-                        <p id="image-loading-status" class="text-center text-gray-400 p-3 bg-gray-800"></p>
-                    </div>
-                    <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
-                        Results will appear here.
-                    </div>
-                    <p id="npc-save-status" class="mt-2 text-sm text-center hidden"></p>
-                    <div id="save-options-creative" class="mt-4 hidden">
-                        <p class="text-sm text-center text-gray-400 mb-2">Save generated content:</p>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button onclick="saveGeneratedContent('prepNotes')" class="bg-gray-500 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded-lg">Save to Notes</button>
-                            <button onclick="saveGeneratedContent('enemyNotes')" class="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold py-2 rounded-lg">Save to Enemies</button>
-                            <button onclick="saveGeneratedContent('npcNotes')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 rounded-lg">Save to NPCs</button>
-                        </div>
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Results</h2>
+                    <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden"><img id="generated-image" class="w-full h-auto object-cover bg-gray-800 min-h-[150px]"></div>
+                    <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Results appear here...</div>
+                    <div id="save-options-creative" class="mt-4 hidden grid grid-cols-3 gap-2">
+                        <button onclick="saveGeneratedContent('prepNotes')" class="bg-gray-500 text-white text-xs font-bold py-2 rounded-lg">Save to Notes</button>
+                        <button onclick="saveGeneratedContent('enemyNotes')" class="bg-yellow-600 text-white text-xs font-bold py-2 rounded-lg">Save to Enemies</button>
+                        <button onclick="saveGeneratedContent('npcNotes')" class="bg-blue-600 text-white text-xs font-bold py-2 rounded-lg">Save to NPCs</button>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. Combat Tracker -->
+            <!-- Combat Tab -->
             <div id="combat" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Initiative & Monster Tracker</h2>
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Combat Tracker</h2>
                     <div class="flex flex-wrap gap-2 mb-4">
                         <input id="combatant-name" type="text" placeholder="Name" class="flex-1 min-w-[100px] p-2 rounded-lg input-style" />
-                        <input id="combatant-init" type="number" placeholder="Init" class="w-24 p-2 rounded-lg input-style text-center text-sm" />
+                        <input id="combatant-init" type="number" placeholder="Init" class="w-20 p-2 rounded-lg input-style text-center text-sm" />
                         <input id="combatant-ac" type="number" placeholder="AC" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
                         <input id="combatant-hp" type="number" placeholder="HP" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
-                        <button onclick="addCombatant()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-lg transition duration-300 text-sm">Add</button>
+                        <button onclick="addCombatant()" class="bg-indigo-600 text-white font-bold px-3 py-2 rounded-lg text-sm">Add</button>
                     </div>
-                    <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50">
-                        <div class="flex items-center space-x-2">
-                            <button onclick="rollD20()" id="d20-roll-button" class="w-1/3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg text-sm">Roll D20</button>
-                            <div id="last-roll-display" class="w-1/3 text-4xl font-extrabold text-center text-yellow-400 border-2 border-yellow-400 p-2 rounded-lg bg-gray-900/50 select-none">?</div>
-                            <select id="combatant-selector" class="w-1/3 p-2 rounded-lg input-style text-sm"><option value="" disabled selected>Target</option></select>
+                    <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50 flex items-center gap-2">
+                        <button onclick="rollD20()" class="w-1/3 bg-green-600 text-white font-bold py-2 rounded-lg text-sm">Roll D20</button>
+                        <div id="last-roll-display" class="w-1/3 text-4xl font-extrabold text-center text-yellow-400 bg-gray-900/50 p-2 rounded-lg">?</div>
+                        <div class="flex-1 flex flex-col gap-2">
+                            <select id="combatant-selector" class="w-full p-2 rounded-lg input-style text-sm"><option disabled selected>Target</option></select>
+                            <button onclick="assignInitiativeRoll()" id="assign-roll-button" class="w-full bg-blue-600 text-white font-bold py-1 rounded-lg text-sm" disabled>Assign</button>
                         </div>
-                        <button onclick="assignInitiativeRoll()" id="assign-roll-button" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-sm" disabled>Assign Roll</button>
                     </div>
                     <div class="flex justify-between items-center mb-4">
-                        <button onclick="sortInitiative()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Sort</button>
-                        <button onclick="nextTurn()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Next &raquo;</button>
-                        <button onclick="clearCombat()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Clear</button>
+                        <button onclick="sortInitiative()" class="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Sort</button>
+                        <button onclick="nextTurn()" class="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Next Turn</button>
+                        <button onclick="clearCombat()" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Clear</button>
                     </div>
-                    <div id="initiative-list" class="scrollable-content space-y-2">
-                        <p class="text-center text-gray-500 pt-8">Add combatants to start!</p>
-                    </div>
+                    <div id="initiative-list" class="scrollable-content space-y-2"><p class="text-center text-gray-500 pt-8">Empty.</p></div>
                 </div>
             </div>
 
-            <!-- 3. Statblocks Tab -->
+            <!-- Statblocks Tab -->
             <div id="statblocks" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Save NPC & Monster Statblocks</h2>
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Add Statblock</h2>
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <input id="stat-name" type="text" placeholder="Name" class="col-span-2 p-2 rounded-lg input-style" />
                         <input id="stat-hp" type="number" placeholder="HP" class="p-2 rounded-lg input-style text-center text-sm" />
                         <input id="stat-ac" type="number" placeholder="AC" class="p-2 rounded-lg input-style text-center text-sm" />
-                        <input id="stat-tohit" type="number" placeholder="To Hit" class="p-2 rounded-lg input-style text-center text-sm" />
+                        <input id="stat-tohit" type="number" placeholder="Hit Mod" class="p-2 rounded-lg input-style text-center text-sm" />
                         <input id="stat-init-mod" type="number" placeholder="Init Mod" class="p-2 rounded-lg input-style text-center text-sm" />
-                        <input id="stat-dmg" type="text" placeholder="DMG/Attack" class="col-span-2 p-2 rounded-lg input-style" />
+                        <input id="stat-dmg" type="text" placeholder="Damage/Actions" class="col-span-2 p-2 rounded-lg input-style" />
                     </div>
-                    <button onclick="saveStatblock()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg">Save Statblock</button>
+                    <button onclick="saveStatblock()" class="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg">Save</button>
                     <p id="statblock-status" class="mt-2 text-sm text-center text-gray-400"></p>
                 </div>
-                <!-- Custom Dice Roller -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-teal-300">Quick Dice Roller</h2>
-                    <div class="flex flex-wrap items-center gap-2 mb-4">
-                        <input id="dice-num" type="number" value="1" min="1" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
-                        <span class="text-gray-400">d</span>
-                        <select id="dice-type" class="p-2 rounded-lg input-style text-sm">
-                            <option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="10">10</option><option value="12">12</option><option value="20" selected>20</option><option value="100">100</option>
-                        </select>
-                        <span class="text-gray-400">+</span>
-                        <input id="dice-mod" type="number" value="0" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
+                    <h2 class="text-xl font-semibold mb-4 text-teal-300">Dice Roller</h2>
+                    <div class="flex items-center gap-2 mb-4">
+                        <input id="dice-num" type="number" value="1" class="w-12 p-2 rounded-lg input-style text-center text-sm">
+                        <span>d</span>
+                        <select id="dice-type" class="p-2 rounded-lg input-style text-sm"><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option selected>20</option><option>100</option></select>
+                        <span>+</span>
+                        <input id="dice-mod" type="number" value="0" class="w-12 p-2 rounded-lg input-style text-center text-sm">
+                        <button onclick="rollCustomDice()" class="flex-1 bg-teal-600 text-white font-bold py-2 rounded-lg">Roll</button>
                     </div>
-                    <button onclick="rollCustomDice()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg">Roll Dice</button>
-                    <div id="dice-roll-result" class="mt-4 text-center text-xl font-bold text-yellow-300 bg-gray-700/50 p-3 rounded-lg">Result</div>
-                    <p id="dice-roll-details" class="mt-2 text-center text-sm text-gray-400"></p>
+                    <div id="dice-roll-result" class="text-center text-xl font-bold text-yellow-300 bg-gray-700/50 p-2 rounded-lg">Result</div>
+                    <p id="dice-roll-details" class="text-center text-xs text-gray-400 mt-1"></p>
                 </div>
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Saved Statblocks</h2>
-                    <div id="statblocks-list" class="scrollable-content space-y-2"><p class="text-center text-gray-500 pt-8">No saved statblocks.</p></div>
+                    <div id="statblocks-list" class="scrollable-content space-y-2"><p class="text-center text-gray-500 pt-8">None saved.</p></div>
                 </div>
             </div>
 
-            <!-- 4. Monsters Tab -->
+            <!-- Monsters Tab -->
             <div id="monsters" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-green-300">Full Monster Stat Block Generator</h2>
+                    <h2 class="text-xl font-semibold mb-4 text-green-300">Monster Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div><label class="block text-xs text-gray-400 mb-1">Monster Name</label><input type="text" id="monster-name" value="Cave Troll" class="w-full p-2 rounded-lg input-style text-sm"></div>
-                        <div><label class="block text-xs text-gray-400 mb-1">CR</label><input type="text" id="monster-cr" value="4" class="w-full p-2 rounded-lg input-style text-sm"></div>
+                        <div><label class="text-xs text-gray-400">Name</label><input type="text" id="monster-name" value="Cave Troll" class="w-full p-2 rounded-lg input-style"></div>
+                        <div><label class="text-xs text-gray-400">CR</label><input type="text" id="monster-cr" value="4" class="w-full p-2 rounded-lg input-style"></div>
                     </div>
-                    <button onclick="generateMonsterStatblock()" id="generate-monster-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center">
-                        <span id="generate-monster-text">Generate Monster</span>
-                        <div id="monster-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+                    <button onclick="generateMonsterStatblock()" id="generate-monster-button" class="w-full bg-green-600 text-white font-bold py-2 rounded-lg flex justify-center items-center">
+                        <span id="generate-monster-text">Generate</span><div id="monster-loading-spinner" class="loading-spinner ml-2 hidden"></div>
                     </button>
-                    <p id="monster-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Generated Stat Block</h2>
-                    <div id="monster-output" class="min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Result here.</div>
-                    <p id="monster-save-status" class="mt-2 text-sm text-center hidden"></p>
+                    <div id="monster-output" class="min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Result...</div>
                     <div id="save-options-monster" class="mt-4 hidden grid grid-cols-2 gap-2">
-                        <button onclick="addMonsterToStatblocks()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg text-xs">Save to Statblocks</button>
-                        <button onclick="saveMonsterToNotes()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-xs">Save to Enemy Notes</button>
+                        <button onclick="addMonsterToStatblocks()" class="bg-purple-600 text-white text-xs font-bold py-2 rounded-lg">To Statblocks</button>
+                        <button onclick="saveMonsterToNotes()" class="bg-yellow-600 text-white text-xs font-bold py-2 rounded-lg">To Notes</button>
                     </div>
                 </div>
             </div>
 
-            <!-- 5. Rulings & Notes -->
+            <!-- Notes Tab -->
             <div id="notes" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Prep Notes</h2>
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Notes</h2>
                     <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4">
-                        <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="switchSubTab('prepNotes')">General</button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="enemyNotes" onclick="switchSubTab('enemyNotes')">Enemies</button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="switchSubTab('npcNotes')">NPCs</button>
+                        <button class="sub-tab-button p-2 text-sm active" onclick="switchSubTab('prepNotes')" data-subtab="prepNotes">General</button>
+                        <button class="sub-tab-button p-2 text-sm text-gray-400" onclick="switchSubTab('enemyNotes')" data-subtab="enemyNotes">Enemies</button>
+                        <button class="sub-tab-button p-2 text-sm text-gray-400" onclick="switchSubTab('npcNotes')" data-subtab="npcNotes">NPCs</button>
                     </div>
                     <div id="prepNotes-sub-content" class="sub-tab-content"><div id="prepNotes-list" class="scrollable-content space-y-3"></div></div>
                     <div id="enemyNotes-sub-content" class="sub-tab-content hidden"><div id="enemyNotes-list" class="scrollable-content space-y-3"></div></div>
                     <div id="npcNotes-sub-content" class="sub-tab-content hidden"><div id="npcNotes-list" class="scrollable-content space-y-3"></div></div>
-                    <button onclick="addNewNote(currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg">+ Add Note</button>
+                    <button onclick="addNewNote(currentSubTab)" class="mt-4 w-full bg-indigo-600 text-white font-bold py-2 rounded-lg">+ Note</button>
                     <p id="notes-status" class="mt-2 text-sm text-center text-gray-400"></p>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Modals -->
-    <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
+
+    <!-- Modals (Settings, Login, Edit) -->
+    <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl border border-gray-600">
             <h3 class="text-2xl font-bold text-indigo-300 mb-4">Settings</h3>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Gemini API Key</label>
-            <input type="password" id="settings-api-key" placeholder="API Key" class="w-full p-3 rounded-lg input-style mb-4">
-            <label class="block text-sm font-medium text-gray-300 mb-1">Firebase Config (JSON)</label>
-            <textarea id="settings-firebase-config" rows="4" class="w-full p-3 rounded-lg input-style font-mono text-xs"></textarea>
-            <div class="flex justify-end space-x-3 mt-4">
+            <label class="block text-sm font-medium text-gray-300 mb-1">Gemini API Key (Required for AI)</label>
+            <input type="password" id="settings-api-key" placeholder="Paste API Key" class="w-full p-3 rounded-lg input-style mb-4">
+            <div class="flex justify-end space-x-3">
                 <button onclick="closeSettingsModal()" class="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
                 <button onclick="saveSettings()" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Save</button>
             </div>
         </div>
     </div>
 
-    <div id="login-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div id="login-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4">
         <div class="card w-full max-w-md p-6 rounded-lg shadow-2xl border border-indigo-500">
-            <h3 class="text-2xl font-bold text-indigo-300 mb-2">Login</h3>
-            <div id="login-warning" class="hidden mb-4 p-2 bg-red-900/50 border border-red-500 rounded text-xs text-red-200">⚠️ Database not connected.</div>
+            <h3 class="text-2xl font-bold text-indigo-300 mb-4">Login</h3>
+            <div id="login-warning" class="hidden mb-4 p-2 bg-red-900 text-red-200 text-xs rounded">DB Disconnected</div>
             <input type="text" id="login-campaign" placeholder="Campaign Name" class="w-full p-3 rounded-lg input-style mb-4">
             <input type="password" id="login-password" placeholder="Password" class="w-full p-3 rounded-lg input-style mb-6">
             <div class="flex justify-between items-center">
-                <button onclick="performSignOut()" class="text-red-400 text-sm font-semibold">Sign Out</button>
-                <div class="flex space-x-3">
+                <button onclick="performSignOut()" class="text-red-400 text-sm font-bold">Sign Out</button>
+                <div class="flex gap-2">
                     <button onclick="closeLoginModal()" class="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
                     <button onclick="performSignIn()" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg">Login</button>
                 </div>
@@ -327,12 +255,12 @@
     </div>
 
     <div id="edit-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
-        <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
+        <div class="card w-full max-w-lg p-6 rounded-lg">
             <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Note</h3>
             <input type="hidden" id="modal-note-id"><input type="hidden" id="modal-tab-name">
             <input type="text" id="modal-title" class="w-full p-3 rounded-lg input-style mb-4">
             <textarea id="modal-content" rows="6" class="w-full p-3 rounded-lg input-style mb-6"></textarea>
-            <div class="flex justify-end space-x-3">
+            <div class="flex justify-end gap-3">
                 <button onclick="closeEditModal()" class="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
                 <button onclick="saveEditedNote()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Save</button>
             </div>
@@ -340,51 +268,220 @@
     </div>
 
     <div id="edit-statblock-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
-        <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
+        <div class="card w-full max-w-lg p-6 rounded-lg">
             <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Statblock</h3>
             <input type="hidden" id="modal-statblock-id">
-            <input type="text" id="modal-stat-name" placeholder="Name" class="w-full p-3 rounded-lg input-style mb-4">
+            <input type="text" id="modal-stat-name" class="w-full p-3 rounded-lg input-style mb-4">
             <div class="grid grid-cols-2 gap-4 mb-4">
-                <input type="number" id="modal-stat-hp" placeholder="HP" class="p-2 rounded-lg input-style text-center">
-                <input type="number" id="modal-stat-ac" placeholder="AC" class="p-2 rounded-lg input-style text-center">
-                <input type="number" id="modal-stat-tohit" placeholder="To Hit" class="p-2 rounded-lg input-style text-center">
-                <input type="number" id="modal-stat-init-mod" placeholder="Init" class="p-2 rounded-lg input-style text-center">
+                <input type="number" id="modal-stat-hp" class="p-2 rounded-lg input-style text-center">
+                <input type="number" id="modal-stat-ac" class="p-2 rounded-lg input-style text-center">
+                <input type="number" id="modal-stat-tohit" class="p-2 rounded-lg input-style text-center">
+                <input type="number" id="modal-stat-init-mod" class="p-2 rounded-lg input-style text-center">
             </div>
-            <input type="text" id="modal-stat-dmg" placeholder="DMG" class="w-full p-3 rounded-lg input-style mb-6">
-            <div class="flex justify-end space-x-3">
+            <input type="text" id="modal-stat-dmg" class="w-full p-3 rounded-lg input-style mb-6">
+            <div class="flex justify-end gap-3">
                 <button onclick="closeStatblockEditModal()" class="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
                 <button onclick="saveEditedStatblock()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Save</button>
             </div>
         </div>
     </div>
 
-    <!-- SCRIPT MOVED TO END OF BODY FOR SAFETY -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, setLogLevel, addDoc, updateDoc, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // --- 1. UI & LOGIC (Runs Immediately) ---
         
-        // Globals
-        window.doc = doc; window.setDoc = setDoc; window.deleteDoc = deleteDoc; window.collection = collection; window.query = query; window.onSnapshot = onSnapshot; window.addDoc = addDoc; window.getDoc = getDoc; window.updateDoc = updateDoc; window.orderBy = orderBy; window.writeBatch = writeBatch; 
+        // --- State ---
+        window.currentTab = 'improv'; 
+        window.currentSubTab = 'prepNotes';
+        window.savedStatblocks = []; 
+        window.lastGeneratedNpc = null; 
+        window.lastGeneratedMonster = null;
+        window.combatants = []; 
+        window.currentTurnIndex = -1; 
+        window.lastRoll = 0;
+        window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [] };
+        
+        // --- API Keys ---
+        window.userApiKey = localStorage.getItem('aegis_gemini_api_key') || "";
+        window.fallbackKey = ""; // Preview key injected by environment if available
 
-        window.db = null; window.auth = null; window.userId = null; window.isAuthReady = false;
-        window.currentCampaignId = 'default_session'; window.currentCampaignName = 'Guest Session';
+        // --- UI Functions ---
+        window.switchTab = function(id) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            document.querySelectorAll('.tab-button').forEach(b => {
+                 b.classList.remove('active', 'text-gray-400');
+                 if(b.getAttribute('onclick').includes(id)) b.classList.add('active'); else b.classList.add('text-gray-400');
+            });
+            window.currentTab = id;
+            if(id === 'notes') window.renderStructuredNotes(window.currentSubTab);
+        };
 
-        window.unsubs = { notes: null, combatants: null, combatState: null, statblocks: null };
+        window.switchSubTab = function(id) {
+            window.currentSubTab = id;
+            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id+'-sub-content').classList.remove('hidden');
+            document.querySelectorAll('.sub-tab-button').forEach(b => {
+                 b.classList.remove('active', 'text-gray-400');
+                 if(b.getAttribute('data-subtab') === id) b.classList.add('active'); else b.classList.add('text-gray-400');
+            });
+            window.renderStructuredNotes(id);
+        };
 
-        // State
-        let currentTab = 'improv'; 
-        let currentSubTab = 'prepNotes';
-        let savedStatblocks = []; 
-        let lastGeneratedNpc = null;
-        let lastGeneratedMonster = null; 
-        let combatants = [];
-        let currentTurnIndex = -1;
-        let lastRoll = 0;
-        let structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [] };
+        window.rollCustomDice = function() {
+             const n = parseInt(document.getElementById('dice-num').value) || 1;
+             const t = parseInt(document.getElementById('dice-type').value) || 20;
+             const m = parseInt(document.getElementById('dice-mod').value) || 0;
+             let sum = 0; let r = [];
+             for(let i=0; i<n; i++) { let v = Math.floor(Math.random()*t)+1; sum+=v; r.push(v); }
+             document.getElementById('dice-roll-result').textContent = `Total: ${sum+m}`;
+             document.getElementById('dice-roll-details').textContent = `Rolls: ${r.join(',')} + ${m}`;
+        };
+        
+        window.rollD20 = function() {
+             window.lastRoll = Math.floor(Math.random()*20)+1;
+             const d = document.getElementById('last-roll-display');
+             if(d) d.textContent = window.lastRoll;
+             window.popSel();
+        };
+        
+        window.popSel = function() {
+             const sel = document.getElementById('combatant-selector');
+             if(!sel) return;
+             sel.innerHTML = '<option disabled selected>Target</option>';
+             window.combatants.forEach((c, i) => {
+                 const o = document.createElement('option'); o.value = i; o.textContent = c.name; sel.appendChild(o);
+             });
+             const btn = document.getElementById('assign-roll-button');
+             if(btn) btn.disabled = window.combatants.length === 0;
+        };
 
-        // CONFIG
-        const EMBEDDED_FIREBASE_CONFIG = {
+        window.openSettingsModal = function() {
+            document.getElementById('settings-api-key').value = window.userApiKey;
+            document.getElementById('settings-modal').classList.remove('hidden');
+        };
+        window.closeSettingsModal = function() { document.getElementById('settings-modal').classList.add('hidden'); };
+        window.saveSettings = function() {
+            const key = document.getElementById('settings-api-key').value.trim();
+            window.userApiKey = key;
+            localStorage.setItem('aegis_gemini_api_key', key);
+            window.closeSettingsModal();
+            alert("Key saved. Reloading...");
+            location.reload();
+        };
+
+        // --- AI Generators ---
+        const API_URL_PREVIEW = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
+        const API_URL_PUBLIC = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=';
+        const IMAGE_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=';
+
+        async function fetchAI(payload, urlBase) {
+            let key = window.userApiKey;
+            let url = API_URL_PUBLIC; // Default to public stable model if user has key
+            
+            if (!key) {
+                // If no user key, try injected key (Preview Environment)
+                key = window.fallbackKey; 
+                url = API_URL_PREVIEW;
+            }
+            
+            if (!key) {
+                window.openSettingsModal();
+                throw new Error("Please enter an API Key in Settings.");
+            }
+            
+            // Override URL if using Image gen
+            if (urlBase && urlBase.includes('imagen')) url = urlBase;
+
+            const res = await fetch(url + key, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            
+            if (!res.ok) throw new Error(`API Error: ${res.status}`);
+            return await res.json();
+        }
+
+        window.generateCreativeIdea = async function() {
+            const p = document.getElementById('improv-prompt').value;
+            if(!p) return alert("Enter prompt");
+            const spin = document.getElementById('creative-loading-spinner'); 
+            spin.classList.remove('hidden');
+            try {
+                const data = await fetchAI({ contents: [{ parts: [{ text: "You are a D&D assistant. " + p }] }] });
+                document.getElementById('ai-output').textContent = data.candidates[0].content.parts[0].text;
+                document.getElementById('save-options-creative').classList.remove('hidden');
+            } catch(e) { alert(e.message); }
+            spin.classList.add('hidden');
+        };
+
+        window.generateSettlement = async function() {
+            const type = document.getElementById('settlement-type').value;
+            const vibe = document.getElementById('settlement-vibe').value;
+            const spin = document.getElementById('settlement-loading-spinner');
+            const output = document.getElementById('ai-output');
+            const imgOut = document.getElementById('generated-image');
+            
+            spin.classList.remove('hidden');
+            output.textContent = "Generating text...";
+            imgOut.classList.add('hidden');
+
+            // Text First
+            try {
+                const textData = await fetchAI({ contents: [{ parts: [{ text: `Generate D&D settlement: ${type}, ${vibe}. Include Name, Lore, Politics, Key Areas.` }] }] });
+                output.textContent = textData.candidates[0].content.parts[0].text;
+                document.getElementById('save-options-creative').classList.remove('hidden');
+            } catch (e) { output.textContent = "Text Error: " + e.message; }
+
+            // Image Second (Silent fail)
+            try {
+                const imgData = await fetchAI({ instances: [{ prompt: `Fantasy concept art, top down map of ${type}, ${vibe}` }], parameters: {sampleCount: 1} }, IMAGE_API_URL);
+                if(imgData.predictions) {
+                    imgOut.src = `data:image/png;base64,${imgData.predictions[0].bytesBase64Encoded}`;
+                    imgOut.classList.remove('hidden');
+                }
+            } catch (e) { console.log("Image gen failed (likely model availability):", e); }
+            
+            spin.classList.add('hidden');
+        };
+        
+        window.generateCombatNpc = async function() {
+            const lvl = document.getElementById('npc-level').value;
+            const type = document.getElementById('npc-type').value;
+            const spin = document.getElementById('combat-loading-spinner');
+            const output = document.getElementById('ai-output');
+            
+            spin.classList.remove('hidden');
+            output.textContent = "Generating...";
+            
+            const schema = { type: "OBJECT", properties: { name: {type:"STRING"}, level_or_cr:{type:"STRING"}, armor_class_ac:{type:"INTEGER"}, max_hit_points:{type:"INTEGER"}, initiative_bonus:{type:"INTEGER"}, main_attack:{type:"STRING"} }, required: ["name","level_or_cr","armor_class_ac","max_hit_points","initiative_bonus","main_attack"] };
+            
+            try {
+                const data = await fetchAI({ 
+                    contents: [{ parts: [{ text: `Generate D&D 5e NPC combat stats: Level ${lvl} ${type}` }] }],
+                    generationConfig: { responseMimeType: "application/json", responseSchema: schema }
+                });
+                const stats = JSON.parse(data.candidates[0].content.parts[0].text);
+                window.lastGeneratedNpc = stats;
+                
+                // Render
+                let html = `<div class="font-bold text-xl text-green-400">${stats.name}</div>`;
+                html += `<div>CR/Lvl: ${stats.level_or_cr} | AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points}</div>`;
+                html += `<div>Init: ${stats.initiative_bonus} | Atk: ${stats.main_attack}</div>`;
+                html += `<button onclick="addNpcToStatblocks()" class="mt-2 bg-indigo-600 text-white p-2 rounded w-full">Save to Statblocks</button>`;
+                output.innerHTML = html;
+                
+            } catch(e) { output.textContent = "Error: " + e.message; }
+            spin.classList.add('hidden');
+        };
+
+        // --- 2. FIREBASE LOGIC (Initialized safely) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, collection, query, onSnapshot, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Config
+        const FB_CONFIG = {
             apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
             authDomain: "aegisdmtoolkit.firebaseapp.com",
             projectId: "aegisdmtoolkit",
@@ -394,515 +491,217 @@
             measurementId: "G-S0Y2NKNG7R"
         };
 
-        let firebaseConfig = EMBEDDED_FIREBASE_CONFIG;
-        if (!firebaseConfig) {
-            let configRaw = localStorage.getItem('aegis_firebase_config');
-            if (configRaw) { try { firebaseConfig = JSON.parse(configRaw); } catch(e){ console.error(e); } }
-        }
+        // App State
+        window.currentCampaignId = localStorage.getItem('aegis_cid') || 'default_session';
+        window.db = null;
+        window.auth = null;
+        window.isAuthReady = false;
 
-        const initialAuthToken = null;
-
-        // Init Firebase
-        if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
+        async function initFirebase() {
             try {
-                const app = initializeApp(firebaseConfig);
+                const app = initializeApp(FB_CONFIG);
                 window.db = getFirestore(app);
                 window.auth = getAuth(app);
                 
                 onAuthStateChanged(window.auth, async (user) => {
                     if (!user) {
-                        try {
-                            // Safety check for mismatched custom tokens
-                            const isCustom = !!localStorage.getItem('aegis_firebase_config');
-                            if (initialAuthToken && !isCustom) {
-                                await signInWithCustomToken(window.auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(window.auth);
-                            }
-                        } catch (error) {
-                            console.error("Auth Error:", error);
-                            // Retry anonymous if custom failed
-                            if (error.code === 'auth/custom-token-mismatch') await signInAnonymously(window.auth);
-                        }
+                        await signInAnonymously(window.auth);
                     } else {
-                        window.userId = user.uid;
                         window.isAuthReady = true;
-                        const savedId = localStorage.getItem('aegis_campaign_id');
-                        const savedName = localStorage.getItem('aegis_campaign_name');
-                        if (savedId && savedName) {
-                            window.currentCampaignId = savedId;
-                            window.currentCampaignName = savedName;
-                            updateAccountDisplay();
-                        }
-                        refreshAllListeners();
-                        updateDbStatus(true);
+                        document.getElementById('db-status-indicator').classList.replace('bg-gray-500', 'bg-green-500');
+                        // Start Listeners
+                        setupListeners();
                     }
                 });
-            } catch (err) {
-                console.error("Init Error:", err);
-                updateDbStatus(false);
-            }
-        } else {
-            updateDbStatus(false);
-        }
-
-        function updateDbStatus(connected) {
-            const dot = document.getElementById('db-status-indicator');
-            if(dot) {
-                dot.classList.remove('bg-gray-500', 'bg-green-500', 'bg-red-500');
-                dot.classList.add(connected ? 'bg-green-500' : 'bg-red-500');
+            } catch (e) {
+                console.error("Firebase Init Failed:", e);
+                document.getElementById('db-status-indicator').classList.replace('bg-gray-500', 'bg-red-500');
             }
         }
 
-        // --- Helper Functions (Defined Globally) ---
+        // --- Database Functions ---
         
-        // Settings
-        let userApiKey = localStorage.getItem('aegis_gemini_api_key') || "";
-        let userFirebaseConfig = localStorage.getItem('aegis_firebase_config') || "";
-
-        window.openSettingsModal = function() {
-            const modal = document.getElementById('settings-modal');
-            if(modal) {
-                document.getElementById('settings-api-key').value = userApiKey;
-                const fbInput = document.getElementById('settings-firebase-config');
-                if(EMBEDDED_FIREBASE_CONFIG) {
-                    fbInput.value = "Embedded by developer.";
-                    fbInput.disabled = true;
-                } else {
-                    fbInput.value = userFirebaseConfig;
-                    fbInput.disabled = false;
-                }
-                modal.classList.remove('hidden');
-            }
-        }
-        window.closeSettingsModal = function() { document.getElementById('settings-modal').classList.add('hidden'); }
-        window.saveSettings = function() {
-            const key = document.getElementById('settings-api-key').value.trim();
-            userApiKey = key;
-            localStorage.setItem('aegis_gemini_api_key', key);
-            if(!EMBEDDED_FIREBASE_CONFIG) {
-                const fbVal = document.getElementById('settings-firebase-config').value.trim();
-                if(fbVal) {
-                    try { JSON.parse(fbVal); localStorage.setItem('aegis_firebase_config', fbVal); } catch(e) { alert("Invalid JSON"); return; }
-                } else {
-                    localStorage.removeItem('aegis_firebase_config');
-                }
-            }
-            closeSettingsModal();
-            location.reload();
+        function getRef(pathType) {
+             const id = window.currentCampaignId;
+             const db = window.db;
+             if (!db) return null;
+             // Using simplified paths for stability
+             if (pathType === 'notes') return doc(db, 'campaigns', id, 'data', 'notes');
+             if (pathType === 'combatants') return collection(db, 'campaigns', id, 'combatants');
+             if (pathType === 'state') return doc(db, 'campaigns', id, 'data', 'state');
+             if (pathType === 'statblocks') return collection(db, 'campaigns', id, 'statblocks');
         }
 
-        // Login
-        window.openLoginModal = function() { document.getElementById('login-modal').classList.remove('hidden'); }
-        window.closeLoginModal = function() { document.getElementById('login-modal').classList.add('hidden'); }
-        window.performSignOut = function() {
-            window.currentCampaignId = 'default_session';
-            window.currentCampaignName = 'Guest Session';
-            localStorage.removeItem('aegis_campaign_id');
-            localStorage.removeItem('aegis_campaign_name');
-            updateAccountDisplay();
-            closeLoginModal();
-            refreshAllListeners();
-        }
-        window.performSignIn = async function() {
-            const name = document.getElementById('login-campaign').value;
-            const pass = document.getElementById('login-password').value;
-            if(!name || !pass) return alert("Enter name and password");
-            const hash = await generateCollectionHash(name, pass);
-            window.currentCampaignId = hash;
-            window.currentCampaignName = name;
-            localStorage.setItem('aegis_campaign_id', hash);
-            localStorage.setItem('aegis_campaign_name', name);
-            updateAccountDisplay();
-            closeLoginModal();
-            refreshAllListeners();
-        }
+        function setupListeners() {
+             if(!window.db) return;
+             
+             // Notes Listener
+             onSnapshot(getRef('notes'), (snap) => {
+                 if(snap.exists()) {
+                     const d = snap.data();
+                     window.structuredNotes = {
+                         prepNotes: d.prepNotes || [],
+                         enemyNotes: d.enemyNotes || [],
+                         npcNotes: d.npcNotes || []
+                     };
+                     if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+                 }
+             });
 
-        function updateAccountDisplay() {
-            const el = document.getElementById('account-name-display');
-            if(el) el.textContent = window.currentCampaignName;
-            const dot = document.getElementById('auth-status-dot');
-            if(dot) {
-                dot.classList.remove('bg-green-500', 'bg-indigo-500');
-                dot.classList.add(window.currentCampaignName === 'Guest Session' ? 'bg-green-500' : 'bg-indigo-500');
-            }
+             // Combatant Listener
+             onSnapshot(query(getRef('combatants')), (snap) => {
+                 window.combatants = [];
+                 snap.forEach(d => window.combatants.push({id: d.id, ...d.data()}));
+                 window.combatants.sort((a,b) => (b.init||0) - (a.init||0));
+                 window.renderCombatants();
+             });
+             
+             // Statblocks Listener
+             onSnapshot(query(getRef('statblocks')), (snap) => {
+                 window.savedStatblocks = [];
+                 snap.forEach(d => window.savedStatblocks.push({id: d.id, ...d.data()}));
+                 window.renderStatblocks();
+             });
         }
 
-        async function generateCollectionHash(name, password) {
-            const msgBuffer = new TextEncoder().encode(name.trim() + ":" + password.trim());
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
-        }
-
-        // Listeners
-        function refreshAllListeners() {
-            if(window.unsubs.notes) { window.unsubs.notes(); window.unsubs.notes = null; }
-            if(window.unsubs.combatants) { window.unsubs.combatants(); window.unsubs.combatants = null; }
-            if(window.unsubs.combatState) { window.unsubs.combatState(); window.unsubs.combatState = null; }
-            if(window.unsubs.statblocks) { window.unsubs.statblocks(); window.unsubs.statblocks = null; }
-
-            combatants = []; savedStatblocks = []; structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [] };
-            renderCombatants(); renderStatblocks(); renderStructuredNotes(currentSubTab);
-
-            setupNotesListener(); setupCombatDataListeners(); setupStatblocksListener();
-        }
-
-        // Firestore Refs
-        function getFirestoreKey(t) { return `structured${t.charAt(0).toUpperCase() + t.slice(1)}`; }
-        function getUserDocRef() { return window.doc(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${window.currentCampaignId}_notes`, 'notes_doc'); }
-        function getCombatantsCollectionRef() { return window.collection(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${window.currentCampaignId}_combatants`); }
-        function getCombatStateDocRef() { return window.doc(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${window.currentCampaignId}_combat_state`, 'state_doc'); }
-        function getStatblocksCollectionRef() { return window.collection(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${window.currentCampaignId}_statblocks`); }
-
-        // Logic
-        function setupNotesListener() {
-            if (!window.isAuthReady || !window.db) return;
-            window.unsubs.notes = window.onSnapshot(getUserDocRef(), (doc) => {
-                if (doc.exists()) {
-                    const d = doc.data();
-                    structuredNotes.prepNotes = d[getFirestoreKey('prepNotes')] || [];
-                    structuredNotes.enemyNotes = d[getFirestoreKey('enemyNotes')] || [];
-                    structuredNotes.npcNotes = d[getFirestoreKey('npcNotes')] || [];
-                    if (currentTab === 'notes') renderStructuredNotes(currentSubTab);
-                }
-            });
-        }
+        // --- Window Functions for DB Actions ---
         
-        function renderStructuredNotes(tab) {
-            const list = document.getElementById(tab + '-list');
-            if(!list) return;
-            list.innerHTML = '';
-            const notes = structuredNotes[tab];
-            if(!notes || notes.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 pt-8">No notes yet.</p>'; return; }
-            
-            notes.forEach(n => {
-                const d = document.createElement('div');
-                d.className = 'note-item card p-0 rounded-lg shadow-md mb-2';
-                d.id = `note-${n.id}`;
-                d.innerHTML = `
-                    <div class="collapsible-header hover:bg-gray-600/50 transition duration-150" onclick="toggleCollapse('${n.id}')">
-                        <span class="font-semibold text-lg text-indigo-300 truncate">${n.title}</span>
-                        <svg class="arrow-icon w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
-                    </div>
-                    <div class="collapsible-content" id="content-${n.id}">
-                        <div class="p-2 whitespace-pre-wrap text-sm text-gray-300 border-l-4 border-indigo-400 bg-gray-700/50">${n.content}</div>
-                        <div class="flex justify-end space-x-2 pt-2 pb-1 p-2">
-                            <button onclick="editNote('${n.id}', '${tab}')" class="bg-blue-600 text-white text-xs font-bold py-1 px-3 rounded">Edit</button>
-                            <button onclick="deleteNote('${n.id}', '${tab}')" class="bg-red-600 text-white text-xs font-bold py-1 px-3 rounded">Delete</button>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(d);
-            });
-        }
-
-        window.toggleCollapse = function(id) {
-            const el = document.getElementById('content-'+id);
-            if(el) {
-                if(el.style.maxHeight) { el.style.maxHeight = null; el.classList.remove('expanded'); }
-                else { el.classList.add('expanded'); el.style.maxHeight = el.scrollHeight + "px"; }
-            }
-        }
-
+        // Notes
         window.addNewNote = async function(tab) {
-            if (!window.isAuthReady) return;
-            const n = { id: crypto.randomUUID(), title: 'New Note', content: 'Details...', timestamp: new Date().toISOString() };
-            structuredNotes[tab].unshift(n);
-            const k = getFirestoreKey(tab);
-            await window.setDoc(getUserDocRef(), { [k]: structuredNotes[tab] }, { merge: true });
-            renderStructuredNotes(tab);
-        }
-        
-        window.deleteNote = async function(id, tab) {
-             structuredNotes[tab] = structuredNotes[tab].filter(x => x.id !== id);
-             const k = getFirestoreKey(tab);
-             await window.setDoc(getUserDocRef(), { [k]: structuredNotes[tab] }, { merge: true });
-             renderStructuredNotes(tab);
-        }
-
-        window.editNote = function(id, tab) {
-            const n = structuredNotes[tab].find(x => x.id === id);
-            if(!n) return;
-            document.getElementById('modal-note-id').value = n.id;
-            document.getElementById('modal-tab-name').value = tab;
-            document.getElementById('modal-title').value = n.title;
-            document.getElementById('modal-content').value = n.content;
-            document.getElementById('edit-modal').classList.remove('hidden');
-        }
-
-        window.saveEditedNote = async function() {
-             const id = document.getElementById('modal-note-id').value;
-             const tab = document.getElementById('modal-tab-name').value;
-             const title = document.getElementById('modal-title').value;
-             const content = document.getElementById('modal-content').value;
-             const idx = structuredNotes[tab].findIndex(x => x.id === id);
-             if(idx > -1) {
-                 structuredNotes[tab][idx].title = title;
-                 structuredNotes[tab][idx].content = content;
-                 const k = getFirestoreKey(tab);
-                 await window.setDoc(getUserDocRef(), { [k]: structuredNotes[tab] }, { merge: true });
-                 renderStructuredNotes(tab);
-             }
-             document.getElementById('edit-modal').classList.add('hidden');
-        }
-        window.closeEditModal = function() { document.getElementById('edit-modal').classList.add('hidden'); }
-
-        // Combat
-        function setupCombatDataListeners() {
-            if (!window.isAuthReady || !window.db) return;
-            window.unsubs.combatants = window.onSnapshot(getCombatantsCollectionRef(), (snap) => {
-                combatants = [];
-                snap.forEach(d => combatants.push({id: d.id, ...d.data()}));
-                combatants.sort((a, b) => (b.init || 0) - (a.init || 0));
-                renderCombatants();
-            });
-            window.unsubs.combatState = window.onSnapshot(getCombatStateDocRef(), (doc) => {
-                currentTurnIndex = doc.exists() ? (doc.data().currentTurnIndex ?? -1) : -1;
-                renderCombatants();
-            });
-        }
-
-        function renderCombatants() {
-            const list = document.getElementById('initiative-list');
-            if(!list) return;
-            list.innerHTML = '';
-            if(combatants.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 pt-8">No combatants.</p>'; return; }
-            
-            combatants.forEach((c, i) => {
-                 const active = i === currentTurnIndex;
-                 const d = document.createElement('div');
-                 d.className = `flex items-center space-x-1 p-3 rounded-lg mb-1 transition ${active ? 'bg-indigo-700 glow-shadow' : 'bg-gray-700'}`;
-                 d.innerHTML = `
-                    <div class="text-lg font-bold w-6 text-center text-white">${c.init}</div>
-                    <div class="flex-1 min-w-[50px]">
-                        <div class="font-semibold text-sm text-white truncate">${c.name}</div>
-                        <div class="text-xs text-gray-300">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</div>
-                    </div>
-                    <div class="flex space-x-1 items-center">
-                        <input type="number" placeholder="#" id="dmg-${i}" class="w-10 p-1 rounded input-style text-center text-xs">
-                        <button onclick="applyHp(${i}, 'heal')" class="bg-green-600 text-white text-xs font-bold py-1 px-2 rounded">H</button>
-                        <button onclick="applyHp(${i}, 'dmg')" class="bg-red-500 text-white text-xs font-bold py-1 px-2 rounded">D</button>
-                    </div>
-                    <button onclick="removeComb(${i})" class="bg-gray-500 text-white text-xs font-bold py-1 px-2 rounded">X</button>
-                 `;
-                 list.appendChild(d);
-            });
-            popSel();
-        }
-
-        window.applyHp = async function(i, type) {
-             const val = parseInt(document.getElementById(`dmg-${i}`).value) || 0;
-             if(val <= 0) return;
-             let hp = combatants[i].currentHp;
-             if(type === 'dmg') hp -= val; else hp += val;
-             hp = Math.max(0, Math.min(hp, combatants[i].maxHp));
-             await window.updateDoc(window.doc(getCombatantsCollectionRef(), combatants[i].id), {currentHp: hp});
-        }
-
-        window.removeComb = async function(i) {
-            await window.deleteDoc(window.doc(getCombatantsCollectionRef(), combatants[i].id));
-        }
-
-        window.addCombatant = async function() {
-            const name = document.getElementById('combatant-name').value;
-            const init = parseInt(document.getElementById('combatant-init').value) || 0;
-            const ac = parseInt(document.getElementById('combatant-ac').value) || 10;
-            const hp = parseInt(document.getElementById('combatant-hp').value) || 10;
-            if(!name) return;
-            await window.addDoc(getCombatantsCollectionRef(), { name, init, ac, maxHp: hp, currentHp: hp, initModifier: init });
-            document.getElementById('combatant-name').value = '';
-        }
-        
-        window.nextTurn = async function() {
-            if(combatants.length === 0) return;
-            let idx = (currentTurnIndex + 1) % combatants.length;
-            await window.setDoc(getCombatStateDocRef(), { currentTurnIndex: idx });
-        }
-        
-        window.clearCombat = async function() {
-            const b = window.writeBatch(window.db);
-            combatants.forEach(c => b.delete(window.doc(getCombatantsCollectionRef(), c.id)));
-            b.delete(getCombatStateDocRef());
-            await b.commit();
-        }
-        window.sortInitiative = async function() { await window.setDoc(getCombatStateDocRef(), { currentTurnIndex: 0 }); }
-        
-        function popSel() {
-             const sel = document.getElementById('combatant-selector');
-             if(!sel) return;
-             sel.innerHTML = '<option disabled selected>Target</option>';
-             combatants.forEach((c, i) => {
-                 const o = document.createElement('option'); o.value = i; o.textContent = c.name; sel.appendChild(o);
-             });
-             const btn = document.getElementById('assign-roll-button');
-             if(btn) btn.disabled = combatants.length === 0;
-        }
-
-        window.rollD20 = function() {
-             lastRoll = Math.floor(Math.random()*20)+1;
-             document.getElementById('last-roll-display').textContent = lastRoll;
-             popSel();
-        }
-        window.assignInitiativeRoll = async function() {
-             const idx = document.getElementById('combatant-selector').value;
-             if(idx === "Target") return;
-             const i = parseInt(idx);
-             const c = combatants[i];
-             await window.updateDoc(window.doc(getCombatantsCollectionRef(), c.id), { init: lastRoll + (c.initModifier || 0) });
-        }
-
-        // Statblocks
-        function setupStatblocksListener() {
-             if (!window.isAuthReady || !window.db) return;
-             window.unsubs.statblocks = window.onSnapshot(getStatblocksCollectionRef(), (snap) => {
-                 savedStatblocks = [];
-                 snap.forEach(d => savedStatblocks.push({id: d.id, ...d.data()}));
-                 savedStatblocks.sort((a,b) => a.name.localeCompare(b.name));
-                 renderStatblocks();
-             });
-        }
-        function renderStatblocks() {
-             const list = document.getElementById('statblocks-list');
-             if(!list) return;
-             list.innerHTML = '';
-             if(savedStatblocks.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 pt-8">No statblocks.</p>'; return; }
-             savedStatblocks.forEach(s => {
-                 const d = document.createElement('div');
-                 d.className = 'note-item card p-0 rounded-lg shadow-md mb-2';
-                 d.id = `stat-${s.id}`;
-                 d.innerHTML = `
-                     <div class="collapsible-header hover:bg-gray-600/50" onclick="toggleCollapse('${s.id}')">
-                         <span class="font-semibold text-lg text-indigo-300 truncate">${s.name}</span>
-                         <svg class="arrow-icon w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
-                     </div>
-                     <div class="collapsible-content" id="content-${s.id}">
-                         <div class="p-3">
-                            <div class="flex justify-end space-x-2 mb-2">
-                                <button onclick="editStatblock('${s.id}')" class="bg-blue-600 text-white text-xs py-1 px-2 rounded">Edit</button>
-                                <button onclick="deleteStatblock('${s.id}')" class="bg-red-500 text-white text-xs py-1 px-2 rounded">Del</button>
-                            </div>
-                            <div class="grid grid-cols-2 text-sm gap-y-1 text-gray-300">
-                                <span class="text-green-400">HP: ${s.hp}</span><span class="text-blue-400">AC: ${s.ac}</span>
-                                <span>Init: ${s.initMod}</span><span>Hit: ${s.toHit}</span>
-                                <div class="col-span-2 text-yellow-400 text-xs mt-1">${s.dmg}</div>
-                            </div>
-                            <button onclick="importToCombat('${s.name}', ${s.hp}, ${s.initMod}, ${s.ac})" class="mt-2 w-full bg-purple-600 text-white font-bold py-1 rounded text-sm">Add to Combat</button>
-                         </div>
-                     </div>
-                 `;
-                 list.appendChild(d);
-             });
-        }
-
-        window.saveStatblock = async function() {
-             const name = document.getElementById('stat-name').value;
-             const hp = parseInt(document.getElementById('stat-hp').value) || 10;
-             const ac = parseInt(document.getElementById('stat-ac').value) || 10;
-             const toHit = parseInt(document.getElementById('stat-tohit').value) || 0;
-             const init = parseInt(document.getElementById('stat-init-mod').value) || 0;
-             const dmg = document.getElementById('stat-dmg').value;
-             if(!name) return;
-             await window.addDoc(getStatblocksCollectionRef(), { name, hp, ac, toHit, initMod: init, dmg });
-             document.getElementById('stat-name').value = '';
-        }
-        
-        window.deleteStatblock = async function(id) { await window.deleteDoc(window.doc(getStatblocksCollectionRef(), id)); }
-        window.importToCombat = function(n, h, i, a) {
-             document.getElementById('combatant-name').value = n;
-             document.getElementById('combatant-hp').value = h;
-             document.getElementById('combatant-init').value = i;
-             document.getElementById('combatant-ac').value = a;
-             switchTab('combat');
-        }
-
-        window.editStatblock = function(id) {
-            const s = savedStatblocks.find(x => x.id === id);
-            if(!s) return;
-            document.getElementById('modal-statblock-id').value = s.id;
-            document.getElementById('modal-stat-name').value = s.name;
-            document.getElementById('modal-stat-hp').value = s.hp;
-            document.getElementById('modal-stat-ac').value = s.ac;
-            document.getElementById('modal-stat-tohit').value = s.toHit;
-            document.getElementById('modal-stat-init-mod').value = s.initMod;
-            document.getElementById('modal-stat-dmg').value = s.dmg;
-            document.getElementById('edit-statblock-modal').classList.remove('hidden');
-        }
-        window.closeStatblockEditModal = function() { document.getElementById('edit-statblock-modal').classList.add('hidden'); }
-        
-        window.saveEditedStatblock = async function() {
-            const id = document.getElementById('modal-statblock-id').value;
-            const name = document.getElementById('modal-stat-name').value;
-            const hp = parseInt(document.getElementById('modal-stat-hp').value);
-            const ac = parseInt(document.getElementById('modal-stat-ac').value);
-            const toHit = parseInt(document.getElementById('modal-stat-tohit').value);
-            const init = parseInt(document.getElementById('modal-stat-init-mod').value);
-            const dmg = document.getElementById('modal-stat-dmg').value;
-            if(!name) return;
-            await window.setDoc(window.doc(getStatblocksCollectionRef(), id), { name, hp, ac, toHit, initMod: init, dmg }, {merge:true});
-            document.getElementById('edit-statblock-modal').classList.add('hidden');
-        }
-
-        // AI logic omitted for brevity but functions exposed
-        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
-        window.generateCreativeIdea = async function() {
-            const p = document.getElementById('improv-prompt').value;
-            if(!p || !userApiKey) return alert("Enter prompt & API Key");
-            const spin = document.getElementById('creative-loading-spinner'); spin.classList.remove('hidden');
-            try {
-                const res = await fetch(API_URL + userApiKey, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ contents: [{ parts: [{ text: p }] }] })
-                });
-                const data = await res.json();
-                document.getElementById('ai-output').textContent = data.candidates[0].content.parts[0].text;
-                document.getElementById('save-options-creative').classList.remove('hidden');
-            } catch(e) { alert(e.message); }
-            spin.classList.add('hidden');
-        }
+             if(!window.db) return alert("DB not connected");
+             const n = { id: crypto.randomUUID(), title: 'New Note', content: '...', timestamp: new Date().toISOString() };
+             window.structuredNotes[tab].unshift(n);
+             await setDoc(getRef('notes'), { [tab]: window.structuredNotes[tab] }, { merge: true });
+        };
         
         window.saveGeneratedContent = async function(tab) {
              const c = document.getElementById('ai-output').textContent;
-             if(!c) return;
              const n = { id: crypto.randomUUID(), title: c.substring(0,30)+'...', content: c, timestamp: new Date().toISOString() };
-             structuredNotes[tab].unshift(n);
-             const k = getFirestoreKey(tab);
-             await window.setDoc(getUserDocRef(), { [k]: structuredNotes[tab] }, { merge: true });
-             switchTab('notes'); window.switchSubTab(tab);
+             window.structuredNotes[tab].unshift(n);
+             await setDoc(getRef('notes'), { [tab]: window.structuredNotes[tab] }, { merge: true });
+             window.switchTab('notes'); window.switchSubTab(tab);
+        };
+        
+        // Statblocks
+        window.addNpcToStatblocks = async function() {
+             if(!window.lastGeneratedNpc || !window.db) return;
+             const s = window.lastGeneratedNpc;
+             await setDoc(doc(getRef('statblocks')), {
+                 name: s.name, hp: s.max_hit_points, ac: s.armor_class_ac, 
+                 initMod: s.initiative_bonus, toHit: 0, dmg: s.main_attack
+             });
+             alert("Saved!");
+        };
+        
+        window.saveStatblock = async function() {
+             if(!window.db) return;
+             const name = document.getElementById('stat-name').value;
+             // ... collect other fields ...
+             await setDoc(doc(getRef('statblocks')), {
+                 name: name,
+                 hp: parseInt(document.getElementById('stat-hp').value)||0,
+                 ac: parseInt(document.getElementById('stat-ac').value)||0,
+                 // ... add others
+             });
+             document.getElementById('stat-name').value = '';
+        };
+
+        // Combat
+        window.addCombatant = async function() {
+             if(!window.db) return;
+             const name = document.getElementById('combatant-name').value;
+             if(!name) return;
+             await setDoc(doc(getRef('combatants')), {
+                 name: name,
+                 init: parseInt(document.getElementById('combatant-init').value)||0,
+                 ac: parseInt(document.getElementById('combatant-ac').value)||10,
+                 hp: parseInt(document.getElementById('combatant-hp').value)||10,
+                 maxHp: parseInt(document.getElementById('combatant-hp').value)||10,
+                 currentHp: parseInt(document.getElementById('combatant-hp').value)||10
+             });
+             document.getElementById('combatant-name').value = '';
+        };
+
+        window.clearCombat = async function() {
+             if(!window.db) return;
+             const batch = writeBatch(window.db);
+             window.combatants.forEach(c => batch.delete(doc(getRef('combatants'), c.id)));
+             await batch.commit();
+        };
+        
+        window.removeComb = async function(idx) {
+             const c = window.combatants[idx];
+             if(c) await deleteDoc(doc(getRef('combatants'), c.id));
         }
 
-        window.switchTab = function(id) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-            document.querySelectorAll('.tab-button').forEach(b => {
-                 b.classList.remove('active', 'text-gray-400');
-                 if(b.textContent.toLowerCase().includes(id)) b.classList.add('active'); else b.classList.add('text-gray-400');
-            });
-            currentTab = id;
-            if(id === 'notes') renderStructuredNotes(currentSubTab);
+        window.applyHp = async function(idx, type) {
+             const c = window.combatants[idx];
+             const input = document.getElementById(`dmg-${idx}`);
+             const val = parseInt(input.value) || 0;
+             if(c && val > 0) {
+                 let newHp = c.currentHp;
+                 if(type === 'dmg') newHp -= val; else newHp += val;
+                 await updateDoc(doc(getRef('combatants'), c.id), { currentHp: newHp });
+                 input.value = '';
+             }
         }
-        window.switchSubTab = function(id) {
-            currentSubTab = id;
-            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(id+'-sub-content').classList.remove('hidden');
-            document.querySelectorAll('.sub-tab-button').forEach(b => {
-                 b.classList.remove('active', 'text-gray-400');
-                 if(b.getAttribute('data-subtab') === id) b.classList.add('active'); else b.classList.add('text-gray-400');
-            });
-            renderStructuredNotes(id);
-        }
-        window.rollCustomDice = function() {
-             const n = parseInt(document.getElementById('dice-num').value);
-             const t = parseInt(document.getElementById('dice-type').value);
-             const m = parseInt(document.getElementById('dice-mod').value) || 0;
-             let sum = 0; let r = [];
-             for(let i=0; i<n; i++) { let v = Math.floor(Math.random()*t)+1; sum+=v; r.push(v); }
-             document.getElementById('dice-roll-result').textContent = `Total: ${sum+m}`;
-             document.getElementById('dice-roll-details').textContent = `Rolls: ${r.join(',')} + ${m}`;
+        
+        window.assignInitiativeRoll = async function() {
+            const idx = document.getElementById('combatant-selector').value;
+            if(idx === 'Target') return;
+            const c = window.combatants[idx];
+            if(c) {
+                await updateDoc(doc(getRef('combatants'), c.id), { init: window.lastRoll });
+            }
         }
 
-        // Init
-        switchTab('improv');
+        // Rendering Functions
+        window.renderStructuredNotes = function(tab) {
+             const list = document.getElementById(tab+'-list');
+             if(!list) return;
+             list.innerHTML = '';
+             (window.structuredNotes[tab] || []).forEach(n => {
+                 list.innerHTML += `<div class="card p-2 mb-2"><div class="font-bold text-indigo-300">${n.title}</div><div class="text-sm text-gray-300 whitespace-pre-wrap">${n.content}</div></div>`;
+             });
+        };
+        
+        window.renderStatblocks = function() {
+             const list = document.getElementById('statblocks-list');
+             if(!list) return;
+             list.innerHTML = '';
+             window.savedStatblocks.forEach(s => {
+                 list.innerHTML += `<div class="card p-2 mb-2 flex justify-between items-center"><span>${s.name}</span> <button class="bg-purple-600 text-xs p-1 rounded" onclick="importCombat('${s.name}')">Use</button></div>`;
+             });
+        };
+        
+        window.importCombat = function(n) {
+            document.getElementById('combatant-name').value = n;
+            window.switchTab('combat');
+        };
+        
+        window.renderCombatants = function() {
+             const list = document.getElementById('initiative-list');
+             if(!list) return;
+             list.innerHTML = '';
+             window.combatants.forEach((c, i) => {
+                 list.innerHTML += `
+                    <div class="flex items-center bg-gray-700 p-2 rounded mb-1 gap-2">
+                        <div class="font-bold w-8 text-center">${c.init}</div>
+                        <div class="flex-1 truncate">${c.name} <span class="text-xs text-gray-400">(${c.currentHp}/${c.maxHp})</span></div>
+                        <input type="number" id="dmg-${i}" class="w-12 text-black text-center h-6 text-xs" placeholder="#">
+                        <button onclick="applyHp(${i}, 'dmg')" class="bg-red-500 text-xs px-2 rounded">D</button>
+                        <button onclick="applyHp(${i}, 'heal')" class="bg-green-500 text-xs px-2 rounded">H</button>
+                        <button onclick="removeComb(${i})" class="bg-gray-500 text-xs px-2 rounded">X</button>
+                    </div>`;
+             });
+             window.popSel();
+        };
+
+
+        // Start
+        initFirebase();
+        window.switchTab('improv');
+
     </script>
 </body>
 </html>
