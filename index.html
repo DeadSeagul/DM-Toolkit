@@ -53,14 +53,14 @@
         // Example: const EMBEDDED_FIREBASE_CONFIG = { apiKey: "AIzaSy...", authDomain: "..." };
         
         const EMBEDDED_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
-  authDomain: "aegisdmtoolkit.firebaseapp.com",
-  projectId: "aegisdmtoolkit",
-  storageBucket: "aegisdmtoolkit.firebasestorage.app",
-  messagingSenderId: "654767294266",
-  appId: "1:654767294266:web:fbee20be7d458fb7d6f203",
-  measurementId: "G-S0Y2NKNG7R"
-}; 
+            apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
+            authDomain: "aegisdmtoolkit.firebaseapp.com",
+            projectId: "aegisdmtoolkit",
+            storageBucket: "aegisdmtoolkit.firebasestorage.app",
+            messagingSenderId: "654767294266",
+            appId: "1:654767294266:web:fbee20be7d458fb7d6f203",
+            measurementId: "G-S0Y2NKNG7R"
+        };
 
         // -------------------------------------
 
@@ -1304,8 +1304,14 @@
             const docRef = window.doc(getStatblocksCollectionRef(), statId);
             
             try {
+                // Use setDoc with merge to update the existing document
                 await window.setDoc(docRef, {
-                    name, hp, ac, toHit, initMod, dmg
+                    name, 
+                    hp, 
+                    ac, 
+                    toHit, 
+                    initMod, 
+                    dmg
                 }, { merge: true });
 
                 statusElement.textContent = `Statblock "${name}" updated successfully!`;
@@ -1327,14 +1333,26 @@
             }
         }
         
+        // UPDATED: Added AC parameter to importToCombat
         function importToCombat(name, hp, initMod, ac) {
             document.getElementById('combatant-name').value = name;
             document.getElementById('combatant-hp').value = hp;
             document.getElementById('combatant-init').value = initMod; 
-            document.getElementById('combatant-ac').value = ac; 
+            document.getElementById('combatant-ac').value = ac; // New: Populate AC field
             
             switchTab('combat');
         }
+
+
+        // Event listener for when authentication is ready
+        /* --- REMOVED to fix permission-denied race condition. Listeners are now called directly in onAuthStateChanged ---
+        window.addEventListener('authReady', () => {
+            setupNotesListener();
+            // REFACTORED: Call the new listener setup function
+            setupCombatDataListeners();
+            setupStatblocksListener(); 
+        });
+        */
 
 
         // --- UI Logic (Shared) ---
@@ -1347,22 +1365,25 @@
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('active');
                 btn.classList.add('text-gray-400');
+                // UPDATED to include 'monsters'
                 if (btn.textContent.includes(
                     tabId === 'improv' ? 'Prep & Improv' :
                     tabId === 'combat' ? 'Combat Tracker' :
                     tabId === 'statblocks' ? 'Statblocks' :
                     tabId === 'monsters' ? 'Monsters' :
-                    'Rulings & Notes' 
+                    'Rulings & Notes' // Default for 'notes'
                 )) {
                      btn.classList.add('active');
                      btn.classList.remove('text-gray-400');
                 }
             });
+            // Ensure the correct sub-tab is displayed when switching to Notes
             if (tabId === 'notes') {
                 switchSubTab(currentSubTab);
             }
         }
         
+        // Sub-Tab switching logic for Notes
         function switchSubTab(tabId) {
             currentSubTab = tabId;
             document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
@@ -1377,6 +1398,7 @@
                      btn.classList.add('text-gray-400');
                 }
             });
+            // Rerender notes to handle any potential loading issues
             renderStructuredNotes(currentSubTab);
         }
 
@@ -1386,7 +1408,7 @@
         const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=`; // NEW
         const apiKey = ""; 
 
-        // [Schema definitions removed for brevity, they remain the same as previous]
+        // Define the required structured output format for combat stats
         const combatSchema = {
             type: "OBJECT",
             properties: {
@@ -1400,6 +1422,7 @@
             required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"]
         };
 
+        // Define the required structured output format for monster stat blocks
         const monsterSchema = {
             type: "OBJECT",
             properties: {
@@ -1501,14 +1524,14 @@
             const saveStatusElement = document.getElementById('npc-save-status');
 
             document.getElementById('combat-status-message').classList.add('hidden');
-            saveStatusElement.classList.add('hidden'); 
-            document.getElementById('save-options-creative').classList.add('hidden'); 
+            saveStatusElement.classList.add('hidden'); // Clear previous save status
+            document.getElementById('save-options-creative').classList.add('hidden'); // Hide creative save buttons
 
             button.disabled = true;
             buttonText.textContent = 'Generating...';
             spinner.classList.remove('hidden');
             outputDiv.innerHTML = 'Generating combat stats...';
-            lastGeneratedNpc = null; 
+            lastGeneratedNpc = null; // Reset the last generated NPC
 
             const systemPrompt = `You are a dedicated and expert Tabletop RPG (TTRPG) Combat Encounter Generator. Your sole function is to create combat statistics for an NPC based on the provided level and type. You MUST return the data exactly according to the JSON schema provided. Assume a standard high-fantasy ruleset (like Dungeons & Dragons 5th Edition) for balancing.`;
             const userQuery = `Generate an NPC with a level/CR of ${level} and the description: ${type}.`;
@@ -1532,7 +1555,7 @@
                 }
 
                 const npcStats = JSON.parse(jsonString);
-                lastGeneratedNpc = npcStats; 
+                lastGeneratedNpc = npcStats; // Store the successful result
 
                 // --- Render Structured Output ---
                 const saveButtonsHtml = `
@@ -1576,6 +1599,7 @@
             }
         }
  
+        // --- START: FIX FOR ReferenceError ---
         // --- MODE 2: Creative Lore Generation (Missing Function) ---
         async function generateCreativeIdea() {
             const prompt = document.getElementById('improv-prompt').value.trim();
@@ -1592,23 +1616,26 @@
             const saveOptionsDiv = document.getElementById('save-options-creative');
             const saveStatusElement = document.getElementById('npc-save-status');
             
+            // NEW: Hide image output area for this mode
             const imageOutputDiv = document.getElementById('ai-image-output');
             imageOutputDiv.classList.add('hidden');
 
+            // Reset UI
             saveStatusElement.classList.add('hidden');
             saveOptionsDiv.classList.add('hidden');
             button.disabled = true;
             buttonText.textContent = 'Generating...';
             spinner.classList.remove('hidden');
             outputDiv.textContent = 'Generating creative idea...';
-            lastGeneratedNpc = null; 
+            lastGeneratedNpc = null; // Clear NPC data
 
+            // --- Payload for Text Generation ---
             const systemPromptText = `You are a creative D&D Dungeon Master Assistant. The user will provide a prompt, and you should generate a creative and useful response based on it. This could be an NPC backstory, location description, quest hook, or piece of lore. Format the response with simple markdown for readability (bolding, bullet points).`;
             
             const textPayload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 systemInstruction: { parts: [{ text: systemPromptText }] },
-                tools: [{ "google_search": {} }], 
+                tools: [{ "google_search": {} }], // Enable search for broader context
             };
 
             try {
@@ -1621,7 +1648,7 @@
                 }
                 
                 outputDiv.textContent = resultText;
-                saveOptionsDiv.classList.remove('hidden'); 
+                saveOptionsDiv.classList.remove('hidden'); // Show save buttons
 
             } catch (error) {
                 console.error("Creative Generation Error:", error);
@@ -1632,6 +1659,7 @@
                 spinner.classList.add('hidden');
             }
         }
+        // --- END: FIX FOR ReferenceError ---
 
 
         // --- REWRITTEN: MODE 3: Settlement Generation (with Image) ---
@@ -1651,25 +1679,29 @@
             const saveOptionsDiv = document.getElementById('save-options-creative');
             const saveStatusElement = document.getElementById('npc-save-status');
             
+            // NEW Image Elements
             const imageOutputDiv = document.getElementById('ai-image-output');
             const generatedImage = document.getElementById('generated-image');
             const imageLoadingStatus = document.getElementById('image-loading-status');
 
+            // Reset UI
             saveStatusElement.classList.add('hidden');
             saveOptionsDiv.classList.add('hidden');
             button.disabled = true;
             buttonText.textContent = 'Generating...';
             spinner.classList.remove('hidden');
             
+            // Set loading states for both text and image
             outputDiv.textContent = 'Building your settlement details...';
             imageOutputDiv.classList.remove('hidden');
             generatedImage.src = '';
-            generatedImage.classList.add('hidden'); 
+            generatedImage.classList.add('hidden'); // Hide img tag until src is set
             imageLoadingStatus.textContent = 'Generating settlement image (this may take a moment)...';
             imageLoadingStatus.classList.remove('hidden');
             
             lastGeneratedNpc = null; 
 
+            // --- Payload for Text Generation ---
             const systemPromptText = `You are a D&D Dungeon Master Assistant specializing in rapid world-building. Generate a settlement based on the user's requested type and vibe.
 
 Format the response strictly with markdown for readability. You MUST include all requested sections. Use bullet points for lists.
@@ -1708,35 +1740,40 @@ Format the response strictly with markdown for readability. You MUST include all
                 tools: [{ "google_search": {} }],
             };
 
+            // --- Prompt for Image Generation ---
             const imagePrompt = `A high-quality, atmospheric, bird's-eye-view concept art of a fantasy ${type} that feels like a ${vibe}. No text or labels. D&D, fantasy art style.`;
 
+            // --- Run API calls in parallel ---
             try {
                 const [textResult, imageResult] = await Promise.allSettled([
                     fetchSettlementText(textPayload),
                     fetchSettlementImage(imagePrompt)
                 ]);
 
+                // Handle Text Result
                 if (textResult.status === 'fulfilled') {
                     outputDiv.textContent = textResult.value;
-                    saveOptionsDiv.classList.remove('hidden'); 
+                    saveOptionsDiv.classList.remove('hidden'); // Show save buttons
                 } else {
                     console.error("Settlement Text Generation Error:", textResult.reason);
                     outputDiv.textContent = `Error: Could not generate settlement text. ${textResult.reason.message}`;
                 }
 
+                // Handle Image Result
                 if (imageResult.status === 'fulfilled') {
                     generatedImage.src = imageResult.value;
                     generatedImage.classList.remove('hidden');
-                    imageLoadingStatus.textContent = ''; 
+                    imageLoadingStatus.textContent = ''; // Clear loading text
                     imageLoadingStatus.classList.add('hidden');
                 } else {
                     console.error("Settlement Image Generation Error:", imageResult.reason);
                     imageLoadingStatus.textContent = `Error generating image: ${imageResult.reason.message}`;
                     imageLoadingStatus.classList.remove('hidden');
-                    generatedImage.classList.add('hidden'); 
+                    generatedImage.classList.add('hidden'); // Keep img tag hidden
                 }
 
             } catch (error) {
+                // This catch is for Promise.allSettled itself, which is unlikely
                 console.error("Settlement Generation Error:", error);
                 outputDiv.textContent = `Error: Could not generate settlement. ${error.message}`;
                 imageLoadingStatus.textContent = `Image generation failed.`;
@@ -1747,6 +1784,7 @@ Format the response strictly with markdown for readability. You MUST include all
             }
         }
 
+        // --- NEW Helper: Fetch Settlement Text ---
         async function fetchSettlementText(payload) {
             const response = await fetchWithExponentialBackoff(API_URL + apiKey, payload);
             const result = await response.json();
@@ -1757,12 +1795,14 @@ Format the response strictly with markdown for readability. You MUST include all
             return resultText;
         }
         
+        // --- NEW Helper: Fetch Settlement Image ---
         async function fetchSettlementImage(prompt) {
             const payload = {
                 instances: { prompt: prompt },
                 parameters: { "sampleCount": 1 }
             };
             
+            // Use the new IMAGE_API_URL constant
             const response = await fetchWithExponentialBackoff(IMAGE_API_URL + apiKey, payload);
             const result = await response.json();
             
@@ -1801,7 +1841,7 @@ Format the response strictly with markdown for readability. You MUST include all
             buttonText.textContent = 'Generating...';
             spinner.classList.remove('hidden');
             outputDiv.innerHTML = 'Generating full monster stat block...';
-            lastGeneratedMonster = null; 
+            lastGeneratedMonster = null; // Reset
 
             const systemPrompt = `You are an expert D&D 5e Monster Designer. Your task is to generate a complete and balanced monster stat block based on the user's provided name and Challenge Rating (CR). You MUST return the data exactly according to the JSON schema provided. Ensure abilities, actions, and stats are appropriate for the requested CR.`;
             const userQuery = `Generate a full monster stat block for a "${name}" with a Challenge Rating (CR) of ${cr}.`;
@@ -1825,7 +1865,7 @@ Format the response strictly with markdown for readability. You MUST include all
                 }
 
                 const stats = JSON.parse(jsonString);
-                lastGeneratedMonster = stats; 
+                lastGeneratedMonster = stats; // Store the successful result
 
                 // Render the stat block
                 outputDiv.innerHTML = renderMonsterStatblock(stats);
@@ -1930,14 +1970,24 @@ Format the response strictly with markdown for readability. You MUST include all
             let dmg = 'N/A';
             if (monster.actions && monster.actions.length > 0) {
                 const firstAction = monster.actions[0].description;
+                // Regex to find +N to hit
                 const hitMatch = firstAction.match(/(\+|\-)\d+\s+to hit/);
+                // Regex to find simple damage dice like 1d8, 2d6+3, etc.
+                // REMOVED: const dmgMatch = firstAction.match(/\d+d\d+(\s*(\+|\-)\s*\d+)?/); 
+                
                 if (hitMatch) toHit = parseInt(hitMatch[0].replace(' to hit', ''), 10);
+                // REMOVED: if (dmgMatch) dmg = dmgMatch[0];
 
+                // --- MODIFIED: Format all actions into an HTML string ---
                 dmg = monster.actions.map(action => {
+                    // Added block and margin-top for better spacing in the statblock card
                     return `<span class='block mt-1'><strong>${action.name}:</strong> ${action.description}</span>`;
                 }).join('');
+                // --- END MODIFICATION ---
+
             }
             
+            // Get initiative bonus (DEX mod)
             const initMod = Math.floor((monster.ability_scores.DEX - 10) / 2);
 
             statusElement.textContent = `Saving ${monster.name} to Statblocks...`;
@@ -1968,7 +2018,7 @@ Format the response strictly with markdown for readability. You MUST include all
         window.saveMonsterToNotes = async function() {
             const statusElement = document.getElementById('monster-save-status');
             const outputDiv = document.getElementById('monster-output');
-            const content = outputDiv.innerHTML; 
+            const content = outputDiv.innerHTML; // Save the rendered HTML
 
             if (!lastGeneratedMonster) {
                 statusElement.textContent = 'No monster data to save.';
@@ -1988,17 +2038,18 @@ Format the response strictly with markdown for readability. You MUST include all
             const newNote = {
                 id: crypto.randomUUID(),
                 title: `${lastGeneratedMonster.name} (CR ${lastGeneratedMonster.challenge_rating})`,
-                content: content, 
+                content: content, // Save the pre-formatted HTML
                 timestamp: new Date().toISOString()
             };
             
-            structuredNotes['enemyNotes'].unshift(newNote); 
+            structuredNotes['enemyNotes'].unshift(newNote); // Add to beginning of enemyNotes
             await saveStructuredNotes('enemyNotes', structuredNotes['enemyNotes']);
 
             statusElement.textContent = `${lastGeneratedMonster.name} saved to Enemy Notes!`;
             statusElement.classList.remove('text-yellow-400');
             statusElement.classList.add('text-green-400');
 
+            // Optionally switch to the notes tab
             switchTab('notes');
             switchSubTab('enemyNotes');
         }
@@ -2006,11 +2057,14 @@ Format the response strictly with markdown for readability. You MUST include all
 
         // --- NEW: Unified Saving Function ---
         
+        // Helper to generate a good title for the collapsible note
         function generateTitleFromContent(content) {
+            // Priority 1: Look for the bolded name in the generated format
             const nameMatch = content.match(/\*\*Name:\*\*\s*(.*?)\n/);
             if (nameMatch) {
                 return nameMatch[1].trim() || 'Untitled Generated Note';
             }
+            // Priority 2: Use the first 50 characters
             const shortTitle = content.substring(0, 50).trim().replace(/[\n\r]/g, ' ');
             return shortTitle + (content.length > 50 ? '...' : '');
         }
@@ -2039,9 +2093,12 @@ Format the response strictly with markdown for readability. You MUST include all
                 timestamp: new Date().toISOString()
             };
             
-            structuredNotes[destinationTab].unshift(newNote); 
+            structuredNotes[destinationTab].unshift(newNote); // Add to beginning
+            
+            // Save the updated array
             await saveStructuredNotes(destinationTab, structuredNotes[destinationTab]);
 
+            // Switch and display feedback
             switchTab('notes');
             switchSubTab(destinationTab);
             statusElement.textContent = `New note saved and placed in the collapsible list for '${destinationTab}'!`;
@@ -2125,6 +2182,7 @@ Format the response strictly with markdown for readability. You MUST include all
                 if (c.initModifier === undefined) {
                     c.initModifier = c.init > 10 ? 0 : c.init;
                 }
+                // Ensure AC has a default value if not set
                 if (c.ac === undefined) {
                     c.ac = 0;
                 }
@@ -2144,6 +2202,7 @@ Format the response strictly with markdown for readability. You MUST include all
                             <span class="text-gray-400"> (Mod: ${initModifierDisplay})</span>
                         </div>
                     </div>
+                    <!-- NEW HP MANAGEMENT CONTROLS -->
                     <div class="flex space-x-1 items-center">
                         <input type="number" placeholder="Amt" id="damage-input-${index}" class="w-12 p-1 rounded-lg input-style text-center text-xs" />
                         <button onclick="applyHpChange(${index}, 'heal')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300">Heal</button>
@@ -2156,51 +2215,63 @@ Format the response strictly with markdown for readability. You MUST include all
             populateCombatantSelector();
         }
 
+        // New consolidated function for HP changes
         window.applyHpChange = async function(index, type) { 
             const damageInput = document.getElementById(`damage-input-${index}`);
             let value = parseInt(damageInput.value, 10);
 
-            if (isNaN(value) || value <= 0) { 
+            if (isNaN(value) || value <= 0) { // Value must be positive now
                 damageInput.value = '';
                 return;
             }
 
+            // --- FIX: Calculate the new HP based on the input value ---
             let newHp = combatants[index].currentHp;
             if (type === 'damage') {
                 newHp -= value;
             } else if (type === 'heal') {
                 newHp += value;
             }
+            // Clamp HP between 0 and maxHp
             newHp = Math.max(0, Math.min(newHp, combatants[index].maxHp));
+            // --- End Fix ---
 
+            // REFACTORED: Update the specific document in Firestore
             const combatantDocRef = window.doc(getCombatantsCollectionRef(), combatants[index].id);
             try {
                 await window.updateDoc(combatantDocRef, {
-                    currentHp: newHp 
+                    currentHp: newHp // Save the *newly calculated* HP
                 });
             } catch (error) {
                 console.error("Error updating HP:", error);
             }
 
             damageInput.value = '';
+            // No longer need to call renderCombatants() or saveCombatantsToFirestore()
+            // The onSnapshot listener will detect the change and re-render.
         }
 
+        /**
+         * REFACTORED: This function now creates a new document in the combatants collection.
+         */
         async function addCombatant() {
             const nameInput = document.getElementById('combatant-name');
             const initInput = document.getElementById('combatant-init');
-            const acInput = document.getElementById('combatant-ac'); 
+            const acInput = document.getElementById('combatant-ac'); // NEW: AC Input
             const hpInput = document.getElementById('combatant-hp');
 
             const name = nameInput.value.trim();
             const initValue = parseInt(initInput.value, 10) || 0; 
-            const ac = parseInt(acInput.value, 10); 
+            const ac = parseInt(acInput.value, 10); // NEW: Get AC value
             const hp = parseInt(hpInput.value, 10);
 
+            // UPDATED validation
             if (!name || isNaN(hp) || hp <= 0 || isNaN(ac) || ac <= 0) {
                 console.error("Invalid combatant input: Name, positive HP, and positive AC are required.");
                 return;
             }
 
+            // REFACTORED: Create a new document in Firestore instead of pushing locally
             try {
                 await window.addDoc(getCombatantsCollectionRef(), { 
                     name, 
@@ -2208,7 +2279,7 @@ Format the response strictly with markdown for readability. You MUST include all
                     maxHp: hp, 
                     currentHp: hp, 
                     initModifier: initValue,
-                    ac: ac 
+                    ac: ac // NEW: Store AC
                 });
             } catch (error) {
                 console.error("Error adding combatant:", error);
@@ -2216,15 +2287,28 @@ Format the response strictly with markdown for readability. You MUST include all
 
             nameInput.value = '';
             initInput.value = '';
-            acInput.value = ''; 
+            acInput.value = ''; // NEW: Clear AC input
             hpInput.value = '';
+
+            // No longer need to call renderCombatants() or saveCombatantsToFirestore()
+            // The onSnapshot listener will detect the change and re-render.
         }
 
+        /**
+         * REFACTORED: This button now just resets the turn index to 0.
+         * The sorting is handled automatically by the Firestore listener.
+         */
         function sortInitiative() {
             currentTurnIndex = 0;
+            // We just need to save the *state*
             saveCombatStateToFirestore();
         }
 
+        // Removed old applyDamage, replaced by applyHpChange
+
+        /**
+         * REFACTORED: This function now deletes a document from the collection.
+         */
         async function removeCombatant(index) {
             if (!combatants[index] || !combatants[index].id) {
                 console.error("Cannot remove combatant, missing ID.");
@@ -2238,36 +2322,48 @@ Format the response strictly with markdown for readability. You MUST include all
                 console.error("Error removing combatant:", error);
             }
             
+            // The onSnapshot listener will handle re-rendering.
+            // We just need to check if the turn index is now out of bounds.
             if (currentTurnIndex >= combatants.length - 1) {
                 currentTurnIndex = combatants.length > 1 ? combatants.length - 2 : -1;
                 saveCombatStateToFirestore();
             }
         }
 
+        /**
+         * REFACTORED: This function now only updates the turn index.
+         */
         function nextTurn() {
             if (combatants.length === 0) {
                 currentTurnIndex = -1;
                 return;
             }
             currentTurnIndex = (currentTurnIndex + 1) % combatants.length;
+            // Save the new state
             saveCombatStateToFirestore();
         }
         
+        /**
+         * REFACTORED: This function now uses a Write Batch to delete all docs in the collection.
+         */
         async function clearCombat() {
             if (!window.isAuthReady || !window.db) return;
             
             try {
                 const batch = window.writeBatch(window.db);
                 
+                // Get all combatant docs
                 combatants.forEach(c => {
                     const docRef = window.doc(getCombatantsCollectionRef(), c.id);
                     batch.delete(docRef);
                 });
                 
+                // Also delete the state doc
                 batch.delete(getCombatStateDocRef());
 
                 await batch.commit();
 
+                // Listeners will fire and clear the UI
             } catch (error) {
                 console.error("Error clearing combat:", error);
             }
@@ -2304,6 +2400,7 @@ Format the response strictly with markdown for readability. You MUST include all
 
             resultDisplay.textContent = `Total: ${finalTotal}`;
             
+            // Show modifier only if it's not zero
             if (modifier !== 0) {
                 detailsDisplay.textContent = `Rolls: [${rolls.join(', ')}] (Mod: ${modString})`;
             } else {
@@ -2359,6 +2456,9 @@ Format the response strictly with markdown for readability. You MUST include all
             document.getElementById('last-roll-display').textContent = '?';
             selector.value = '';
             document.getElementById('assign-roll-button').disabled = true;
+
+            // No longer need to call render/save. The 'orderBy' listener will
+            // automatically re-sort and re-render the list.
         }
         
         // --- START: EXPLICITLY ATTACH ALL ONCLICK FUNCTIONS TO WINDOW ---
