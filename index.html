@@ -591,7 +591,7 @@
         // --- AI ---
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
         const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=`;
-        const apiKey = ""; 
+        const apiKey = "AIzaSyCZ_TLgAj-fwiodHFRGN-dPxAmyGS7OCDg"; 
 
         async function fetchWithExponentialBackoff(url, payload) {
             const u = url.endsWith('?key=') ? url + apiKey : url;
@@ -727,4 +727,3 @@
     </script>
 </body>
 </html>
-
