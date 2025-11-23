@@ -117,14 +117,24 @@
 </head>
 <body class="p-4 sm:p-8">
     <div class="max-w-4xl mx-auto">
-        <!-- Header with Login -->
+        <!-- Header with Login and Settings -->
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-3xl font-bold text-indigo-400">🛡️ Aegis DM Toolkit</h1>
             
-            <button onclick="openLoginModal()" class="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-4 py-2 rounded-lg transition duration-300">
-                <div class="w-3 h-3 rounded-full bg-green-500" id="auth-status-dot"></div>
-                <span id="account-name-display" class="text-sm font-semibold text-gray-300">Guest Session</span>
-            </button>
+            <div class="flex space-x-2">
+                <!-- Settings Button -->
+                <button onclick="openSettingsModal()" class="flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-600 p-2 rounded-lg transition duration-300" title="API Settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+
+                <!-- Login Button -->
+                <button onclick="openLoginModal()" class="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-4 py-2 rounded-lg transition duration-300">
+                    <div class="w-3 h-3 rounded-full bg-green-500" id="auth-status-dot"></div>
+                    <span id="account-name-display" class="text-sm font-semibold text-gray-300">Guest Session</span>
+                </button>
+            </div>
         </div>
 
         <!-- Tab Navigation -->
@@ -448,6 +458,28 @@
         </div>
     </div>
     
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card w-full max-w-md p-6 rounded-lg shadow-2xl border border-gray-600">
+            <h3 class="text-2xl font-bold text-indigo-300 mb-2">App Settings</h3>
+            <p class="text-sm text-gray-400 mb-4">
+                Configure your API Key to use the AI features on a public domain.
+            </p>
+
+            <label for="settings-api-key" class="block text-sm font-medium text-gray-300 mb-1">Google Gemini API Key</label>
+            <input type="password" id="settings-api-key" placeholder="Paste your key here..." class="w-full p-3 rounded-lg input-style mb-2">
+            <p class="text-xs text-gray-500 mb-6">
+                Your key is stored securely in your browser's local storage and is never shared with the backend or other users.
+                <a href="https://aistudio.google.com/" target="_blank" class="text-indigo-400 hover:underline">Get a key here</a>.
+            </p>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeSettingsModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
+                <button onclick="saveSettings()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg shadow-green-500/50">Save Key</button>
+            </div>
+        </div>
+    </div>
+
     <!-- LOGIN MODAL -->
     <div id="login-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="card w-full max-w-md p-6 rounded-lg shadow-2xl border border-indigo-500">
@@ -588,6 +620,28 @@
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
             const suffix = window.currentCampaignId;
             return window.collection(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${suffix}_statblocks`);
+        }
+
+        // --- SETTINGS / API KEY LOGIC ---
+        
+        // Try to get key from local storage first, then fallback to env var
+        let userApiKey = localStorage.getItem('aegis_gemini_api_key') || "";
+
+        window.openSettingsModal = function() {
+            document.getElementById('settings-api-key').value = userApiKey;
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        window.closeSettingsModal = function() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        window.saveSettings = function() {
+            const key = document.getElementById('settings-api-key').value.trim();
+            userApiKey = key;
+            localStorage.setItem('aegis_gemini_api_key', key);
+            closeSettingsModal();
+            alert("API Key saved! You can now use the AI features.");
         }
 
         // --- ACCOUNT / SYNC LOGIC ---
@@ -1889,8 +1943,25 @@ Format the response strictly with markdown for readability. You MUST include all
 
         // --- Shared API Helper ---
         async function fetchWithExponentialBackoff(apiUrl, payload) {
+            // --- MODIFIED: USE STORED USER KEY OR FALLBACK ---
+            // Check if the user has entered an API key via settings
+            const storedKey = localStorage.getItem('aegis_gemini_api_key');
+            
+            // If there is a stored key, we use that instead of the (potentially missing) global default.
+            // If userApiKey exists, strip the default key param from the URL and append the new one
+            let urlWithKey = apiUrl;
+            
+            if (storedKey) {
+                // Strip any existing key param (e.g., ?key= or &key=)
+                const baseUrl = apiUrl.split('?')[0]; 
+                urlWithKey = `${baseUrl}?key=${storedKey}`;
+            } else {
+                // Fallback to the global apiKey if no user key is provided
+                // This handles the case where the key is hardcoded or injected by environment
+                urlWithKey = apiUrl.endsWith('?key=') ? apiUrl + apiKey : apiUrl;
+            }
+
             const maxAttempts = 5;
-            const urlWithKey = apiUrl.endsWith('?key=') ? apiUrl + apiKey : apiUrl;
 
             for (let attempts = 0; attempts < maxAttempts; attempts++) {
                 try {
@@ -1907,6 +1978,11 @@ Format the response strictly with markdown for readability. You MUST include all
                     }
 
                     if (!response.ok) {
+                        // If unauthorized (400/403), prompt user to check settings
+                        if (response.status === 400 || response.status === 403) {
+                            openSettingsModal(); // Open the modal so they can fix it
+                            throw new Error("Invalid API Key. Please update it in Settings.");
+                        }
                         const errorBody = await response.text();
                         throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
                     }
@@ -2213,6 +2289,10 @@ Format the response strictly with markdown for readability. You MUST include all
         window.closeLoginModal = closeLoginModal;
         window.performSignIn = performSignIn;
         window.performSignOut = performSignOut;
+        // --- SETTINGS EXPORTS ---
+        window.openSettingsModal = openSettingsModal;
+        window.closeSettingsModal = closeSettingsModal;
+        window.saveSettings = saveSettings;
         // --- END: EXPLICITLY ATTACH ALL ONCLICK FUNCTIONS TO WINDOW ---
 
 
@@ -2226,4 +2306,3 @@ Format the response strictly with markdown for readability. You MUST include all
     </script>
 </body>
 </html>
-
