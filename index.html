@@ -19,39 +19,29 @@
         window.query = query;
         window.onSnapshot = onSnapshot;
         window.addDoc = addDoc;
-        window.getDoc = getDoc; 
-        window.updateDoc = updateDoc; 
-        window.orderBy = orderBy; 
-        window.writeBatch = writeBatch; 
+        window.getDoc = getDoc; // Added for reading individual docs
+        window.updateDoc = updateDoc; // NEW: Needed for live updates
+        window.orderBy = orderBy; // NEW: Needed for sorting
+        window.writeBatch = writeBatch; // NEW: Needed for Clear All
 
-        // Global Firebase variables
+        // Global Firebase variables for the app to use
         window.db = null;
         window.auth = null;
         window.userId = null;
         window.isAuthReady = false;
 
-        // Global State for Campaign/Account
-        window.currentCampaignId = 'default_session'; // Default ID
-        window.currentCampaignName = 'Guest Session'; // Display Name
-
-        // Unsubscribe functions for listeners (to allow switching accounts)
-        window.unsubs = {
-            notes: null,
-            combatants: null,
-            combatState: null,
-            statblocks: null
-        };
-
+        // Mandator global variables from the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
-            setLogLevel('debug'); 
+            setLogLevel('debug'); // Enable Firestore logging
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
             window.auth = getAuth(app);
             
+            // 1. Authenticate using the custom token or anonymously
             onAuthStateChanged(window.auth, async (user) => {
                 if (!user) {
                     try {
@@ -60,34 +50,35 @@
                         } else {
                             await signInAnonymously(window.auth);
                         }
+                        // User is now authenticated, the onAuthStateChanged listener will fire again
                     } catch (error) {
                         console.error("Firebase Auth Error:", error);
                     }
                 } else {
+                    // --- FIX: Force token refresh to prevent permission-denied race condition ---
                     try {
-                        await user.getIdToken(true); 
-                        console.log("ID token refreshed.");
+                        // Requesting a fresh ID token ensures the auth state is fully propagated
+                        // to the backend *before* we attempt to set up Firestore listeners.
+                        await user.getIdToken(true); // true = force refresh
+                        console.log("ID token refreshed, auth state is now fully ready.");
                     } catch (tokenError) {
                         console.error("Error refreshing ID token:", tokenError);
+                        // Proceed anyway, but log the error.
                     }
+                    // --- END FIX ---
 
                     window.userId = user.uid;
                     window.isAuthReady = true;
                     console.log("User authenticated:", window.userId);
                     
-                    // --- AUTH READY: Initialize App ---
-                    // Check for saved session
-                    const savedId = localStorage.getItem('aegis_campaign_id');
-                    const savedName = localStorage.getItem('aegis_campaign_name');
-                    
-                    if (savedId && savedName) {
-                        window.currentCampaignId = savedId;
-                        window.currentCampaignName = savedName;
-                        updateAccountDisplay();
-                    }
-
-                    console.log("Auth ready, setting up listeners for:", window.currentCampaignName);
-                    refreshAllListeners();
+                    // --- FIX FOR PERMISSION-DENIED ---
+                    // Call setup functions directly AFTER auth is confirmed ready.
+                    // This removes the event listener and potential race condition.
+                    console.log("Auth ready, setting up listeners...");
+                    setupNotesListener();
+                    setupCombatDataListeners();
+                    setupStatblocksListener();
+                    // --- END FIX ---
                 }
             });
         } else {
@@ -103,11 +94,13 @@
         .input-style { background-color: #334155; border: 1px solid #475569; color: #f8fafc; }
         .glow-shadow { box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); }
         .scrollable-content { max-height: 60vh; overflow-y: auto; }
+        /* Scrollbar styles for dark mode aesthetics */
         .scrollable-content::-webkit-scrollbar { width: 8px; }
         .scrollable-content::-webkit-scrollbar-track { background: #1e293b; }
         .scrollable-content::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 20px; border: 2px solid #1e293b; }
         .loading-spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Collapsible Styles */
         .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #334155; border-radius: 8px; }
         .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 10px; }
         .collapsible-content.expanded { max-height: 1000px; padding: 10px; }
@@ -117,16 +110,8 @@
 </head>
 <body class="p-4 sm:p-8">
     <div class="max-w-4xl mx-auto">
-        <!-- Header with Login -->
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-indigo-400">🛡️ Aegis DM Toolkit</h1>
-            
-            <button onclick="openLoginModal()" class="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-4 py-2 rounded-lg transition duration-300">
-                <div class="w-3 h-3 rounded-full bg-green-500" id="auth-status-dot"></div>
-                <span id="account-name-display" class="text-sm font-semibold text-gray-300">Guest Session</span>
-            </button>
-        </div>
-
+        <h1 class="text-3xl font-bold text-center text-indigo-400 mb-2">🛡️ Aegis DM Toolkit (Shared) 🛡️</h1>
+        
         <!-- Tab Navigation -->
         <div class="flex border-b border-gray-600 mb-6">
             <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active" onclick="switchTab('improv')">
@@ -138,6 +123,7 @@
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('statblocks')">
                 👹 Statblocks
             </button>
+            <!-- NEW MONSTERS TAB BUTTON -->
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('monsters')">
                 🐲 Monsters
             </button>
@@ -448,32 +434,7 @@
         </div>
     </div>
     
-    <!-- LOGIN MODAL -->
-    <div id="login-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="card w-full max-w-md p-6 rounded-lg shadow-2xl border border-indigo-500">
-            <h3 class="text-2xl font-bold text-indigo-300 mb-2">Campaign Sync Login</h3>
-            <p class="text-sm text-gray-400 mb-4">
-                Enter a Campaign Name and Password to create or access your synced data. 
-                <br><span class="text-xs text-yellow-500">Use the exact same credentials on other devices to view this data.</span>
-            </p>
-
-            <label for="login-campaign" class="block text-sm font-medium text-gray-300 mb-1">Campaign Name (Username)</label>
-            <input type="text" id="login-campaign" placeholder="e.g. DragonSlayers2024" class="w-full p-3 rounded-lg input-style mb-4">
-
-            <label for="login-password" class="block text-sm font-medium text-gray-300 mb-1">Password (Access Key)</label>
-            <input type="password" id="login-password" placeholder="Secret Key" class="w-full p-3 rounded-lg input-style mb-6">
-
-            <div class="flex justify-between items-center">
-                <button onclick="performSignOut()" class="text-red-400 hover:text-red-300 text-sm font-semibold px-2">Sign Out / Reset</button>
-                <div class="flex space-x-3">
-                    <button onclick="closeLoginModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
-                    <button onclick="performSignIn()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg shadow-indigo-500/50">Sync / Login</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Notes Editing MODAL -->
+    <!-- Notes Editing MODAL (For Rulings & Notes) -->
     <div id="edit-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
             <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Note</h3>
@@ -493,7 +454,7 @@
         </div>
     </div>
     
-    <!-- Statblock Editing MODAL -->
+    <!-- Statblock Editing MODAL (NEW) -->
     <div id="edit-statblock-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
             <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Statblock</h3>
@@ -539,148 +500,63 @@
         let currentSubTab = 'prepNotes';
         let savedStatblocks = []; 
         let lastGeneratedNpc = null;
-        let lastGeneratedMonster = null; 
+        let lastGeneratedMonster = null; // ADDED
         let structuredNotes = {
             prepNotes: [],
             enemyNotes: [],
             npcNotes: []
         };
 
-        // --- Firebase Reference Generators (Dynamic based on Account/Campaign) ---
+        // --- Firebase/Data Functions (using the global variables defined in the module script) ---
         
-        function getFirestoreKey(tabName) {
-            return `structured${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`;
-        }
-
-        // Helper to generate a secure-ish hash for the path so people can't easily guess simple names
-        async function generateCollectionHash(name, password) {
-            if (!name || !password) return 'default_session';
-            const msgBuffer = new TextEncoder().encode(name.trim() + ":" + password.trim());
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
-        }
-
+        // Data is now saved to a PUBLIC path for sharing/collaboration
+        
         function getUserDocRef() {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const suffix = window.currentCampaignId;
-            // Path: artifacts/{appId}/public/data/dm_toolkit_{campaignHash}_notes
-            // We partition data by changing the collection name based on the campaign hash
-            return window.doc(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${suffix}_notes`, 'notes_doc');
+            // NEW PUBLIC PATH for Notes
+            return window.doc(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_data', 'shared_notes');
         }
         
-        // Unused now, but kept for reference consistency
-        function getCombatDocRef() { return null; }
+        function getCombatDocRef() {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            // NEW PUBLIC PATH for Combat Tracker
+            return window.doc(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_data', 'shared_combat');
+        }
 
+        // --- NEW DATA STRUCTURE ---
+        // We will now store combatants in their own collection to prevent race conditions
+        // and store the turn order in a separate state document.
+        
+        /**
+         * NEW: Gets the reference to the COLLECTION holding all combatant documents.
+         */
         function getCombatantsCollectionRef() {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const suffix = window.currentCampaignId;
-            return window.collection(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${suffix}_combatants`);
+            // NEW PUBLIC PATH for Combatants Collection
+            return window.collection(window.db, 'artifacts', appId, 'public', 'data', 'shared_combatants');
         }
         
+        /**
+         * NEW: Gets the reference to the DOCUMENT holding the combat state (e.g., current turn).
+         */
         function getCombatStateDocRef() {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const suffix = window.currentCampaignId;
-            return window.doc(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${suffix}_combat_state`, 'state_doc');
+            // NEW PUBLIC PATH for Combat State Doc
+            return window.doc(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_data', 'shared_combat_state');
         }
 
         function getStatblocksCollectionRef() {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const suffix = window.currentCampaignId;
-            return window.collection(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${suffix}_statblocks`);
+            // NEW PUBLIC PATH for Statblocks Collection
+            return window.collection(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_statblocks');
         }
 
-        // --- ACCOUNT / SYNC LOGIC ---
-
-        window.openLoginModal = function() {
-            document.getElementById('login-modal').classList.remove('hidden');
+        // --- Structured Notes Logic ---
+        
+        // Helper to generate Firestore key name
+        function getFirestoreKey(tabName) {
+            return `structured${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`;
         }
-
-        window.closeLoginModal = function() {
-            document.getElementById('login-modal').classList.add('hidden');
-        }
-
-        window.performSignOut = function() {
-            // Reset to default
-            window.currentCampaignId = 'default_session';
-            window.currentCampaignName = 'Guest Session';
-            
-            // Clear persistence
-            localStorage.removeItem('aegis_campaign_id');
-            localStorage.removeItem('aegis_campaign_name');
-
-            // Update UI
-            updateAccountDisplay();
-            closeLoginModal();
-            
-            // Refresh data
-            refreshAllListeners();
-        }
-
-        window.performSignIn = async function() {
-            const name = document.getElementById('login-campaign').value;
-            const pass = document.getElementById('login-password').value;
-
-            if (!name || !pass) {
-                alert("Please enter both a Campaign Name and a Password.");
-                return;
-            }
-
-            // Generate the unique ID based on credentials
-            const hash = await generateCollectionHash(name, pass);
-            
-            window.currentCampaignId = hash;
-            window.currentCampaignName = name;
-
-            // Save for auto-login
-            localStorage.setItem('aegis_campaign_id', hash);
-            localStorage.setItem('aegis_campaign_name', name);
-
-            // Update UI
-            updateAccountDisplay();
-            closeLoginModal();
-
-            // Refresh Data
-            refreshAllListeners();
-        }
-
-        function updateAccountDisplay() {
-            document.getElementById('account-name-display').textContent = window.currentCampaignName;
-            const dot = document.getElementById('auth-status-dot');
-            if (window.currentCampaignName === 'Guest Session') {
-                dot.classList.remove('bg-indigo-500');
-                dot.classList.add('bg-green-500'); // Guest is green
-            } else {
-                dot.classList.remove('bg-green-500');
-                dot.classList.add('bg-indigo-500'); // Logged in is Indigo
-            }
-        }
-
-        function refreshAllListeners() {
-            // Unsubscribe previous listeners if they exist
-            if (window.unsubs.notes) { window.unsubs.notes(); window.unsubs.notes = null; }
-            if (window.unsubs.combatants) { window.unsubs.combatants(); window.unsubs.combatants = null; }
-            if (window.unsubs.combatState) { window.unsubs.combatState(); window.unsubs.combatState = null; }
-            if (window.unsubs.statblocks) { window.unsubs.statblocks(); window.unsubs.statblocks = null; }
-
-            // Clear local data arrays to prevent ghosting
-            combatants = [];
-            savedStatblocks = [];
-            structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [] };
-            renderCombatants();
-            renderStatblocks();
-            renderStructuredNotes('prepNotes');
-            renderStructuredNotes('enemyNotes');
-            renderStructuredNotes('npcNotes');
-
-            // Setup new listeners pointing to new paths
-            setupNotesListener();
-            setupCombatDataListeners();
-            setupStatblocksListener();
-        }
-
-
-        // --- Data Functions ---
 
         async function saveStructuredNotes(tabName, notesArray) {
             if (!window.isAuthReady || !window.db) {
@@ -697,6 +573,7 @@
             dataToSave.lastSaved = new Date().toISOString();
 
             try {
+                // Using setDoc with merge to ensure we only update the specific notes field
                 await window.setDoc(getUserDocRef(), dataToSave, { merge: true });
                 statusElement.textContent = `${tabName} saved successfully!`;
             } catch (error) {
@@ -708,7 +585,7 @@
         function setupNotesListener() {
             if (!window.isAuthReady || !window.db) return;
 
-            window.unsubs.notes = window.onSnapshot(getUserDocRef(), (doc) => {
+            window.onSnapshot(getUserDocRef(), (doc) => {
                 if (doc.exists()) {
                     const data = doc.data();
                     
@@ -716,29 +593,39 @@
                     structuredNotes.enemyNotes = data[getFirestoreKey('enemyNotes')] || [];
                     structuredNotes.npcNotes = data[getFirestoreKey('npcNotes')] || [];
 
+                    // Only re-render the currently visible sub-tab for efficiency
                     if (currentTab === 'notes') {
                         renderStructuredNotes('prepNotes');
                         renderStructuredNotes('enemyNotes');
                         renderStructuredNotes('npcNotes');
                     }
                 } else {
-                    console.log("Notes document does not exist yet for this campaign.");
+                    // --- FIX 3: This block was trying to do auth logic, which was incorrect. ---
+                    // It's normal for the doc to not exist yet. We just log it.
+                    console.log("Notes document does not exist yet. Will be created on first save.");
                 }
             }, (error) => {
+                // Add error handling for the listener itself
                 console.error("Error setting up notes listener: ", error);
             });
         } 
         
+        // --- FIX 4: The 'else' block, <style> tag, and 'return' below were a syntax error and have been removed. ---
+
+        // --- FIX 5: Added missing function declaration ---
         function renderStructuredNotes(tabName) {
             const notesArray = structuredNotes[tabName];
             const listContainer = document.getElementById(`${tabName}-list`);
             
-            if (!listContainer) return;
+            if (!listContainer) {
+                console.error(`Container not found for ${tabName}-list`);
+                return;
+            }
 
-            listContainer.innerHTML = ''; 
+            listContainer.innerHTML = ''; // Clear current notes
 
             if (!notesArray || notesArray.length === 0) {
-                listContainer.innerHTML = `<p class="text-center text-gray-500 pt-8">No notes in this category yet.</p>`;
+                listContainer.innerHTML = `<p class="text-center text-gray-500 pt-8">No notes in this category yet. Add one manually or save from the Improv tab!</p>`;
                 return;
             }
 
@@ -747,6 +634,7 @@
                 noteElement.className = 'note-item card p-0 rounded-lg shadow-md';
                 noteElement.id = `note-${note.id}`;
 
+                // Header with Collapse Toggle
                 const header = document.createElement('div');
                 header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150';
                 header.onclick = () => toggleCollapse(note.id);
@@ -757,13 +645,16 @@
                     </svg>
                 `;
 
+                // Content Area
                 const content = document.createElement('div');
                 content.className = 'collapsible-content';
                 content.id = `content-${note.id}`;
                 
+                // Check if content looks like HTML (basic check)
                 const isHtml = /<[a-z][\s\S]*>/i.test(note.content);
                 
                 if (isHtml) {
+                    // If it's HTML (likely a monster stat block), just render it directly
                     content.innerHTML = `
                         <div class="p-2">
                             ${note.content}
@@ -774,6 +665,7 @@
                         </div>
                     `;
                 } else {
+                    // If it's plain text (from creative generator), wrap it
                     content.innerHTML = `
                         <div class="whitespace-pre-wrap text-sm text-gray-300 p-2 border-l-4 border-indigo-400 bg-gray-700/50">
                             ${note.content}
@@ -789,11 +681,17 @@
                 noteElement.appendChild(content);
                 listContainer.appendChild(noteElement);
             });
+        // --- FIX 6: Added missing closing brace for the function ---
         }
         
+        // Toggles the visibility of the note content
         window.toggleCollapse = function(noteId) {
             const content = document.getElementById(`content-${noteId}`);
-            if (!content) return;
+            // Fix: Check for null element before accessing classList
+            if (!content) {
+                console.error(`Failed to find content element with ID: content-${noteId}`);
+                return;
+            }
             const isExpanded = content.classList.contains('expanded');
 
             if (isExpanded) {
@@ -801,10 +699,12 @@
                 content.style.maxHeight = null;
             } else {
                 content.classList.add('expanded');
+                // Set max-height to scroll height to allow smooth transition on expanding
                 content.style.maxHeight = content.scrollHeight + "px";
             }
         }
         
+        // Handles adding a blank note manually
         window.addNewNote = function(tabName) {
             const newNote = {
                 id: crypto.randomUUID(),
@@ -812,10 +712,11 @@
                 content: 'Start typing your detailed note content here.',
                 timestamp: new Date().toISOString()
             };
-            structuredNotes[tabName].unshift(newNote); 
+            structuredNotes[tabName].unshift(newNote); // Add to beginning
             saveStructuredNotes(tabName, structuredNotes[tabName]);
         }
         
+        // Handles deleting a note
         window.deleteNote = function(noteId, tabName) {
             const newArray = structuredNotes[tabName].filter(note => note.id !== noteId);
             structuredNotes[tabName] = newArray;
@@ -824,25 +725,39 @@
 
         // --- NOTES MODAL EDITING LOGIC ---
         
+        /**
+         * Opens the custom modal for editing the note.
+         */
         window.editNote = function(noteId, tabName) {
             const note = structuredNotes[tabName].find(n => n.id === noteId);
             if (!note) {
                 document.getElementById('notes-status').textContent = 'Error: Note not found.';
                 return;
             }
+
+            // Populate modal fields
             document.getElementById('modal-note-id').value = note.id;
             document.getElementById('modal-tab-name').value = tabName;
             document.getElementById('modal-title').value = note.title;
             document.getElementById('modal-content').value = note.content;
+
+            // Show the modal
             document.getElementById('edit-modal').classList.remove('hidden');
-            document.getElementById('notes-status').textContent = ''; 
+            document.getElementById('notes-status').textContent = ''; // Clear status message
         }
         
+        /**
+         * Closes the custom modal.
+         */
         window.closeEditModal = function() {
             document.getElementById('edit-modal').classList.add('hidden');
+            // Provide a subtle cancellation message
             document.getElementById('notes-status').textContent = 'Edit cancelled.'; 
         }
 
+        /**
+         * Saves changes from the custom modal inputs.
+         */
         window.saveEditedNote = function() {
             const statusElement = document.getElementById('notes-status');
             const noteId = document.getElementById('modal-note-id').value;
@@ -853,39 +768,56 @@
             const noteIndex = structuredNotes[tabName].findIndex(note => note.id === noteId);
             if (noteIndex === -1) {
                 statusElement.textContent = 'Error: Note not found during save.';
-                document.getElementById('edit-modal').classList.add('hidden'); 
+                document.getElementById('edit-modal').classList.add('hidden'); // Close modal on error
                 return;
             }
 
             const oldNote = structuredNotes[tabName][noteIndex];
+
             const finalTitle = newTitle || 'Untitled Note';
             const finalContent = newContent;
 
             if (finalTitle !== oldNote.title || finalContent !== oldNote.content) {
+                // Change detected, update the local structure
                 structuredNotes[tabName][noteIndex].title = finalTitle;
                 structuredNotes[tabName][noteIndex].content = finalContent;
                 
+                // Save the updated array to Firestore (this will trigger a re-render)
                 saveStructuredNotes(tabName, structuredNotes[tabName]);
                 statusElement.textContent = `Note "${finalTitle}" updated and saved!`;
 
+                // Collapse content after edit and save for a clean closure
                 const contentDiv = document.getElementById(`content-${noteId}`);
                 if(contentDiv && contentDiv.classList.contains('expanded')) {
                      contentDiv.classList.remove('expanded');
                      contentDiv.style.maxHeight = null;
                 }
+
             } else {
+                // No change detected
                 statusElement.textContent = 'No changes detected. Note was not saved.';
             }
-            document.getElementById('edit-modal').classList.add('hidden'); 
+
+            document.getElementById('edit-modal').classList.add('hidden'); // Always close the modal
         }
         
+        // --- End NOTES MODAL EDITING LOGIC ---
+
+
         // --- Combat Data Persistence (Initiative Tracker) ---
         let combatants = [];
         let currentTurnIndex = -1;
         let lastRoll = 0;
 
+        /**
+         * REFACTORED: This function now only saves the combat's *state* (current turn).
+         * Combatants are saved individually by other functions.
+         */
         async function saveCombatStateToFirestore() {
-            if (!window.isAuthReady || !window.db) return;
+            if (!window.isAuthReady || !window.db) {
+                console.warn("Firestore not ready. Cannot save combat state.");
+                return;
+            }
             try {
                 await window.setDoc(getCombatStateDocRef(), {
                     currentTurnIndex: currentTurnIndex
@@ -895,40 +827,54 @@
             }
         }
 
+        /**
+         * REFACTORED: Renamed and split into two listeners for the new data structure.
+         */
         function setupCombatDataListeners() {
             if (!window.isAuthReady || !window.db) return;
 
+            // --- LISTENER 1: For the combatants list ---
+            // REFACTORED: Removed .orderBy() from the query to avoid needing a Firestore index.
+            // We will now sort the data in-memory in JavaScript.
             const combatantsQuery = window.query(getCombatantsCollectionRef());
             
-            window.unsubs.combatants = window.onSnapshot(combatantsQuery, (snapshot) => {
+            window.onSnapshot(combatantsQuery, (snapshot) => {
                 const loadedCombatants = [];
                 snapshot.forEach(doc => {
                     loadedCombatants.push({ id: doc.id, ...doc.data() });
                 });
                 
-                loadedCombatants.sort((a, b) => (b.init || 0) - (a.init || 0)); 
+                // NEW: Sort the data here in JavaScript instead of in the query
+                loadedCombatants.sort((a, b) => (b.init || 0) - (a.init || 0)); // Sort descending by init
 
                 combatants = loadedCombatants;
+                // We call renderCombatants() here to show the new sorted list
                 renderCombatants();
-                console.log("Combatants refreshed.");
+                console.log("Combatants list updated from Firestore and sorted in-memory.");
+                
             }, (error) => {
                 console.error("Error setting up combatants listener: ", error);
             });
 
-            window.unsubs.combatState = window.onSnapshot(getCombatStateDocRef(), (doc) => {
+            // --- LISTENER 2: For the combat state (turn index) ---
+            // Listens to the separate state document
+            window.onSnapshot(getCombatStateDocRef(), (doc) => {
                 if (doc.exists()) {
                     const data = doc.data();
                     currentTurnIndex = data.currentTurnIndex !== undefined ? data.currentTurnIndex : -1;
                 } else {
                     currentTurnIndex = -1;
                 }
+                // We also call renderCombatants() here to highlight the active turn
                 renderCombatants();
+                console.log("Combat state (turn) updated from Firestore.");
+                
             }, (error) => {
                 console.error("Error setting up combat state listener: ", error);
             });
         }
         
-        // --- Statblock Logic ---
+        // --- Statblock Logic (Updated with Edit button and modal functions) ---
         
         async function saveStatblock() {
             if (!window.isAuthReady || !window.db) {
@@ -944,8 +890,9 @@
             const dmg = document.getElementById('stat-dmg').value.trim();
             const statusElement = document.getElementById('statblock-status');
 
+            // --- REVERTED: This is the original, strict validation ---
             if (!name || hp <= 0 || ac <= 0 || !dmg) {
-                 statusElement.textContent = 'Name, HP, AC, and Damage are required.';
+                 statusElement.textContent = 'Please fill out Name, HP, AC, and Attack DMG.';
                  return;
             }
             
@@ -953,10 +900,16 @@
 
             try {
                 await window.addDoc(getStatblocksCollectionRef(), {
-                    name, hp, ac, toHit, initMod, dmg,
+                    name,
+                    hp,
+                    ac,
+                    toHit,
+                    initMod,
+                    dmg,
                     timestamp: new Date().toISOString()
                 });
                 statusElement.textContent = `${name} saved successfully!`;
+                // Clear inputs
                 document.getElementById('stat-name').value = '';
                 document.getElementById('stat-hp').value = '';
                 document.getElementById('stat-ac').value = '';
@@ -1027,13 +980,15 @@
         function setupStatblocksListener() {
             if (!window.isAuthReady || !window.db) return;
 
-            window.unsubs.statblocks = window.onSnapshot(window.query(getStatblocksCollectionRef()), (snapshot) => {
+            window.onSnapshot(window.query(getStatblocksCollectionRef()), (snapshot) => {
                 savedStatblocks = [];
                 snapshot.forEach(doc => {
                     savedStatblocks.push({ id: doc.id, ...doc.data() });
                 });
+                // Sort by name alphabetically
                 savedStatblocks.sort((a, b) => a.name.localeCompare(b.name));
                 renderStatblocks();
+                console.log(`Loaded ${savedStatblocks.length} statblocks.`);
             }, (error) => {
                 console.error("Error setting up statblocks listener: ", error);
             });
@@ -1054,11 +1009,13 @@
                 const toHit = stat.toHit || 0;
                 const initMod = stat.initMod || 0;
 
+                // --- MODIFIED: Use collapsible structure ---
                 const element = document.createElement('div');
-                element.className = 'note-item card p-0 rounded-lg shadow-md'; 
+                element.className = 'note-item card p-0 rounded-lg shadow-md'; // Use same class as notes
                 const uniqueId = `statblock-${stat.id}`;
                 element.id = uniqueId;
 
+                // Header with Collapse Toggle
                 const header = document.createElement('div');
                 header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150';
                 header.onclick = () => toggleCollapse(uniqueId);
@@ -1069,10 +1026,12 @@
                     </svg>
                 `;
                 
+                // Content Area
                 const content = document.createElement('div');
-                content.className = 'collapsible-content'; 
-                content.id = `content-${uniqueId}`; 
+                content.className = 'collapsible-content'; // Starts collapsed
+                content.id = `content-${uniqueId}`; // Matches what toggleCollapse() expects
 
+                // Inner content (the original statblock details, now with padding)
                 content.innerHTML = `
                     <div class="p-3"> 
                         <div class="flex justify-end space-x-2 mb-2">
@@ -1097,13 +1056,20 @@
                 
                 element.appendChild(header);
                 element.appendChild(content);
+                // --- END MODIFICATION ---
+
                 list.appendChild(element);
             });
         }
         
+        /**
+         * Opens the custom modal for editing the statblock.
+         */
         window.editStatblock = function(statId) {
             const stat = savedStatblocks.find(s => s.id === statId);
             if (!stat) return;
+
+            // Populate modal fields
             document.getElementById('modal-statblock-id').value = stat.id;
             document.getElementById('modal-stat-name').value = stat.name;
             document.getElementById('modal-stat-hp').value = stat.hp;
@@ -1111,15 +1077,23 @@
             document.getElementById('modal-stat-tohit').value = stat.toHit;
             document.getElementById('modal-stat-init-mod').value = stat.initMod;
             document.getElementById('modal-stat-dmg').value = stat.dmg;
+
+            // Show the modal
             document.getElementById('edit-statblock-modal').classList.remove('hidden');
-            document.getElementById('statblock-status').textContent = ''; 
+            document.getElementById('statblock-status').textContent = ''; // Clear status message
         }
 
+        /**
+         * Closes the statblock editing modal.
+         */
         window.closeStatblockEditModal = function() {
             document.getElementById('edit-statblock-modal').classList.add('hidden');
             document.getElementById('statblock-status').textContent = 'Edit cancelled.';
         }
         
+        /**
+         * Saves changes from the statblock modal inputs to Firestore.
+         */
         window.saveEditedStatblock = async function() {
             if (!window.isAuthReady || !window.db) {
                 document.getElementById('statblock-status').textContent = 'Database not ready. Please wait for authentication.';
@@ -1135,6 +1109,7 @@
             const dmg = document.getElementById('modal-stat-dmg').value.trim();
             const statusElement = document.getElementById('statblock-status');
 
+            // --- REVERTED: This is the original, strict validation ---
             if (!name || hp <= 0 || ac <= 0 || !dmg) {
                  statusElement.textContent = 'Name, HP, AC, and Damage are required.';
                  return;
@@ -1143,8 +1118,14 @@
             const docRef = window.doc(getStatblocksCollectionRef(), statId);
             
             try {
+                // Use setDoc with merge to update the existing document
                 await window.setDoc(docRef, {
-                    name, hp, ac, toHit, initMod, dmg
+                    name, 
+                    hp, 
+                    ac, 
+                    toHit, 
+                    initMod, 
+                    dmg
                 }, { merge: true });
 
                 statusElement.textContent = `Statblock "${name}" updated successfully!`;
@@ -1166,14 +1147,26 @@
             }
         }
         
+        // UPDATED: Added AC parameter to importToCombat
         function importToCombat(name, hp, initMod, ac) {
             document.getElementById('combatant-name').value = name;
             document.getElementById('combatant-hp').value = hp;
             document.getElementById('combatant-init').value = initMod; 
-            document.getElementById('combatant-ac').value = ac; 
+            document.getElementById('combatant-ac').value = ac; // New: Populate AC field
             
             switchTab('combat');
         }
+
+
+        // Event listener for when authentication is ready
+        /* --- REMOVED to fix permission-denied race condition. Listeners are now called directly in onAuthStateChanged ---
+        window.addEventListener('authReady', () => {
+            setupNotesListener();
+            // REFACTORED: Call the new listener setup function
+            setupCombatDataListeners();
+            setupStatblocksListener(); 
+        });
+        */
 
 
         // --- UI Logic (Shared) ---
@@ -1186,22 +1179,25 @@
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('active');
                 btn.classList.add('text-gray-400');
+                // UPDATED to include 'monsters'
                 if (btn.textContent.includes(
                     tabId === 'improv' ? 'Prep & Improv' :
                     tabId === 'combat' ? 'Combat Tracker' :
                     tabId === 'statblocks' ? 'Statblocks' :
                     tabId === 'monsters' ? 'Monsters' :
-                    'Rulings & Notes' 
+                    'Rulings & Notes' // Default for 'notes'
                 )) {
                      btn.classList.add('active');
                      btn.classList.remove('text-gray-400');
                 }
             });
+            // Ensure the correct sub-tab is displayed when switching to Notes
             if (tabId === 'notes') {
                 switchSubTab(currentSubTab);
             }
         }
         
+        // Sub-Tab switching logic for Notes
         function switchSubTab(tabId) {
             currentSubTab = tabId;
             document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
@@ -1216,6 +1212,7 @@
                      btn.classList.add('text-gray-400');
                 }
             });
+            // Rerender notes to handle any potential loading issues
             renderStructuredNotes(currentSubTab);
         }
 
@@ -1225,7 +1222,7 @@
         const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=`; // NEW
         const apiKey = ""; 
 
-        // [Schema definitions removed for brevity, they remain the same as previous]
+        // Define the required structured output format for combat stats
         const combatSchema = {
             type: "OBJECT",
             properties: {
@@ -1239,6 +1236,7 @@
             required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"]
         };
 
+        // Define the required structured output format for monster stat blocks
         const monsterSchema = {
             type: "OBJECT",
             properties: {
@@ -1340,14 +1338,14 @@
             const saveStatusElement = document.getElementById('npc-save-status');
 
             document.getElementById('combat-status-message').classList.add('hidden');
-            saveStatusElement.classList.add('hidden'); 
-            document.getElementById('save-options-creative').classList.add('hidden'); 
+            saveStatusElement.classList.add('hidden'); // Clear previous save status
+            document.getElementById('save-options-creative').classList.add('hidden'); // Hide creative save buttons
 
             button.disabled = true;
             buttonText.textContent = 'Generating...';
             spinner.classList.remove('hidden');
             outputDiv.innerHTML = 'Generating combat stats...';
-            lastGeneratedNpc = null; 
+            lastGeneratedNpc = null; // Reset the last generated NPC
 
             const systemPrompt = `You are a dedicated and expert Tabletop RPG (TTRPG) Combat Encounter Generator. Your sole function is to create combat statistics for an NPC based on the provided level and type. You MUST return the data exactly according to the JSON schema provided. Assume a standard high-fantasy ruleset (like Dungeons & Dragons 5th Edition) for balancing.`;
             const userQuery = `Generate an NPC with a level/CR of ${level} and the description: ${type}.`;
@@ -1371,7 +1369,7 @@
                 }
 
                 const npcStats = JSON.parse(jsonString);
-                lastGeneratedNpc = npcStats; 
+                lastGeneratedNpc = npcStats; // Store the successful result
 
                 // --- Render Structured Output ---
                 const saveButtonsHtml = `
@@ -1415,6 +1413,7 @@
             }
         }
  
+        // --- START: FIX FOR ReferenceError ---
         // --- MODE 2: Creative Lore Generation (Missing Function) ---
         async function generateCreativeIdea() {
             const prompt = document.getElementById('improv-prompt').value.trim();
@@ -1431,23 +1430,26 @@
             const saveOptionsDiv = document.getElementById('save-options-creative');
             const saveStatusElement = document.getElementById('npc-save-status');
             
+            // NEW: Hide image output area for this mode
             const imageOutputDiv = document.getElementById('ai-image-output');
             imageOutputDiv.classList.add('hidden');
 
+            // Reset UI
             saveStatusElement.classList.add('hidden');
             saveOptionsDiv.classList.add('hidden');
             button.disabled = true;
             buttonText.textContent = 'Generating...';
             spinner.classList.remove('hidden');
             outputDiv.textContent = 'Generating creative idea...';
-            lastGeneratedNpc = null; 
+            lastGeneratedNpc = null; // Clear NPC data
 
+            // --- Payload for Text Generation ---
             const systemPromptText = `You are a creative D&D Dungeon Master Assistant. The user will provide a prompt, and you should generate a creative and useful response based on it. This could be an NPC backstory, location description, quest hook, or piece of lore. Format the response with simple markdown for readability (bolding, bullet points).`;
             
             const textPayload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 systemInstruction: { parts: [{ text: systemPromptText }] },
-                tools: [{ "google_search": {} }], 
+                tools: [{ "google_search": {} }], // Enable search for broader context
             };
 
             try {
@@ -1460,7 +1462,7 @@
                 }
                 
                 outputDiv.textContent = resultText;
-                saveOptionsDiv.classList.remove('hidden'); 
+                saveOptionsDiv.classList.remove('hidden'); // Show save buttons
 
             } catch (error) {
                 console.error("Creative Generation Error:", error);
@@ -1471,6 +1473,7 @@
                 spinner.classList.add('hidden');
             }
         }
+        // --- END: FIX FOR ReferenceError ---
 
 
         // --- REWRITTEN: MODE 3: Settlement Generation (with Image) ---
@@ -1490,25 +1493,29 @@
             const saveOptionsDiv = document.getElementById('save-options-creative');
             const saveStatusElement = document.getElementById('npc-save-status');
             
+            // NEW Image Elements
             const imageOutputDiv = document.getElementById('ai-image-output');
             const generatedImage = document.getElementById('generated-image');
             const imageLoadingStatus = document.getElementById('image-loading-status');
 
+            // Reset UI
             saveStatusElement.classList.add('hidden');
             saveOptionsDiv.classList.add('hidden');
             button.disabled = true;
             buttonText.textContent = 'Generating...';
             spinner.classList.remove('hidden');
             
+            // Set loading states for both text and image
             outputDiv.textContent = 'Building your settlement details...';
             imageOutputDiv.classList.remove('hidden');
             generatedImage.src = '';
-            generatedImage.classList.add('hidden'); 
+            generatedImage.classList.add('hidden'); // Hide img tag until src is set
             imageLoadingStatus.textContent = 'Generating settlement image (this may take a moment)...';
             imageLoadingStatus.classList.remove('hidden');
             
             lastGeneratedNpc = null; 
 
+            // --- Payload for Text Generation ---
             const systemPromptText = `You are a D&D Dungeon Master Assistant specializing in rapid world-building. Generate a settlement based on the user's requested type and vibe.
 
 Format the response strictly with markdown for readability. You MUST include all requested sections. Use bullet points for lists.
@@ -1547,35 +1554,40 @@ Format the response strictly with markdown for readability. You MUST include all
                 tools: [{ "google_search": {} }],
             };
 
+            // --- Prompt for Image Generation ---
             const imagePrompt = `A high-quality, atmospheric, bird's-eye-view concept art of a fantasy ${type} that feels like a ${vibe}. No text or labels. D&D, fantasy art style.`;
 
+            // --- Run API calls in parallel ---
             try {
                 const [textResult, imageResult] = await Promise.allSettled([
                     fetchSettlementText(textPayload),
                     fetchSettlementImage(imagePrompt)
                 ]);
 
+                // Handle Text Result
                 if (textResult.status === 'fulfilled') {
                     outputDiv.textContent = textResult.value;
-                    saveOptionsDiv.classList.remove('hidden'); 
+                    saveOptionsDiv.classList.remove('hidden'); // Show save buttons
                 } else {
                     console.error("Settlement Text Generation Error:", textResult.reason);
                     outputDiv.textContent = `Error: Could not generate settlement text. ${textResult.reason.message}`;
                 }
 
+                // Handle Image Result
                 if (imageResult.status === 'fulfilled') {
                     generatedImage.src = imageResult.value;
                     generatedImage.classList.remove('hidden');
-                    imageLoadingStatus.textContent = ''; 
+                    imageLoadingStatus.textContent = ''; // Clear loading text
                     imageLoadingStatus.classList.add('hidden');
                 } else {
                     console.error("Settlement Image Generation Error:", imageResult.reason);
                     imageLoadingStatus.textContent = `Error generating image: ${imageResult.reason.message}`;
                     imageLoadingStatus.classList.remove('hidden');
-                    generatedImage.classList.add('hidden'); 
+                    generatedImage.classList.add('hidden'); // Keep img tag hidden
                 }
 
             } catch (error) {
+                // This catch is for Promise.allSettled itself, which is unlikely
                 console.error("Settlement Generation Error:", error);
                 outputDiv.textContent = `Error: Could not generate settlement. ${error.message}`;
                 imageLoadingStatus.textContent = `Image generation failed.`;
@@ -1586,6 +1598,7 @@ Format the response strictly with markdown for readability. You MUST include all
             }
         }
 
+        // --- NEW Helper: Fetch Settlement Text ---
         async function fetchSettlementText(payload) {
             const response = await fetchWithExponentialBackoff(API_URL + apiKey, payload);
             const result = await response.json();
@@ -1596,12 +1609,14 @@ Format the response strictly with markdown for readability. You MUST include all
             return resultText;
         }
         
+        // --- NEW Helper: Fetch Settlement Image ---
         async function fetchSettlementImage(prompt) {
             const payload = {
                 instances: { prompt: prompt },
                 parameters: { "sampleCount": 1 }
             };
             
+            // Use the new IMAGE_API_URL constant
             const response = await fetchWithExponentialBackoff(IMAGE_API_URL + apiKey, payload);
             const result = await response.json();
             
@@ -1640,7 +1655,7 @@ Format the response strictly with markdown for readability. You MUST include all
             buttonText.textContent = 'Generating...';
             spinner.classList.remove('hidden');
             outputDiv.innerHTML = 'Generating full monster stat block...';
-            lastGeneratedMonster = null; 
+            lastGeneratedMonster = null; // Reset
 
             const systemPrompt = `You are an expert D&D 5e Monster Designer. Your task is to generate a complete and balanced monster stat block based on the user's provided name and Challenge Rating (CR). You MUST return the data exactly according to the JSON schema provided. Ensure abilities, actions, and stats are appropriate for the requested CR.`;
             const userQuery = `Generate a full monster stat block for a "${name}" with a Challenge Rating (CR) of ${cr}.`;
@@ -1664,7 +1679,7 @@ Format the response strictly with markdown for readability. You MUST include all
                 }
 
                 const stats = JSON.parse(jsonString);
-                lastGeneratedMonster = stats; 
+                lastGeneratedMonster = stats; // Store the successful result
 
                 // Render the stat block
                 outputDiv.innerHTML = renderMonsterStatblock(stats);
@@ -1769,14 +1784,24 @@ Format the response strictly with markdown for readability. You MUST include all
             let dmg = 'N/A';
             if (monster.actions && monster.actions.length > 0) {
                 const firstAction = monster.actions[0].description;
+                // Regex to find +N to hit
                 const hitMatch = firstAction.match(/(\+|\-)\d+\s+to hit/);
+                // Regex to find simple damage dice like 1d8, 2d6+3, etc.
+                // REMOVED: const dmgMatch = firstAction.match(/\d+d\d+(\s*(\+|\-)\s*\d+)?/); 
+                
                 if (hitMatch) toHit = parseInt(hitMatch[0].replace(' to hit', ''), 10);
+                // REMOVED: if (dmgMatch) dmg = dmgMatch[0];
 
+                // --- MODIFIED: Format all actions into an HTML string ---
                 dmg = monster.actions.map(action => {
+                    // Added block and margin-top for better spacing in the statblock card
                     return `<span class='block mt-1'><strong>${action.name}:</strong> ${action.description}</span>`;
                 }).join('');
+                // --- END MODIFICATION ---
+
             }
             
+            // Get initiative bonus (DEX mod)
             const initMod = Math.floor((monster.ability_scores.DEX - 10) / 2);
 
             statusElement.textContent = `Saving ${monster.name} to Statblocks...`;
@@ -1807,7 +1832,7 @@ Format the response strictly with markdown for readability. You MUST include all
         window.saveMonsterToNotes = async function() {
             const statusElement = document.getElementById('monster-save-status');
             const outputDiv = document.getElementById('monster-output');
-            const content = outputDiv.innerHTML; 
+            const content = outputDiv.innerHTML; // Save the rendered HTML
 
             if (!lastGeneratedMonster) {
                 statusElement.textContent = 'No monster data to save.';
@@ -1827,17 +1852,18 @@ Format the response strictly with markdown for readability. You MUST include all
             const newNote = {
                 id: crypto.randomUUID(),
                 title: `${lastGeneratedMonster.name} (CR ${lastGeneratedMonster.challenge_rating})`,
-                content: content, 
+                content: content, // Save the pre-formatted HTML
                 timestamp: new Date().toISOString()
             };
             
-            structuredNotes['enemyNotes'].unshift(newNote); 
+            structuredNotes['enemyNotes'].unshift(newNote); // Add to beginning of enemyNotes
             await saveStructuredNotes('enemyNotes', structuredNotes['enemyNotes']);
 
             statusElement.textContent = `${lastGeneratedMonster.name} saved to Enemy Notes!`;
             statusElement.classList.remove('text-yellow-400');
             statusElement.classList.add('text-green-400');
 
+            // Optionally switch to the notes tab
             switchTab('notes');
             switchSubTab('enemyNotes');
         }
@@ -1845,11 +1871,14 @@ Format the response strictly with markdown for readability. You MUST include all
 
         // --- NEW: Unified Saving Function ---
         
+        // Helper to generate a good title for the collapsible note
         function generateTitleFromContent(content) {
+            // Priority 1: Look for the bolded name in the generated format
             const nameMatch = content.match(/\*\*Name:\*\*\s*(.*?)\n/);
             if (nameMatch) {
                 return nameMatch[1].trim() || 'Untitled Generated Note';
             }
+            // Priority 2: Use the first 50 characters
             const shortTitle = content.substring(0, 50).trim().replace(/[\n\r]/g, ' ');
             return shortTitle + (content.length > 50 ? '...' : '');
         }
@@ -1878,9 +1907,12 @@ Format the response strictly with markdown for readability. You MUST include all
                 timestamp: new Date().toISOString()
             };
             
-            structuredNotes[destinationTab].unshift(newNote); 
+            structuredNotes[destinationTab].unshift(newNote); // Add to beginning
+            
+            // Save the updated array
             await saveStructuredNotes(destinationTab, structuredNotes[destinationTab]);
 
+            // Switch and display feedback
             switchTab('notes');
             switchSubTab(destinationTab);
             statusElement.textContent = `New note saved and placed in the collapsible list for '${destinationTab}'!`;
@@ -1890,6 +1922,7 @@ Format the response strictly with markdown for readability. You MUST include all
         // --- Shared API Helper ---
         async function fetchWithExponentialBackoff(apiUrl, payload) {
             const maxAttempts = 5;
+            // Use apiKey from the global scope, ensuring it's appended correctly.
             const urlWithKey = apiUrl.endsWith('?key=') ? apiUrl + apiKey : apiUrl;
 
             for (let attempts = 0; attempts < maxAttempts; attempts++) {
@@ -1902,16 +1935,19 @@ Format the response strictly with markdown for readability. You MUST include all
 
                     if (response.status === 429) {
                         const delay = Math.pow(2, attempts) * 1000;
+                        console.warn(`API rate limit hit. Retrying in ${delay}ms...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
                         continue;
                     }
 
                     if (!response.ok) {
                         const errorBody = await response.text();
+                        console.error("API Error Body:", errorBody);
                         throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
                     }
                     return response;
                 } catch (error) {
+                    console.error(`Attempt ${attempts + 1} failed:`, error);
                     if (attempts === maxAttempts - 1) throw error;
                     const delay = Math.pow(2, attempts) * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
@@ -1942,6 +1978,7 @@ Format the response strictly with markdown for readability. You MUST include all
                 if (c.initModifier === undefined) {
                     c.initModifier = c.init > 10 ? 0 : c.init;
                 }
+                // Ensure AC has a default value if not set
                 if (c.ac === undefined) {
                     c.ac = 0;
                 }
@@ -1949,6 +1986,7 @@ Format the response strictly with markdown for readability. You MUST include all
 
 
                 const element = document.createElement('div');
+                // Updated class list for slightly more horizontal space management
                 element.className = `flex items-center space-x-1 p-3 rounded-lg transition duration-200 ${isActive ? 'bg-indigo-700 glow-shadow' : 'bg-gray-700'}`;
                 
                 element.innerHTML = `
@@ -1961,6 +1999,7 @@ Format the response strictly with markdown for readability. You MUST include all
                             <span class="text-gray-400"> (Mod: ${initModifierDisplay})</span>
                         </div>
                     </div>
+                    <!-- NEW HP MANAGEMENT CONTROLS -->
                     <div class="flex space-x-1 items-center">
                         <input type="number" placeholder="Amt" id="damage-input-${index}" class="w-12 p-1 rounded-lg input-style text-center text-xs" />
                         <button onclick="applyHpChange(${index}, 'heal')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300">Heal</button>
@@ -1973,51 +2012,63 @@ Format the response strictly with markdown for readability. You MUST include all
             populateCombatantSelector();
         }
 
+        // New consolidated function for HP changes
         window.applyHpChange = async function(index, type) { 
             const damageInput = document.getElementById(`damage-input-${index}`);
             let value = parseInt(damageInput.value, 10);
 
-            if (isNaN(value) || value <= 0) { 
+            if (isNaN(value) || value <= 0) { // Value must be positive now
                 damageInput.value = '';
                 return;
             }
 
+            // --- FIX: Calculate the new HP based on the input value ---
             let newHp = combatants[index].currentHp;
             if (type === 'damage') {
                 newHp -= value;
             } else if (type === 'heal') {
                 newHp += value;
             }
+            // Clamp HP between 0 and maxHp
             newHp = Math.max(0, Math.min(newHp, combatants[index].maxHp));
+            // --- End Fix ---
 
+            // REFACTORED: Update the specific document in Firestore
             const combatantDocRef = window.doc(getCombatantsCollectionRef(), combatants[index].id);
             try {
                 await window.updateDoc(combatantDocRef, {
-                    currentHp: newHp 
+                    currentHp: newHp // Save the *newly calculated* HP
                 });
             } catch (error) {
                 console.error("Error updating HP:", error);
             }
 
             damageInput.value = '';
+            // No longer need to call renderCombatants() or saveCombatantsToFirestore()
+            // The onSnapshot listener will detect the change and re-render.
         }
 
+        /**
+         * REFACTORED: This function now creates a new document in the combatants collection.
+         */
         async function addCombatant() {
             const nameInput = document.getElementById('combatant-name');
             const initInput = document.getElementById('combatant-init');
-            const acInput = document.getElementById('combatant-ac'); 
+            const acInput = document.getElementById('combatant-ac'); // NEW: AC Input
             const hpInput = document.getElementById('combatant-hp');
 
             const name = nameInput.value.trim();
             const initValue = parseInt(initInput.value, 10) || 0; 
-            const ac = parseInt(acInput.value, 10); 
+            const ac = parseInt(acInput.value, 10); // NEW: Get AC value
             const hp = parseInt(hpInput.value, 10);
 
+            // UPDATED validation
             if (!name || isNaN(hp) || hp <= 0 || isNaN(ac) || ac <= 0) {
                 console.error("Invalid combatant input: Name, positive HP, and positive AC are required.");
                 return;
             }
 
+            // REFACTORED: Create a new document in Firestore instead of pushing locally
             try {
                 await window.addDoc(getCombatantsCollectionRef(), { 
                     name, 
@@ -2025,7 +2076,7 @@ Format the response strictly with markdown for readability. You MUST include all
                     maxHp: hp, 
                     currentHp: hp, 
                     initModifier: initValue,
-                    ac: ac 
+                    ac: ac // NEW: Store AC
                 });
             } catch (error) {
                 console.error("Error adding combatant:", error);
@@ -2033,15 +2084,28 @@ Format the response strictly with markdown for readability. You MUST include all
 
             nameInput.value = '';
             initInput.value = '';
-            acInput.value = ''; 
+            acInput.value = ''; // NEW: Clear AC input
             hpInput.value = '';
+
+            // No longer need to call renderCombatants() or saveCombatantsToFirestore()
+            // The onSnapshot listener will detect the change and re-render.
         }
 
+        /**
+         * REFACTORED: This button now just resets the turn index to 0.
+         * The sorting is handled automatically by the Firestore listener.
+         */
         function sortInitiative() {
             currentTurnIndex = 0;
+            // We just need to save the *state*
             saveCombatStateToFirestore();
         }
 
+        // Removed old applyDamage, replaced by applyHpChange
+
+        /**
+         * REFACTORED: This function now deletes a document from the collection.
+         */
         async function removeCombatant(index) {
             if (!combatants[index] || !combatants[index].id) {
                 console.error("Cannot remove combatant, missing ID.");
@@ -2055,36 +2119,48 @@ Format the response strictly with markdown for readability. You MUST include all
                 console.error("Error removing combatant:", error);
             }
             
+            // The onSnapshot listener will handle re-rendering.
+            // We just need to check if the turn index is now out of bounds.
             if (currentTurnIndex >= combatants.length - 1) {
                 currentTurnIndex = combatants.length > 1 ? combatants.length - 2 : -1;
                 saveCombatStateToFirestore();
             }
         }
 
+        /**
+         * REFACTORED: This function now only updates the turn index.
+         */
         function nextTurn() {
             if (combatants.length === 0) {
                 currentTurnIndex = -1;
                 return;
             }
             currentTurnIndex = (currentTurnIndex + 1) % combatants.length;
+            // Save the new state
             saveCombatStateToFirestore();
         }
         
+        /**
+         * REFACTORED: This function now uses a Write Batch to delete all docs in the collection.
+         */
         async function clearCombat() {
             if (!window.isAuthReady || !window.db) return;
             
             try {
                 const batch = window.writeBatch(window.db);
                 
+                // Get all combatant docs
                 combatants.forEach(c => {
                     const docRef = window.doc(getCombatantsCollectionRef(), c.id);
                     batch.delete(docRef);
                 });
                 
+                // Also delete the state doc
                 batch.delete(getCombatStateDocRef());
 
                 await batch.commit();
 
+                // Listeners will fire and clear the UI
             } catch (error) {
                 console.error("Error clearing combat:", error);
             }
@@ -2121,6 +2197,7 @@ Format the response strictly with markdown for readability. You MUST include all
 
             resultDisplay.textContent = `Total: ${finalTotal}`;
             
+            // Show modifier only if it's not zero
             if (modifier !== 0) {
                 detailsDisplay.textContent = `Rolls: [${rolls.join(', ')}] (Mod: ${modString})`;
             } else {
@@ -2150,6 +2227,9 @@ Format the response strictly with markdown for readability. You MUST include all
             document.getElementById('assign-roll-button').disabled = combatants.length === 0 || lastRoll === 0;
         }
 
+        /**
+         * REFACTORED: This function now updates a specific document's initiative score.
+         */
         async function assignInitiativeRoll() {
             const selector = document.getElementById('combatant-selector');
             const selectedIndex = parseInt(selector.value, 10);
@@ -2163,6 +2243,7 @@ Format the response strictly with markdown for readability. You MUST include all
 
             const newInitiative = lastRoll + modifier;
             
+            // REFACTORED: Update the specific doc in Firestore
             const combatantDocRef = window.doc(getCombatantsCollectionRef(), combatants[selectedIndex].id);
             try {
                 await window.updateDoc(combatantDocRef, {
@@ -2176,6 +2257,9 @@ Format the response strictly with markdown for readability. You MUST include all
             document.getElementById('last-roll-display').textContent = '?';
             selector.value = '';
             document.getElementById('assign-roll-button').disabled = true;
+
+            // No longer need to call render/save. The 'orderBy' listener will
+            // automatically re-sort and re-render the list.
         }
         
         // --- START: EXPLICITLY ATTACH ALL ONCLICK FUNCTIONS TO WINDOW ---
@@ -2203,21 +2287,23 @@ Format the response strictly with markdown for readability. You MUST include all
         window.deleteStatblock = deleteStatblock;
         window.importToCombat = importToCombat;
         window.removeCombatant = removeCombatant;
-        window.rollCustomDice = rollCustomDice; 
-        window.applyHpChange = applyHpChange; 
-        window.deleteNote = deleteNote; 
-        window.editNote = editNote; 
-        window.editStatblock = editStatblock; 
-        window.addNpcToStatblocks = addNpcToStatblocks; 
-        window.openLoginModal = openLoginModal;
-        window.closeLoginModal = closeLoginModal;
-        window.performSignIn = performSignIn;
-        window.performSignOut = performSignOut;
+        window.rollCustomDice = rollCustomDice; // <-- ADDED MISSING FUNCTION
+        window.applyHpChange = applyHpChange; // <-- ADDED MISSING FUNCTION
+        window.deleteNote = deleteNote; // <-- ADDED MISSING FUNCTION
+        window.editNote = editNote; // <-- ADDED MISSING FUNCTION
+        window.editStatblock = editStatblock; // <-- ADDED MISSING FUNCTION
+        window.addNpcToStatblocks = addNpcToStatblocks; // <-- ADDED MISSING FUNCTION
         // --- END: EXPLICITLY ATTACH ALL ONCLICK FUNCTIONS TO WINDOW ---
 
 
         // Initial render for combat tracker (before data loads)
         document.addEventListener('DOMContentLoaded', () => {
+            // Fix: Check for element existence before setting textContent
+            const appIdDisplay = document.getElementById('app-id-display');
+            if (appIdDisplay && !firebaseConfig) {
+                appIdDisplay.textContent = 'Game ID: N/A (No Firebase Config)';
+            }
+            
             renderCombatants(); 
             populateCombatantSelector();
             switchTab(currentTab);
