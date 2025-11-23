@@ -84,8 +84,8 @@
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Structured Combat NPC Stats</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div><label class="block text-xs text-gray-400 mb-1">Level/CR</label><input type="text" id="npc-level" value="3" class="w-full p-2 rounded-lg input-style text-sm"></div>
-                        <div><label class="block text-xs text-gray-400 mb-1">Type</label><input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style text-sm"></div>
+                        <div><label class="block text-xs text-gray-400 mb-1">Level/CR</label><input type="text" id="npc-level" value="3" class="w-full p-2 rounded-lg input-style transition text-sm"></div>
+                        <div><label class="block text-xs text-gray-400 mb-1">Type</label><input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style transition text-sm"></div>
                     </div>
                     <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex justify-center items-center">
                         <span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div>
@@ -94,7 +94,7 @@
 
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore & Backstory</h2>
-                    <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none mb-4" placeholder="e.g., A grumpy female blacksmith..."></textarea>
+                    <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g., A grumpy female blacksmith..."></textarea>
                     <button onclick="generateCreativeIdea()" id="generate-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg flex justify-center items-center">
                         <span id="generate-text">Generate Idea</span><div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div>
                     </button>
@@ -114,11 +114,14 @@
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Results</h2>
                     <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden"><img id="generated-image" class="w-full h-auto object-cover bg-gray-800 min-h-[150px]"></div>
-                    <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Results appear here...</div>
+                    <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
+                        Results will appear here...
+                    </div>
+                    <p id="npc-save-status" class="mt-2 text-sm text-center hidden"></p>
                     <div id="save-options-creative" class="mt-4 hidden grid grid-cols-3 gap-2">
-                        <button onclick="saveGeneratedContent('prepNotes')" class="bg-gray-500 text-white text-xs font-bold py-2 rounded-lg">Save to Notes</button>
-                        <button onclick="saveGeneratedContent('enemyNotes')" class="bg-yellow-600 text-white text-xs font-bold py-2 rounded-lg">Save to Enemies</button>
-                        <button onclick="saveGeneratedContent('npcNotes')" class="bg-blue-600 text-white text-xs font-bold py-2 rounded-lg">Save to NPCs</button>
+                        <button onclick="saveGeneratedContent('prepNotes')" class="bg-gray-500 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded-lg">Save to Notes</button>
+                        <button onclick="saveGeneratedContent('enemyNotes')" class="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold py-2 rounded-lg">Save to Enemies</button>
+                        <button onclick="saveGeneratedContent('npcNotes')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 rounded-lg">Save to NPCs</button>
                     </div>
                 </div>
             </div>
@@ -167,21 +170,23 @@
                     <p id="statblock-status" class="mt-2 text-sm text-center text-gray-400"></p>
                 </div>
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-teal-300">Dice Roller</h2>
-                    <div class="flex items-center gap-2 mb-4">
-                        <input id="dice-num" type="number" value="1" class="w-12 p-2 rounded-lg input-style text-center text-sm">
-                        <span>d</span>
-                        <select id="dice-type" class="p-2 rounded-lg input-style text-sm"><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option selected>20</option><option>100</option></select>
-                        <span>+</span>
-                        <input id="dice-mod" type="number" value="0" class="w-12 p-2 rounded-lg input-style text-center text-sm">
-                        <button onclick="rollCustomDice()" class="flex-1 bg-teal-600 text-white font-bold py-2 rounded-lg">Roll</button>
+                    <h2 class="text-xl font-semibold mb-4 text-teal-300">Quick Dice Roller</h2>
+                    <div class="flex flex-wrap items-center gap-2 mb-4">
+                        <input id="dice-num" type="number" value="1" min="1" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
+                        <span class="text-gray-400">d</span>
+                        <select id="dice-type" class="p-2 rounded-lg input-style text-sm">
+                            <option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="10">10</option><option value="12">12</option><option value="20" selected>20</option><option value="100">100</option>
+                        </select>
+                        <span class="text-gray-400">+</span>
+                        <input id="dice-mod" type="number" value="0" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
                     </div>
-                    <div id="dice-roll-result" class="text-center text-xl font-bold text-yellow-300 bg-gray-700/50 p-2 rounded-lg">Result</div>
-                    <p id="dice-roll-details" class="text-center text-xs text-gray-400 mt-1"></p>
+                    <button onclick="rollCustomDice()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg">Roll Dice</button>
+                    <div id="dice-roll-result" class="mt-4 text-center text-xl font-bold text-yellow-300 bg-gray-700/50 p-3 rounded-lg">Result</div>
+                    <p id="dice-roll-details" class="mt-2 text-center text-sm text-gray-400"></p>
                 </div>
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Saved Statblocks</h2>
-                    <div id="statblocks-list" class="scrollable-content space-y-2"><p class="text-center text-gray-500 pt-8">None saved.</p></div>
+                    <div id="statblocks-list" class="scrollable-content space-y-2"><p class="text-center text-gray-500 pt-8">No saved statblocks.</p></div>
                 </div>
             </div>
 
@@ -198,7 +203,8 @@
                     </button>
                 </div>
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <div id="monster-output" class="min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Result...</div>
+                    <div id="monster-output" class="min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Result here.</div>
+                    <p id="monster-save-status" class="mt-2 text-sm text-center hidden"></p>
                     <div id="save-options-monster" class="mt-4 hidden grid grid-cols-2 gap-2">
                         <button onclick="addMonsterToStatblocks()" class="bg-purple-600 text-white text-xs font-bold py-2 rounded-lg">To Statblocks</button>
                         <button onclick="saveMonsterToNotes()" class="bg-yellow-600 text-white text-xs font-bold py-2 rounded-lg">To Notes</button>
@@ -224,7 +230,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Modals (Settings, Login, Edit) -->
     <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl border border-gray-600">
