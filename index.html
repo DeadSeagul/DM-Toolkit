@@ -7,30 +7,88 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
+        /* Layout & Theme */
         body { 
             font-family: 'Inter', sans-serif; 
-            background-color: #0f172a; 
-            color: #f8fafc; 
+            background-color: #0f172a; /* Dark Slate */
+            color: #f8fafc; /* Light Text */
             margin: 0;
             padding: 20px;
         }
-        .tab-button.active { border-bottom: 3px solid #6366f1; color: #c7d2fe; }
-        .sub-tab-button.active { border-bottom: 2px solid #34d399; color: #34d399; }
-        .card { background-color: #1e293b; border: 1px solid #334155; }
-        .input-style { background-color: #334155; border: 1px solid #475569; color: #f8fafc; }
-        .glow-shadow { box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); }
-        .scrollable-content { max-height: 60vh; overflow-y: auto; }
+        
+        /* Tab Navigation */
+        .tab-button.active { 
+            border-bottom: 3px solid #6366f1; 
+            color: #c7d2fe; 
+        }
+        .sub-tab-button.active { 
+            border-bottom: 2px solid #34d399; 
+            color: #34d399; 
+        }
+        
+        /* Components */
+        .card { 
+            background-color: #1e293b; 
+            border: 1px solid #334155; 
+            border-radius: 0.5rem;
+        }
+        .input-style { 
+            background-color: #334155; 
+            border: 1px solid #475569; 
+            color: #f8fafc; 
+        }
+        .glow-shadow { 
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); 
+        }
+        
+        /* Scrollbars */
+        .scrollable-content { 
+            max-height: 60vh; 
+            overflow-y: auto; 
+        }
         .scrollable-content::-webkit-scrollbar { width: 8px; }
         .scrollable-content::-webkit-scrollbar-track { background: #1e293b; }
-        .scrollable-content::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 20px; border: 2px solid #1e293b; }
-        .loading-spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        .scrollable-content::-webkit-scrollbar-thumb { 
+            background-color: #475569; 
+            border-radius: 20px; 
+            border: 2px solid #1e293b; 
+        }
+        
+        /* Animations */
+        .loading-spinner { 
+            border: 4px solid rgba(255, 255, 255, 0.3); 
+            border-top: 4px solid #fff; 
+            border-radius: 50%; 
+            width: 24px; 
+            height: 24px; 
+            animation: spin 1s linear infinite; 
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #334155; border-radius: 8px; }
-        .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 10px; }
-        .collapsible-content.expanded { max-height: 1000px; padding: 10px; }
+        
+        /* Collapsibles */
+        .collapsible-header { 
+            cursor: pointer; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 10px; 
+            background-color: #334155; 
+            border-radius: 8px; 
+        }
+        .collapsible-content { 
+            max-height: 0; 
+            overflow: hidden; 
+            transition: max-height 0.3s ease-out; 
+            padding: 0 10px; 
+        }
+        .collapsible-content.expanded { 
+            max-height: 1000px; 
+            padding: 10px; 
+        }
         .arrow-icon { transition: transform 0.3s ease; }
         .expanded .arrow-icon { transform: rotate(90deg); }
         
+        /* Error Console */
         #error-console {
             display: none;
             background: #7f1d1d;
@@ -46,6 +104,7 @@
 </head>
 <body class="p-4 sm:p-8">
 
+    <!-- Error Display Area -->
     <div id="error-console"></div>
 
     <div class="max-w-4xl mx-auto">
@@ -56,11 +115,13 @@
                 <div id="db-status-indicator" class="w-3 h-3 rounded-full bg-gray-500" title="Checking Database Status..."></div>
             </h1>
             <div class="flex space-x-2">
+                <!-- Settings Button -->
                 <button onclick="openSettingsModal()" class="flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-600 p-2 rounded-lg transition duration-300" title="Settings">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
                     </svg>
                 </button>
+                <!-- Login Button -->
                 <button onclick="openLoginModal()" class="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-4 py-2 rounded-lg transition duration-300">
                     <div class="w-3 h-3 rounded-full bg-green-500" id="auth-status-dot"></div>
                     <span id="account-name-display" class="text-sm font-semibold text-gray-300">Guest Session</span>
@@ -68,7 +129,7 @@
             </div>
         </div>
 
-        <!-- Navigation -->
+        <!-- Tab Navigation -->
         <div class="flex border-b border-gray-600 mb-6">
             <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active" onclick="switchTab('improv')">🔮 Prep & Improv</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('combat')">⚔️ Combat Tracker</button>
@@ -77,20 +138,25 @@
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('notes')">📜 Rulings & Notes</button>
         </div>
 
-        <!-- Content -->
+        <!-- Content Area -->
         <div id="content-area">
-            <!-- Improv Tab -->
+            <!-- 1. Improv Tab -->
             <div id="improv" class="tab-content">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Structured Combat NPC Stats</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div><label class="block text-xs text-gray-400 mb-1">Level/CR</label><input type="text" id="npc-level" value="3" class="w-full p-2 rounded-lg input-style transition text-sm"></div>
-                        <div><label class="block text-xs text-gray-400 mb-1">Type</label><input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style transition text-sm"></div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Level or CR</label>
+                            <input type="text" id="npc-level" value="3" placeholder="Level/CR" class="w-full p-2 rounded-lg input-style transition text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Type</label>
+                            <input type="text" id="npc-type" value="Shadow Rogue" placeholder="Type" class="w-full p-2 rounded-lg input-style transition text-sm">
+                        </div>
                     </div>
                     <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex justify-center items-center">
                         <span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div>
                     </button>
-                    <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
 
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
@@ -104,8 +170,18 @@
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div><label class="block text-xs text-gray-400 mb-1">Type</label><select id="settlement-type" class="w-full p-2 rounded-lg input-style text-sm"><option>Village</option><option>Town</option><option>City</option></select></div>
-                        <div><label class="block text-xs text-gray-400 mb-1">Vibe</label><input type="text" id="settlement-vibe" value="haunted fishing village" class="w-full p-2 rounded-lg input-style text-sm"></div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Type</label>
+                            <select id="settlement-type" class="w-full p-2 rounded-lg input-style text-sm">
+                                <option>Village</option>
+                                <option>Town</option>
+                                <option>City</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Vibe</label>
+                            <input type="text" id="settlement-vibe" value="haunted fishing village" class="w-full p-2 rounded-lg input-style text-sm">
+                        </div>
                     </div>
                     <button onclick="generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg flex justify-center items-center">
                         <span id="generate-settlement-text">Generate Settlement</span><div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div>
@@ -114,7 +190,9 @@
 
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Results</h2>
-                    <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden"><img id="generated-image" class="w-full h-auto object-cover bg-gray-800 min-h-[150px]"></div>
+                    <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden">
+                        <img id="generated-image" class="w-full h-auto object-cover bg-gray-800 min-h-[150px]">
+                    </div>
                     <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
                         Results will appear here...
                     </div>
@@ -127,7 +205,7 @@
                 </div>
             </div>
 
-            <!-- Combat Tab -->
+            <!-- 2. Combat Tab -->
             <div id="combat" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Combat Tracker</h2>
@@ -155,7 +233,7 @@
                 </div>
             </div>
 
-            <!-- Statblocks Tab -->
+            <!-- 3. Statblocks Tab -->
             <div id="statblocks" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Add Statblock</h2>
@@ -191,7 +269,7 @@
                 </div>
             </div>
 
-            <!-- Monsters Tab -->
+            <!-- 4. Monsters Tab -->
             <div id="monsters" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Monster Generator</h2>
@@ -213,7 +291,7 @@
                 </div>
             </div>
 
-            <!-- Notes Tab -->
+            <!-- 5. Notes Tab -->
             <div id="notes" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Notes</h2>
@@ -232,11 +310,11 @@
         </div>
     </div>
     
-    <!-- Modals (Settings, Login, Edit) -->
+    <!-- Modals -->
     <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl border border-gray-600">
             <h3 class="text-2xl font-bold text-indigo-300 mb-4">Settings</h3>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Gemini API Key (Required for AI)</label>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Gemini API Key</label>
             <input type="password" id="settings-api-key" placeholder="Paste API Key" class="w-full p-3 rounded-lg input-style mb-4">
             <div class="flex justify-end space-x-3">
                 <button onclick="closeSettingsModal()" class="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
@@ -484,7 +562,18 @@
             spin.classList.remove('hidden');
             output.textContent = "Generating...";
             
-            const schema = { type: "OBJECT", properties: { name: {type:"STRING"}, level_or_cr:{type:"STRING"}, armor_class_ac:{type:"INTEGER"}, max_hit_points:{type:"INTEGER"}, initiative_bonus:{type:"INTEGER"}, main_attack:{type:"STRING"} }, required: ["name","level_or_cr","armor_class_ac","max_hit_points","initiative_bonus","main_attack"] };
+            const schema = { 
+                type: "OBJECT", 
+                properties: { 
+                    name: {type:"STRING"}, 
+                    level_or_cr:{type:"STRING"}, 
+                    armor_class_ac:{type:"INTEGER"}, 
+                    max_hit_points:{type:"INTEGER"}, 
+                    initiative_bonus:{type:"INTEGER"}, 
+                    main_attack:{type:"STRING"} 
+                }, 
+                required: ["name","level_or_cr","armor_class_ac","max_hit_points","initiative_bonus","main_attack"] 
+            };
             
             try {
                 const data = await fetchAI({ 
@@ -781,6 +870,89 @@
                     </div>`;
              });
              window.popSel();
+        };
+
+        // Monster & Combat Schema Definitions
+        const monsterSchema = {
+            type: "OBJECT",
+            properties: {
+                name: { type: "STRING", description: "The monster's name." },
+                size: { type: "STRING", description: "Size (e.g., Medium, Large)." },
+                type: { type: "STRING", description: "Type (e.g., humanoid, beast, monstrosity)." },
+                alignment: { type: "STRING", description: "Alignment (e.g., chaotic evil, unaligned)." },
+                armor_class: { type: "INTEGER", description: "Armor Class (AC)." },
+                ac_type: { type: "STRING", description: "Type of AC (e.g., 'natural armor', 'plate mail')." },
+                hit_points: { type: "INTEGER", description: "Average Hit Points." },
+                hit_dice: { type: "STRING", description: "Hit Dice formula (e.g., '10d8 + 40')." },
+                speed: { type: "STRING", description: "All movement speeds (e.g., '30 ft., fly 60 ft.')." },
+                ability_scores: {
+                    type: "OBJECT",
+                    properties: {
+                        STR: { type: "INTEGER" },
+                        DEX: { type: "INTEGER" },
+                        CON: { type: "INTEGER" },
+                        INT: { type: "INTEGER" },
+                        WIS: { type: "INTEGER" },
+                        CHA: { type: "INTEGER" }
+                    },
+                    required: ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+                },
+                saving_throws: { 
+                    type: "ARRAY", 
+                    items: { type: "STRING" },
+                    description: "List of saving throw proficiencies (e.g., 'DEX +5', 'CON +8')."
+                },
+                skills: { 
+                    type: "ARRAY", 
+                    items: { type: "STRING" },
+                    description: "List of skill proficiencies (e.g., 'Perception +4', 'Stealth +5')."
+                },
+                damage_vulnerabilities: { type: "ARRAY", items: { type: "STRING" } },
+                damage_resistances: { type: "ARRAY", items: { type: "STRING" } },
+                damage_immunities: { type: "ARRAY", items: { type: "STRING" } },
+                condition_immunities: { type: "ARRAY", items: { type: "STRING" } },
+                senses: { type: "STRING", description: "Senses (e.g., 'darkvision 60 ft., passive Perception 14')." },
+                languages: { type: "STRING", description: "Languages known (e.g., 'Common, Giant')." },
+                challenge_rating: { type: "STRING", description: "Challenge Rating (CR) (e.g., '5')." },
+                xp: { type: "INTEGER", description: "Experience Points (XP) for the CR." },
+                abilities: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            name: { type: "STRING" },
+                            description: { type: "STRING" }
+                        },
+                        required: ["name", "description"]
+                    },
+                    description: "Special abilities (e.g., 'Pack Tactics', 'Magic Resistance')."
+                },
+                actions: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            name: { type: "STRING" },
+                            description: { type: "STRING" }
+                        },
+                        required: ["name", "description"]
+                    },
+                    description: "Actions the monster can take (e.g., 'Multiattack', 'Greataxe')."
+                },
+                legendary_actions: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            name: { type: "STRING" },
+                            description: { type: "STRING" }
+                        },
+                        required: ["name", "description"]
+                    },
+                    description: "Legendary actions, if any."
+                }
+            },
+            required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"]
         };
 
 
