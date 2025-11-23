@@ -34,7 +34,7 @@
         window.currentCampaignId = 'default_session'; // Default ID
         window.currentCampaignName = 'Guest Session'; // Display Name
 
-        // Unsubscribe functions for listeners (to allow switching accounts)
+        // Unsubscribe functions for listeners
         window.unsubs = {
             notes: null,
             combatants: null,
@@ -43,55 +43,115 @@
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        // --- 🟢 CONFIGURATION SECTION 🟢 ---
+        // To make the app work for everyone without them needing to paste code:
+        // 1. Go to console.firebase.google.com
+        // 2. Create a project, enable Firestore and Auth (Anonymous)
+        // 3. Copy the config object from Project Settings
+        // 4. Paste it below replacing 'null'
+        // Example: const EMBEDDED_FIREBASE_CONFIG = { apiKey: "AIzaSy...", authDomain: "..." };
+        
+        const EMBEDDED_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
+  authDomain: "aegisdmtoolkit.firebaseapp.com",
+  projectId: "aegisdmtoolkit",
+  storageBucket: "aegisdmtoolkit.firebasestorage.app",
+  messagingSenderId: "654767294266",
+  appId: "1:654767294266:web:fbee20be7d458fb7d6f203",
+  measurementId: "G-S0Y2NKNG7R"
+}; 
+
+        // -------------------------------------
+
+        // --- CONFIGURATION LOGIC ---
+        // Priority: 
+        // 1. Embedded Config (Hardcoded by Developer/You)
+        // 2. Environment Variable (Hosted context)
+        // 3. Local Storage (User pasted in Settings)
+        
+        let firebaseConfig = EMBEDDED_FIREBASE_CONFIG;
+
+        if (!firebaseConfig) {
+            let configRaw = typeof __firebase_config !== 'undefined' ? __firebase_config : localStorage.getItem('aegis_firebase_config');
+            try {
+                if (configRaw) {
+                    firebaseConfig = typeof configRaw === 'string' ? JSON.parse(configRaw) : configRaw;
+                }
+            } catch (e) {
+                console.error("Error parsing Firebase Config:", e);
+            }
+        }
+
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
-            setLogLevel('debug'); 
-            const app = initializeApp(firebaseConfig);
-            window.db = getFirestore(app);
-            window.auth = getAuth(app);
-            
-            onAuthStateChanged(window.auth, async (user) => {
-                if (!user) {
-                    try {
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(window.auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(window.auth);
+            try {
+                const app = initializeApp(firebaseConfig);
+                window.db = getFirestore(app);
+                window.auth = getAuth(app);
+                
+                onAuthStateChanged(window.auth, async (user) => {
+                    if (!user) {
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(window.auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(window.auth);
+                            }
+                        } catch (error) {
+                            console.error("Firebase Auth Error:", error);
                         }
-                    } catch (error) {
-                        console.error("Firebase Auth Error:", error);
-                    }
-                } else {
-                    try {
-                        await user.getIdToken(true); 
-                        console.log("ID token refreshed.");
-                    } catch (tokenError) {
-                        console.error("Error refreshing ID token:", tokenError);
-                    }
+                    } else {
+                        try {
+                            await user.getIdToken(true); 
+                            console.log("ID token refreshed.");
+                        } catch (tokenError) {
+                            console.error("Error refreshing ID token:", tokenError);
+                        }
 
-                    window.userId = user.uid;
-                    window.isAuthReady = true;
-                    console.log("User authenticated:", window.userId);
-                    
-                    // --- AUTH READY: Initialize App ---
-                    // Check for saved session
-                    const savedId = localStorage.getItem('aegis_campaign_id');
-                    const savedName = localStorage.getItem('aegis_campaign_name');
-                    
-                    if (savedId && savedName) {
-                        window.currentCampaignId = savedId;
-                        window.currentCampaignName = savedName;
-                        updateAccountDisplay();
-                    }
+                        window.userId = user.uid;
+                        window.isAuthReady = true;
+                        console.log("User authenticated:", window.userId);
+                        
+                        // --- AUTH READY: Initialize App ---
+                        const savedId = localStorage.getItem('aegis_campaign_id');
+                        const savedName = localStorage.getItem('aegis_campaign_name');
+                        
+                        if (savedId && savedName) {
+                            window.currentCampaignId = savedId;
+                            window.currentCampaignName = savedName;
+                            updateAccountDisplay();
+                        }
 
-                    console.log("Auth ready, setting up listeners for:", window.currentCampaignName);
-                    refreshAllListeners();
-                }
-            });
+                        console.log("Auth ready, setting up listeners for:", window.currentCampaignName);
+                        refreshAllListeners();
+                        updateDbStatus(true);
+                    }
+                });
+            } catch (err) {
+                console.error("Error initializing Firebase:", err);
+                updateDbStatus(false);
+            }
         } else {
-            console.error("Firebase configuration not found.");
+            console.warn("Firebase configuration not found. App running in offline/local-only mode (Simulated).");
+            updateDbStatus(false);
+        }
+
+        function updateDbStatus(connected) {
+            const statusDot = document.getElementById('db-status-indicator');
+            if (statusDot) {
+                statusDot.classList.remove('bg-gray-500', 'bg-green-500', 'bg-red-500');
+                statusDot.classList.add(connected ? 'bg-green-500' : 'bg-red-500');
+                statusDot.title = connected ? "Database Connected" : "No Database Connection - Data will not sync";
+                
+                // Hide/Show warnings in modal
+                const warning = document.getElementById('login-warning');
+                if (warning) {
+                    if (connected) warning.classList.add('hidden');
+                    else warning.classList.remove('hidden');
+                }
+            }
         }
     </script>
     <style>
@@ -119,11 +179,14 @@
     <div class="max-w-4xl mx-auto">
         <!-- Header with Login and Settings -->
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-indigo-400">🛡️ Aegis DM Toolkit</h1>
+            <h1 class="text-3xl font-bold text-indigo-400 flex items-center gap-2">
+                🛡️ Aegis DM Toolkit
+                <div id="db-status-indicator" class="w-3 h-3 rounded-full bg-gray-500" title="Checking Database Status..."></div>
+            </h1>
             
             <div class="flex space-x-2">
                 <!-- Settings Button -->
-                <button onclick="openSettingsModal()" class="flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-600 p-2 rounded-lg transition duration-300" title="API Settings">
+                <button onclick="openSettingsModal()" class="flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-600 p-2 rounded-lg transition duration-300" title="API & Database Settings">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
                     </svg>
@@ -460,22 +523,31 @@
     
     <!-- SETTINGS MODAL -->
     <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="card w-full max-w-md p-6 rounded-lg shadow-2xl border border-gray-600">
+        <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl border border-gray-600 overflow-y-auto max-h-[90vh]">
             <h3 class="text-2xl font-bold text-indigo-300 mb-2">App Settings</h3>
-            <p class="text-sm text-gray-400 mb-4">
-                Configure your API Key to use the AI features on a public domain.
-            </p>
+            
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-green-400 mb-2 border-b border-gray-600 pb-1">1. AI Features (Required)</h4>
+                <label for="settings-api-key" class="block text-sm font-medium text-gray-300 mb-1">Google Gemini API Key</label>
+                <input type="password" id="settings-api-key" placeholder="Paste API Key here..." class="w-full p-3 rounded-lg input-style mb-2">
+                <p class="text-xs text-gray-500">
+                    Get a free key at <a href="https://aistudio.google.com/" target="_blank" class="text-indigo-400 hover:underline">aistudio.google.com</a>.
+                </p>
+            </div>
 
-            <label for="settings-api-key" class="block text-sm font-medium text-gray-300 mb-1">Google Gemini API Key</label>
-            <input type="password" id="settings-api-key" placeholder="Paste your key here..." class="w-full p-3 rounded-lg input-style mb-2">
-            <p class="text-xs text-gray-500 mb-6">
-                Your key is stored securely in your browser's local storage and is never shared with the backend or other users.
-                <a href="https://aistudio.google.com/" target="_blank" class="text-indigo-400 hover:underline">Get a key here</a>.
-            </p>
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-blue-400 mb-2 border-b border-gray-600 pb-1">2. Cross-Device Sync (Optional)</h4>
+                <p class="text-xs text-gray-400 mb-3">
+                    If the developer has embedded a database, this is managed automatically. 
+                    <br>Otherwise, paste your own Firebase Config JSON below to enable syncing.
+                </p>
+                <label for="settings-firebase-config" class="block text-sm font-medium text-gray-300 mb-1">Firebase Config (JSON)</label>
+                <textarea id="settings-firebase-config" rows="6" placeholder='{ "apiKey": "...", "authDomain": "...", "projectId": "..." }' class="w-full p-3 rounded-lg input-style font-mono text-xs"></textarea>
+            </div>
 
             <div class="flex justify-end space-x-3">
                 <button onclick="closeSettingsModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
-                <button onclick="saveSettings()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg shadow-green-500/50">Save Key</button>
+                <button onclick="saveSettings()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg shadow-green-500/50">Save & Reload</button>
             </div>
         </div>
     </div>
@@ -488,6 +560,10 @@
                 Enter a Campaign Name and Password to create or access your synced data. 
                 <br><span class="text-xs text-yellow-500">Use the exact same credentials on other devices to view this data.</span>
             </p>
+
+            <div id="login-warning" class="hidden mb-4 p-2 bg-red-900/50 border border-red-500 rounded text-xs text-red-200">
+                ⚠️ No database connected. Go to <b>Settings</b> and add your Firebase Config to enable sync.
+            </div>
 
             <label for="login-campaign" class="block text-sm font-medium text-gray-300 mb-1">Campaign Name (Username)</label>
             <input type="text" id="login-campaign" placeholder="e.g. DragonSlayers2024" class="w-full p-3 rounded-lg input-style mb-4">
@@ -624,11 +700,18 @@
 
         // --- SETTINGS / API KEY LOGIC ---
         
-        // Try to get key from local storage first, then fallback to env var
         let userApiKey = localStorage.getItem('aegis_gemini_api_key') || "";
+        let userFirebaseConfig = localStorage.getItem('aegis_firebase_config') || "";
 
         window.openSettingsModal = function() {
             document.getElementById('settings-api-key').value = userApiKey;
+            // Only show userFirebaseConfig if it's NOT embedded
+            if (!EMBEDDED_FIREBASE_CONFIG) {
+                document.getElementById('settings-firebase-config').value = userFirebaseConfig;
+            } else {
+                document.getElementById('settings-firebase-config').value = "Database configuration is embedded by the developer.";
+                document.getElementById('settings-firebase-config').disabled = true;
+            }
             document.getElementById('settings-modal').classList.remove('hidden');
         }
 
@@ -640,14 +723,38 @@
             const key = document.getElementById('settings-api-key').value.trim();
             userApiKey = key;
             localStorage.setItem('aegis_gemini_api_key', key);
+            
+            if (!EMBEDDED_FIREBASE_CONFIG) {
+                const fbConfig = document.getElementById('settings-firebase-config').value.trim();
+                // Basic validation for JSON
+                if (fbConfig) {
+                    try {
+                        JSON.parse(fbConfig); // Check if valid JSON
+                        localStorage.setItem('aegis_firebase_config', fbConfig);
+                    } catch (e) {
+                        alert("Invalid JSON in Firebase Configuration. Please check syntax.");
+                        return;
+                    }
+                } else {
+                    localStorage.removeItem('aegis_firebase_config');
+                }
+            }
+
             closeSettingsModal();
-            alert("API Key saved! You can now use the AI features.");
+            alert("Settings saved! The page will reload to apply changes.");
+            location.reload(); // Reload to re-init Firebase
         }
 
         // --- ACCOUNT / SYNC LOGIC ---
 
         window.openLoginModal = function() {
             document.getElementById('login-modal').classList.remove('hidden');
+            // Check if DB is connected
+            if (!window.db) {
+                document.getElementById('login-warning').classList.remove('hidden');
+            } else {
+                document.getElementById('login-warning').classList.add('hidden');
+            }
         }
 
         window.closeLoginModal = function() {
