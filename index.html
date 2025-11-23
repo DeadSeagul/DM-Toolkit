@@ -1,1 +1,2229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis DM Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, setLogLevel, addDoc, updateDoc, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Expose necessary Firestore functions globally
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.deleteDoc = deleteDoc;
+        window.collection = collection;
+        window.query = query;
+        window.onSnapshot = onSnapshot;
+        window.addDoc = addDoc;
+        window.getDoc = getDoc; 
+        window.updateDoc = updateDoc; 
+        window.orderBy = orderBy; 
+        window.writeBatch = writeBatch; 
+
+        // Global Firebase variables
+        window.db = null;
+        window.auth = null;
+        window.userId = null;
+        window.isAuthReady = false;
+
+        // Global State for Campaign/Account
+        window.currentCampaignId = 'default_session'; // Default ID
+        window.currentCampaignName = 'Guest Session'; // Display Name
+
+        // Unsubscribe functions for listeners (to allow switching accounts)
+        window.unsubs = {
+            notes: null,
+            combatants: null,
+            combatState: null,
+            statblocks: null
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
+            setLogLevel('debug'); 
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.auth = getAuth(app);
+            
+            onAuthStateChanged(window.auth, async (user) => {
+                if (!user) {
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(window.auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(window.auth);
+                        }
+                    } catch (error) {
+                        console.error("Firebase Auth Error:", error);
+                    }
+                } else {
+                    try {
+                        await user.getIdToken(true); 
+                        console.log("ID token refreshed.");
+                    } catch (tokenError) {
+                        console.error("Error refreshing ID token:", tokenError);
+                    }
+
+                    window.userId = user.uid;
+                    window.isAuthReady = true;
+                    console.log("User authenticated:", window.userId);
+                    
+                    // --- AUTH READY: Initialize App ---
+                    // Check for saved session
+                    const savedId = localStorage.getItem('aegis_campaign_id');
+                    const savedName = localStorage.getItem('aegis_campaign_name');
+                    
+                    if (savedId && savedName) {
+                        window.currentCampaignId = savedId;
+                        window.currentCampaignName = savedName;
+                        updateAccountDisplay();
+                    }
+
+                    console.log("Auth ready, setting up listeners for:", window.currentCampaignName);
+                    refreshAllListeners();
+                }
+            });
+        } else {
+            console.error("Firebase configuration not found.");
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .tab-button.active { border-bottom: 3px solid #6366f1; color: #c7d2fe; }
+        .sub-tab-button.active { border-bottom: 2px solid #34d399; color: #34d399; }
+        .card { background-color: #1e293b; border: 1px solid #334155; }
+        .input-style { background-color: #334155; border: 1px solid #475569; color: #f8fafc; }
+        .glow-shadow { box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); }
+        .scrollable-content { max-height: 60vh; overflow-y: auto; }
+        .scrollable-content::-webkit-scrollbar { width: 8px; }
+        .scrollable-content::-webkit-scrollbar-track { background: #1e293b; }
+        .scrollable-content::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 20px; border: 2px solid #1e293b; }
+        .loading-spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #334155; border-radius: 8px; }
+        .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 10px; }
+        .collapsible-content.expanded { max-height: 1000px; padding: 10px; }
+        .arrow-icon { transition: transform 0.3s ease; }
+        .expanded .arrow-icon { transform: rotate(90deg); }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header with Login -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-indigo-400">🛡️ Aegis DM Toolkit</h1>
+            
+            <button onclick="openLoginModal()" class="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 px-4 py-2 rounded-lg transition duration-300">
+                <div class="w-3 h-3 rounded-full bg-green-500" id="auth-status-dot"></div>
+                <span id="account-name-display" class="text-sm font-semibold text-gray-300">Guest Session</span>
+            </button>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-600 mb-6">
+            <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active" onclick="switchTab('improv')">
+                🔮 Prep & Improv
+            </button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('combat')">
+                ⚔️ Combat Tracker
+            </button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('statblocks')">
+                👹 Statblocks
+            </button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('monsters')">
+                🐲 Monsters
+            </button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300" onclick="switchTab('notes')">
+                📜 Rulings & Notes
+            </button>
+        </div>
+
+        <!-- Content Area -->
+        <div id="content-area">
+            <!-- 1. Prep & Improv Engine (Gemini API) -->
+            <div id="improv" class="tab-content">
+
+                <!-- Structured Combat NPC Generator -->
+                <div class="card p-4 rounded-lg shadow-xl mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-green-300">Structured Combat NPC Stats</h2>
+                    <p class="text-sm text-gray-400 mb-4">Generate immediate, initiative-ready stats based on a target level/CR.</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="npc-level" class="block text-xs font-medium text-gray-400 mb-1">Level or CR (e.g., 5 or 1/2)</label>
+                            <input type="text" id="npc-level" value="3" placeholder="Level/CR"
+                                class="w-full p-2 rounded-lg input-style transition text-sm">
+                        </div>
+                        <div>
+                            <label for="npc-type" class="block text-xs font-medium text-gray-400 mb-1">NPC Type (e.g., Goblin Shaman)</label>
+                            <input type="text" id="npc-type" value="Shadow Rogue" placeholder="Type or Vibe"
+                                class="w-full p-2 rounded-lg input-style transition text-sm">
+                        </div>
+                    </div>
+
+                    <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
+                        <span id="generate-combat-text">Generate Combat Stats</span>
+                        <div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+                    </button>
+                    <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
+                </div>
+
+
+                <!-- Free-Form Creative Generator (Original) -->
+                <div class="card p-4 rounded-lg shadow-xl mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore & Backstory</h2>
+                    <p class="text-sm text-gray-400 mb-4">Need an NPC's backstory, a quick location, or lore?</p>
+                    <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g., A grumpy female blacksmith who secretly loves high fantasy romance novels and has a quest for a rare flower."></textarea>
+                    <button onclick="generateCreativeIdea()" id="generate-button" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
+                        <span id="generate-text">Generate Idea</span>
+                        <div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+                    </button>
+                </div>
+
+                <!-- NEW: Settlement Generator -->
+                <div class="card p-4 rounded-lg shadow-xl mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
+                    <p class="text-sm text-gray-400 mb-4">Quickly generate a city, town, or village with key locations, NPCs, and quest hooks.</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="settlement-type" class="block text-xs font-medium text-gray-400 mb-1">Settlement Type</label>
+                            <select id="settlement-type" class="w-full p-2 rounded-lg input-style transition text-sm">
+                                <option value="Village" selected>Village</option>
+                                <option value="Town">Town</option>
+                                <option value="City">City</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="settlement-vibe" class="block text-xs font-medium text-gray-400 mb-1">Vibe/Description</label>
+                            <input type="text" id="settlement-vibe" value="haunted fishing village" placeholder="e.g., 'desert trade post'"
+                                class="w-full p-2 rounded-lg input-style transition text-sm">
+                        </div>
+                    </div>
+
+                    <button onclick="generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
+                        <span id="generate-settlement-text">Generate Settlement</span>
+                        <div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+                    </button>
+                </div>
+
+
+                <div class="card p-4 rounded-lg shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Generated Idea</h2>
+                    
+                    <!-- NEW: Image Output Area -->
+                    <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden shadow-lg">
+                        <img id="generated-image" src="" alt="Generated Settlement Image" class="w-full h-auto object-cover bg-gray-700/30 min-h-[150px]">
+                        <p id="image-loading-status" class="text-center text-gray-400 p-3 bg-gray-800"></p>
+                    </div>
+
+                    <!-- Single output div for both modes -->
+                    <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
+                        Results will appear here.
+                    </div>
+                    <!-- Status message for saving generated NPC combat stats -->
+                    <p id="npc-save-status" class="mt-2 text-sm text-center hidden"></p>
+                    
+                    <!-- NEW: Save Options for Creative Content -->
+                    <div id="save-options-creative" class="mt-4 hidden">
+                        <p class="text-sm text-center text-gray-400 mb-2">Save generated content to the Rulings & Notes tab:</p>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="saveGeneratedContent('prepNotes')" class="save-notes-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Notes</button>
+                            <button onclick="saveGeneratedContent('enemyNotes')" class="save-notes-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Enemies</button>
+                            <button onclick="saveGeneratedContent('npcNotes')" class="save-notes-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to NPCs</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Combat Tracker -->
+            <div id="combat" class="tab-content hidden">
+                <div class="card p-4 rounded-lg shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Initiative & Monster Tracker</h2>
+                    <p class="text-sm text-gray-400 mb-4">Keeps combat flowing smoothly and **now saves your data!**</p>
+
+                    <!-- Responsive Input Group -->
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <input id="combatant-name" type="text" placeholder="Name" class="flex-1 min-w-[100px] p-2 rounded-lg input-style" />
+                        <!-- Initiative can be a fixed score or a modifier -->
+                        <input id="combatant-init" type="number" placeholder="Init Score/Mod" class="w-24 p-2 rounded-lg input-style text-center text-sm" />
+                        <!-- AC Input -->
+                        <input id="combatant-ac" type="number" placeholder="AC" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
+                        <input id="combatant-hp" type="number" placeholder="HP" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
+                        <button onclick="addCombatant()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-lg transition duration-300 text-sm">Add</button>
+                    </div>
+
+                    <!-- Dice Roller Section -->
+                    <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50">
+                        <h3 class="text-md font-semibold mb-2 text-indigo-400">Initiative Dice Roller (D20)</h3>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="rollD20()" id="d20-roll-button" class="w-1/3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition duration-300 text-sm flex items-center justify-center">
+                                Roll D20
+                            </button>
+                            <div id="last-roll-display" class="w-1/3 text-4xl font-extrabold text-center text-yellow-400 border-2 border-yellow-400 p-2 rounded-lg bg-gray-900/50 select-none">
+                                ?
+                            </div>
+                            <select id="combatant-selector" class="w-1/3 p-2 rounded-lg input-style text-sm">
+                                <option value="" disabled selected>Select Target</option>
+                            </select>
+                        </div>
+                        <button onclick="assignInitiativeRoll()" id="assign-roll-button" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition duration-300 text-sm disabled:opacity-50" disabled>
+                            Assign Roll to Selected + Stored Modifier
+                        </button>
+                        <p class="text-xs text-gray-400 mt-2 text-center">
+                            *The combatant's **stored** Initiative Modifier is automatically used for the final score calculation.
+                        </p>
+                    </div>
+
+
+                    <div class="flex justify-between items-center mb-4">
+                        <button onclick="sortInitiative()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-sm">Sort Initiative</button>
+                        <button onclick="nextTurn()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-sm">Next Turn &raquo;</button>
+                        <button onclick="clearCombat()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-sm">Clear All</button>
+                    </div>
+                    
+                    <div id="initiative-list" class="scrollable-content space-y-2">
+                        <!-- Combatant list will be dynamically inserted here -->
+                        <p class="text-center text-gray-500 pt-8">Add your players and monsters to start tracking combat!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Statblocks Tab -->
+            <div id="statblocks" class="tab-content hidden">
+                <div class="card p-4 rounded-lg shadow-xl mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Save NPC & Monster Statblocks</h2>
+                    <p class="text-sm text-gray-400 mb-4">Define common enemies and allies for quick reference and future combat imports.</p>
+                    
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <input id="stat-name" type="text" placeholder="Name (e.g., Orc Grunt)" class="col-span-2 p-2 rounded-lg input-style" />
+                        <input id="stat-hp" type="number" placeholder="HP (e.g., 15)" class="p-2 rounded-lg input-style text-center text-sm" />
+                        <input id="stat-ac" type="number" placeholder="AC (e.g., 13)" class="p-2 rounded-lg input-style text-center text-sm" />
+                        <input id="stat-tohit" type="number" placeholder="To Hit Mod (e.g., +4)" class="p-2 rounded-lg input-style text-center text-sm" />
+                        <input id="stat-init-mod" type="number" placeholder="Init Mod (e.g., +1)" class="p-2 rounded-lg input-style text-center text-sm" />
+                        <input id="stat-dmg" type="text" placeholder="Attack DMG (e.g., 1d8+2)" class="col-span-2 p-2 rounded-lg input-style" />
+                    </div>
+
+                    <button onclick="saveStatblock()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">
+                        Save Statblock
+                    </button>
+                    <p id="statblock-status" class="mt-2 text-sm text-center text-gray-400"></p>
+                </div>
+
+                <!-- NEW DICE ROLLER CARD -->
+                <div class="card p-4 rounded-lg shadow-xl mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-teal-300">Quick Dice Roller</h2>
+                    <div class="flex flex-wrap items-center gap-2 mb-4">
+                        <input id="dice-num" type="number" value="1" min="1" class="w-16 p-2 rounded-lg input-style text-center text-sm" aria-label="Number of Dice" />
+                        <span class="text-lg font-semibold text-gray-400">d</span>
+                        <select id="dice-type" class="p-2 rounded-lg input-style text-sm" aria-label="Dice Type">
+                            <option value="4">4</option>
+                            <option value="6">6</option>
+                            <option value="8">8</option>
+                            <option value="10">10</option>
+                            <option value="12">12</option>
+                            <option value="20" selected>20</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span class="text-lg font-semibold text-gray-400">+</span>
+                        <input id="dice-mod" type="number" value="0" class="w-16 p-2 rounded-lg input-style text-center text-sm" aria-label="Modifier" />
+                    </div>
+                    <button onclick="rollCustomDice()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg transition duration-300">
+                        Roll Dice
+                    </button>
+                    <div id="dice-roll-result" class="mt-4 text-center text-xl font-bold text-yellow-300 bg-gray-700/50 p-3 rounded-lg min-h-[50px] flex items-center justify-center">
+                        Result will appear here
+                    </div>
+                    <p id="dice-roll-details" class="mt-2 text-center text-sm text-gray-400"></p>
+                </div>
+                <!-- END NEW DICE ROLLER CARD -->
+
+                <div class="card p-4 rounded-lg shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Saved Statblocks</h2>
+                    <div id="statblocks-list" class="scrollable-content space-y-2">
+                         <p class="text-center text-gray-500 pt-8">Your saved NPCs and monsters will appear here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. NEW Monsters Tab -->
+            <div id="monsters" class="tab-content hidden">
+                <div class="card p-4 rounded-lg shadow-xl mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-green-300">Full Monster Stat Block Generator</h2>
+                    <p class="text-sm text-gray-400 mb-4">Generate a complete D&D 5e-style monster stat block using AI.</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="monster-name" class="block text-xs font-medium text-gray-400 mb-1">Monster Name (e.g., "Goblin Boss")</label>
+                            <input type="text" id="monster-name" value="Cave Troll" placeholder="Monster Name"
+                                class="w-full p-2 rounded-lg input-style transition text-sm">
+                        </div>
+                        <div>
+                            <label for="monster-cr" class="block text-xs font-medium text-gray-400 mb-1">Challenge Rating (e.g., "5" or "1/4")</label>
+                            <input type="text" id="monster-cr" value="4" placeholder="CR"
+                                class="w-full p-2 rounded-lg input-style transition text-sm">
+                        </div>
+                    </div>
+
+                    <button onclick="generateMonsterStatblock()" id="generate-monster-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
+                        <span id="generate-monster-text">Generate Monster</span>
+                        <div id="monster-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+                    </button>
+                    <p id="monster-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
+                </div>
+
+                <div class="card p-4 rounded-lg shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Generated Stat Block</h2>
+                    <!-- Output div for the monster stat block -->
+                    <div id="monster-output" class="min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
+                        Monster stat block will appear here.
+                    </div>
+                    <!-- Status message for saving -->
+                    <p id="monster-save-status" class="mt-2 text-sm text-center hidden"></p>
+                    
+                    <!-- Save Options for Monster -->
+                    <div id="save-options-monster" class="mt-4 hidden">
+                        <p class="text-sm text-center text-gray-400 mb-2">Save generated monster:</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="addMonsterToStatblocks()" class="save-monster-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Statblocks (Combat)</button>
+                            <button onclick="saveMonsterToNotes()" class="save-monster-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Enemy Notes (Full)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Rulings & Notes (was 4) -->
+            <div id="notes" class="tab-content hidden">
+                <div class="card p-4 rounded-lg shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Collapsible & Editable Prep Notes</h2>
+                    <p class="text-sm text-gray-400 mb-4">Your generated content and custom notes are now saved as a **collapsible list** for better organization.</p>
+                    
+                    <!-- Sub-Tab Navigation -->
+                    <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4">
+                        <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="switchSubTab('prepNotes')">
+                            📜 General Notes
+                        </button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="enemyNotes" onclick="switchSubTab('enemyNotes')">
+                            💀 Enemies
+                        </button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="switchSubTab('npcNotes')">
+                            👥 NPCs
+                        </button>
+                    </div>
+
+                    <!-- Sub-Tab Content: Notes List -->
+                    <div id="prepNotes-sub-content" class="sub-tab-content">
+                        <div id="prepNotes-list" class="scrollable-content space-y-3">
+                            <!-- Notes will be rendered here -->
+                        </div>
+                    </div>
+                    <!-- Sub-Tab Content: Enemies List -->
+                    <div id="enemyNotes-sub-content" class="sub-tab-content hidden">
+                        <div id="enemyNotes-list" class="scrollable-content space-y-3">
+                            <!-- Enemy notes will be rendered here -->
+                        </div>
+                    </div>
+                    <!-- Sub-Tab Content: NPCs List -->
+                    <div id="npcNotes-sub-content" class="sub-tab-content hidden">
+                        <div id="npcNotes-list" class="scrollable-content space-y-3">
+                            <!-- NPC notes will be rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Button to add a new manual note -->
+                    <button onclick="addNewNote(currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">
+                        + Add Manual Note
+                    </button>
+                    <p id="notes-status" class="mt-2 text-sm text-center text-gray-400"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LOGIN MODAL -->
+    <div id="login-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card w-full max-w-md p-6 rounded-lg shadow-2xl border border-indigo-500">
+            <h3 class="text-2xl font-bold text-indigo-300 mb-2">Campaign Sync Login</h3>
+            <p class="text-sm text-gray-400 mb-4">
+                Enter a Campaign Name and Password to create or access your synced data. 
+                <br><span class="text-xs text-yellow-500">Use the exact same credentials on other devices to view this data.</span>
+            </p>
+
+            <label for="login-campaign" class="block text-sm font-medium text-gray-300 mb-1">Campaign Name (Username)</label>
+            <input type="text" id="login-campaign" placeholder="e.g. DragonSlayers2024" class="w-full p-3 rounded-lg input-style mb-4">
+
+            <label for="login-password" class="block text-sm font-medium text-gray-300 mb-1">Password (Access Key)</label>
+            <input type="password" id="login-password" placeholder="Secret Key" class="w-full p-3 rounded-lg input-style mb-6">
+
+            <div class="flex justify-between items-center">
+                <button onclick="performSignOut()" class="text-red-400 hover:text-red-300 text-sm font-semibold px-2">Sign Out / Reset</button>
+                <div class="flex space-x-3">
+                    <button onclick="closeLoginModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
+                    <button onclick="performSignIn()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-lg shadow-indigo-500/50">Sync / Login</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes Editing MODAL -->
+    <div id="edit-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
+        <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
+            <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Note</h3>
+            <input type="hidden" id="modal-note-id">
+            <input type="hidden" id="modal-tab-name">
+
+            <label for="modal-title" class="block text-sm font-medium text-gray-400 mb-1">Title</label>
+            <input type="text" id="modal-title" class="w-full p-3 rounded-lg input-style mb-4">
+
+            <label for="modal-content" class="block text-sm font-medium text-gray-400 mb-1">Content</label>
+            <textarea id="modal-content" rows="6" class="w-full p-3 rounded-lg input-style mb-6 resize-none"></textarea>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
+                <button onclick="saveEditedNote()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statblock Editing MODAL -->
+    <div id="edit-statblock-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
+        <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
+            <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Statblock</h3>
+            <input type="hidden" id="modal-statblock-id">
+
+            <label for="modal-stat-name" class="block text-sm font-medium text-gray-400 mb-1">Name</label>
+            <input type="text" id="modal-stat-name" placeholder="Name" class="w-full p-3 rounded-lg input-style mb-4">
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="modal-stat-hp" class="block text-sm font-medium text-gray-400 mb-1">HP</label>
+                    <input type="number" id="modal-stat-hp" placeholder="HP" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4">
+                </div>
+                <div>
+                    <label for="modal-stat-ac" class="block text-sm font-medium text-gray-400 mb-1">AC</label>
+                    <input type="number" id="modal-stat-ac" placeholder="AC" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4">
+                </div>
+                <div>
+                    <label for="modal-stat-tohit" class="block text-sm font-medium text-gray-400 mb-1">To Hit Mod</label>
+                    <input type="number" id="modal-stat-tohit" placeholder="To Hit Mod" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4">
+                </div>
+                <div>
+                    <label for="modal-stat-init-mod" class="block text-sm font-medium text-gray-400 mb-1">Init Mod</label>
+                    <input type="number" id="modal-stat-init-mod" placeholder="Init Mod" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4">
+                </div>
+            </div>
+
+            <label for="modal-stat-dmg" class="block text-sm font-medium text-gray-400 mb-1">Attack DMG (e.g., 1d8+2)</label>
+            <input type="text" id="modal-stat-dmg" placeholder="Attack DMG" class="w-full p-3 rounded-lg input-style mb-6">
+
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeStatblockEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
+                <button onclick="saveEditedStatblock()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // --- Core Application Logic ---
+
+        let currentTab = 'improv'; 
+        let currentSubTab = 'prepNotes';
+        let savedStatblocks = []; 
+        let lastGeneratedNpc = null;
+        let lastGeneratedMonster = null; 
+        let structuredNotes = {
+            prepNotes: [],
+            enemyNotes: [],
+            npcNotes: []
+        };
+
+        // --- Firebase Reference Generators (Dynamic based on Account/Campaign) ---
+        
+        function getFirestoreKey(tabName) {
+            return `structured${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`;
+        }
+
+        // Helper to generate a secure-ish hash for the path so people can't easily guess simple names
+        async function generateCollectionHash(name, password) {
+            if (!name || !password) return 'default_session';
+            const msgBuffer = new TextEncoder().encode(name.trim() + ":" + password.trim());
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+        }
+
+        function getUserDocRef() {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const suffix = window.currentCampaignId;
+            // Path: artifacts/{appId}/public/data/dm_toolkit_{campaignHash}_notes
+            // We partition data by changing the collection name based on the campaign hash
+            return window.doc(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${suffix}_notes`, 'notes_doc');
+        }
+        
+        // Unused now, but kept for reference consistency
+        function getCombatDocRef() { return null; }
+
+        function getCombatantsCollectionRef() {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const suffix = window.currentCampaignId;
+            return window.collection(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${suffix}_combatants`);
+        }
+        
+        function getCombatStateDocRef() {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const suffix = window.currentCampaignId;
+            return window.doc(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${suffix}_combat_state`, 'state_doc');
+        }
+
+        function getStatblocksCollectionRef() {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const suffix = window.currentCampaignId;
+            return window.collection(window.db, 'artifacts', appId, 'public', 'data', `dm_toolkit_${suffix}_statblocks`);
+        }
+
+        // --- ACCOUNT / SYNC LOGIC ---
+
+        window.openLoginModal = function() {
+            document.getElementById('login-modal').classList.remove('hidden');
+        }
+
+        window.closeLoginModal = function() {
+            document.getElementById('login-modal').classList.add('hidden');
+        }
+
+        window.performSignOut = function() {
+            // Reset to default
+            window.currentCampaignId = 'default_session';
+            window.currentCampaignName = 'Guest Session';
+            
+            // Clear persistence
+            localStorage.removeItem('aegis_campaign_id');
+            localStorage.removeItem('aegis_campaign_name');
+
+            // Update UI
+            updateAccountDisplay();
+            closeLoginModal();
+            
+            // Refresh data
+            refreshAllListeners();
+        }
+
+        window.performSignIn = async function() {
+            const name = document.getElementById('login-campaign').value;
+            const pass = document.getElementById('login-password').value;
+
+            if (!name || !pass) {
+                alert("Please enter both a Campaign Name and a Password.");
+                return;
+            }
+
+            // Generate the unique ID based on credentials
+            const hash = await generateCollectionHash(name, pass);
+            
+            window.currentCampaignId = hash;
+            window.currentCampaignName = name;
+
+            // Save for auto-login
+            localStorage.setItem('aegis_campaign_id', hash);
+            localStorage.setItem('aegis_campaign_name', name);
+
+            // Update UI
+            updateAccountDisplay();
+            closeLoginModal();
+
+            // Refresh Data
+            refreshAllListeners();
+        }
+
+        function updateAccountDisplay() {
+            document.getElementById('account-name-display').textContent = window.currentCampaignName;
+            const dot = document.getElementById('auth-status-dot');
+            if (window.currentCampaignName === 'Guest Session') {
+                dot.classList.remove('bg-indigo-500');
+                dot.classList.add('bg-green-500'); // Guest is green
+            } else {
+                dot.classList.remove('bg-green-500');
+                dot.classList.add('bg-indigo-500'); // Logged in is Indigo
+            }
+        }
+
+        function refreshAllListeners() {
+            // Unsubscribe previous listeners if they exist
+            if (window.unsubs.notes) { window.unsubs.notes(); window.unsubs.notes = null; }
+            if (window.unsubs.combatants) { window.unsubs.combatants(); window.unsubs.combatants = null; }
+            if (window.unsubs.combatState) { window.unsubs.combatState(); window.unsubs.combatState = null; }
+            if (window.unsubs.statblocks) { window.unsubs.statblocks(); window.unsubs.statblocks = null; }
+
+            // Clear local data arrays to prevent ghosting
+            combatants = [];
+            savedStatblocks = [];
+            structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [] };
+            renderCombatants();
+            renderStatblocks();
+            renderStructuredNotes('prepNotes');
+            renderStructuredNotes('enemyNotes');
+            renderStructuredNotes('npcNotes');
+
+            // Setup new listeners pointing to new paths
+            setupNotesListener();
+            setupCombatDataListeners();
+            setupStatblocksListener();
+        }
+
+
+        // --- Data Functions ---
+
+        async function saveStructuredNotes(tabName, notesArray) {
+            if (!window.isAuthReady || !window.db) {
+                document.getElementById('notes-status').textContent = 'Database not ready. Please wait for authentication.';
+                return;
+            }
+
+            const statusElement = document.getElementById('notes-status');
+            statusElement.textContent = `Saving ${tabName}...`;
+            
+            const firestoreKey = getFirestoreKey(tabName);
+            const dataToSave = {};
+            dataToSave[firestoreKey] = notesArray;
+            dataToSave.lastSaved = new Date().toISOString();
+
+            try {
+                await window.setDoc(getUserDocRef(), dataToSave, { merge: true });
+                statusElement.textContent = `${tabName} saved successfully!`;
+            } catch (error) {
+                console.error("Error saving structured notes: ", error);
+                statusElement.textContent = 'Error saving notes. Check console for details.';
+            }
+        }
+        
+        function setupNotesListener() {
+            if (!window.isAuthReady || !window.db) return;
+
+            window.unsubs.notes = window.onSnapshot(getUserDocRef(), (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    
+                    structuredNotes.prepNotes = data[getFirestoreKey('prepNotes')] || [];
+                    structuredNotes.enemyNotes = data[getFirestoreKey('enemyNotes')] || [];
+                    structuredNotes.npcNotes = data[getFirestoreKey('npcNotes')] || [];
+
+                    if (currentTab === 'notes') {
+                        renderStructuredNotes('prepNotes');
+                        renderStructuredNotes('enemyNotes');
+                        renderStructuredNotes('npcNotes');
+                    }
+                } else {
+                    console.log("Notes document does not exist yet for this campaign.");
+                }
+            }, (error) => {
+                console.error("Error setting up notes listener: ", error);
+            });
+        } 
+        
+        function renderStructuredNotes(tabName) {
+            const notesArray = structuredNotes[tabName];
+            const listContainer = document.getElementById(`${tabName}-list`);
+            
+            if (!listContainer) return;
+
+            listContainer.innerHTML = ''; 
+
+            if (!notesArray || notesArray.length === 0) {
+                listContainer.innerHTML = `<p class="text-center text-gray-500 pt-8">No notes in this category yet.</p>`;
+                return;
+            }
+
+            notesArray.forEach(note => {
+                const noteElement = document.createElement('div');
+                noteElement.className = 'note-item card p-0 rounded-lg shadow-md';
+                noteElement.id = `note-${note.id}`;
+
+                const header = document.createElement('div');
+                header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150';
+                header.onclick = () => toggleCollapse(note.id);
+                header.innerHTML = `
+                    <span class="font-semibold text-lg text-indigo-300 truncate">${note.title}</span>
+                    <svg class="arrow-icon w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                `;
+
+                const content = document.createElement('div');
+                content.className = 'collapsible-content';
+                content.id = `content-${note.id}`;
+                
+                const isHtml = /<[a-z][\s\S]*>/i.test(note.content);
+                
+                if (isHtml) {
+                    content.innerHTML = `
+                        <div class="p-2">
+                            ${note.content}
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-2 pb-1">
+                            <button onclick="editNote('${note.id}', '${tabName}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Edit</button>
+                            <button onclick="deleteNote('${note.id}', '${tabName}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Delete</button>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = `
+                        <div class="whitespace-pre-wrap text-sm text-gray-300 p-2 border-l-4 border-indigo-400 bg-gray-700/50">
+                            ${note.content}
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-2 pb-1">
+                            <button onclick="editNote('${note.id}', '${tabName}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Edit</button>
+                            <button onclick="deleteNote('${note.id}', '${tabName}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Delete</button>
+                        </div>
+                    `;
+                }
+                
+                noteElement.appendChild(header);
+                noteElement.appendChild(content);
+                listContainer.appendChild(noteElement);
+            });
+        }
+        
+        window.toggleCollapse = function(noteId) {
+            const content = document.getElementById(`content-${noteId}`);
+            if (!content) return;
+            const isExpanded = content.classList.contains('expanded');
+
+            if (isExpanded) {
+                content.classList.remove('expanded');
+                content.style.maxHeight = null;
+            } else {
+                content.classList.add('expanded');
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        }
+        
+        window.addNewNote = function(tabName) {
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: 'New Manual Note (Click Edit to change)',
+                content: 'Start typing your detailed note content here.',
+                timestamp: new Date().toISOString()
+            };
+            structuredNotes[tabName].unshift(newNote); 
+            saveStructuredNotes(tabName, structuredNotes[tabName]);
+        }
+        
+        window.deleteNote = function(noteId, tabName) {
+            const newArray = structuredNotes[tabName].filter(note => note.id !== noteId);
+            structuredNotes[tabName] = newArray;
+            saveStructuredNotes(tabName, newArray);
+        }
+
+        // --- NOTES MODAL EDITING LOGIC ---
+        
+        window.editNote = function(noteId, tabName) {
+            const note = structuredNotes[tabName].find(n => n.id === noteId);
+            if (!note) {
+                document.getElementById('notes-status').textContent = 'Error: Note not found.';
+                return;
+            }
+            document.getElementById('modal-note-id').value = note.id;
+            document.getElementById('modal-tab-name').value = tabName;
+            document.getElementById('modal-title').value = note.title;
+            document.getElementById('modal-content').value = note.content;
+            document.getElementById('edit-modal').classList.remove('hidden');
+            document.getElementById('notes-status').textContent = ''; 
+        }
+        
+        window.closeEditModal = function() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            document.getElementById('notes-status').textContent = 'Edit cancelled.'; 
+        }
+
+        window.saveEditedNote = function() {
+            const statusElement = document.getElementById('notes-status');
+            const noteId = document.getElementById('modal-note-id').value;
+            const tabName = document.getElementById('modal-tab-name').value;
+            const newTitle = document.getElementById('modal-title').value.trim();
+            const newContent = document.getElementById('modal-content').value.trim();
+
+            const noteIndex = structuredNotes[tabName].findIndex(note => note.id === noteId);
+            if (noteIndex === -1) {
+                statusElement.textContent = 'Error: Note not found during save.';
+                document.getElementById('edit-modal').classList.add('hidden'); 
+                return;
+            }
+
+            const oldNote = structuredNotes[tabName][noteIndex];
+            const finalTitle = newTitle || 'Untitled Note';
+            const finalContent = newContent;
+
+            if (finalTitle !== oldNote.title || finalContent !== oldNote.content) {
+                structuredNotes[tabName][noteIndex].title = finalTitle;
+                structuredNotes[tabName][noteIndex].content = finalContent;
+                
+                saveStructuredNotes(tabName, structuredNotes[tabName]);
+                statusElement.textContent = `Note "${finalTitle}" updated and saved!`;
+
+                const contentDiv = document.getElementById(`content-${noteId}`);
+                if(contentDiv && contentDiv.classList.contains('expanded')) {
+                     contentDiv.classList.remove('expanded');
+                     contentDiv.style.maxHeight = null;
+                }
+            } else {
+                statusElement.textContent = 'No changes detected. Note was not saved.';
+            }
+            document.getElementById('edit-modal').classList.add('hidden'); 
+        }
+        
+        // --- Combat Data Persistence (Initiative Tracker) ---
+        let combatants = [];
+        let currentTurnIndex = -1;
+        let lastRoll = 0;
+
+        async function saveCombatStateToFirestore() {
+            if (!window.isAuthReady || !window.db) return;
+            try {
+                await window.setDoc(getCombatStateDocRef(), {
+                    currentTurnIndex: currentTurnIndex
+                });
+            } catch (error) {
+                console.error("Error saving combat state:", error);
+            }
+        }
+
+        function setupCombatDataListeners() {
+            if (!window.isAuthReady || !window.db) return;
+
+            const combatantsQuery = window.query(getCombatantsCollectionRef());
+            
+            window.unsubs.combatants = window.onSnapshot(combatantsQuery, (snapshot) => {
+                const loadedCombatants = [];
+                snapshot.forEach(doc => {
+                    loadedCombatants.push({ id: doc.id, ...doc.data() });
+                });
+                
+                loadedCombatants.sort((a, b) => (b.init || 0) - (a.init || 0)); 
+
+                combatants = loadedCombatants;
+                renderCombatants();
+                console.log("Combatants refreshed.");
+            }, (error) => {
+                console.error("Error setting up combatants listener: ", error);
+            });
+
+            window.unsubs.combatState = window.onSnapshot(getCombatStateDocRef(), (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    currentTurnIndex = data.currentTurnIndex !== undefined ? data.currentTurnIndex : -1;
+                } else {
+                    currentTurnIndex = -1;
+                }
+                renderCombatants();
+            }, (error) => {
+                console.error("Error setting up combat state listener: ", error);
+            });
+        }
+        
+        // --- Statblock Logic ---
+        
+        async function saveStatblock() {
+            if (!window.isAuthReady || !window.db) {
+                document.getElementById('statblock-status').textContent = 'Database not ready. Please wait for authentication.';
+                return;
+            }
+            
+            const name = document.getElementById('stat-name').value.trim();
+            const hp = parseInt(document.getElementById('stat-hp').value, 10) || 0;
+            const ac = parseInt(document.getElementById('stat-ac').value, 10) || 0;
+            const toHit = parseInt(document.getElementById('stat-tohit').value, 10) || 0;
+            const initMod = parseInt(document.getElementById('stat-init-mod').value, 10) || 0;
+            const dmg = document.getElementById('stat-dmg').value.trim();
+            const statusElement = document.getElementById('statblock-status');
+
+            if (!name || hp <= 0 || ac <= 0 || !dmg) {
+                 statusElement.textContent = 'Name, HP, AC, and Damage are required.';
+                 return;
+            }
+            
+            statusElement.textContent = 'Saving...';
+
+            try {
+                await window.addDoc(getStatblocksCollectionRef(), {
+                    name, hp, ac, toHit, initMod, dmg,
+                    timestamp: new Date().toISOString()
+                });
+                statusElement.textContent = `${name} saved successfully!`;
+                document.getElementById('stat-name').value = '';
+                document.getElementById('stat-hp').value = '';
+                document.getElementById('stat-ac').value = '';
+                document.getElementById('stat-tohit').value = '';
+                document.getElementById('stat-init-mod').value = '';
+                document.getElementById('stat-dmg').value = '';
+
+            } catch (error) {
+                console.error("Error saving statblock: ", error);
+                statusElement.textContent = `Error saving statblock. See console for details. (Error: ${error.message})`;
+            }
+        }
+        
+        window.addNpcToStatblocks = async function () {
+            const statusElement = document.getElementById('npc-save-status');
+
+            if (!window.isAuthReady || !window.db) {
+                statusElement.textContent = 'Database not ready. Please wait for authentication.';
+                statusElement.classList.remove('hidden');
+                return;
+            }
+            if (!lastGeneratedNpc) {
+                statusElement.textContent = 'No NPC data to save.';
+                statusElement.classList.remove('hidden');
+                return;
+            }
+
+            const npc = lastGeneratedNpc;
+            
+            let toHit = 0;
+            const match = npc.main_attack.match(/(\+|\-)\d+/);
+            if (match) {
+                toHit = parseInt(match[0], 10);
+            } else {
+                toHit = npc.initiative_bonus || 0;
+            }
+
+            const dmg = npc.main_attack; 
+
+            statusElement.textContent = `Saving ${npc.name} to Statblocks...`;
+            statusElement.classList.remove('hidden');
+            statusElement.classList.remove('text-red-400', 'text-green-400');
+            statusElement.classList.add('text-yellow-400');
+
+            try {
+                await window.addDoc(getStatblocksCollectionRef(), {
+                    name: npc.name,
+                    hp: npc.max_hit_points,
+                    ac: npc.armor_class_ac,
+                    toHit: toHit,
+                    initMod: npc.initiative_bonus,
+                    dmg: dmg,
+                    timestamp: new Date().toISOString()
+                });
+                
+                statusElement.textContent = `${npc.name} added to Statblocks! (To Hit: ${toHit >= 0 ? '+' : ''}${toHit})`;
+                statusElement.classList.remove('text-yellow-400');
+                statusElement.classList.add('text-green-400');
+
+            } catch (error) {
+                console.error("Error saving generated statblock: ", error);
+                statusElement.textContent = `Error saving statblock: ${error.message}`;
+                statusElement.classList.remove('text-yellow-400');
+                statusElement.classList.add('text-red-400');
+            }
+        }
+
+        function setupStatblocksListener() {
+            if (!window.isAuthReady || !window.db) return;
+
+            window.unsubs.statblocks = window.onSnapshot(window.query(getStatblocksCollectionRef()), (snapshot) => {
+                savedStatblocks = [];
+                snapshot.forEach(doc => {
+                    savedStatblocks.push({ id: doc.id, ...doc.data() });
+                });
+                savedStatblocks.sort((a, b) => a.name.localeCompare(b.name));
+                renderStatblocks();
+            }, (error) => {
+                console.error("Error setting up statblocks listener: ", error);
+            });
+        }
+
+        function renderStatblocks() {
+            const list = document.getElementById('statblocks-list');
+            list.innerHTML = '';
+
+            if (savedStatblocks.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 pt-8">Your saved NPCs and monsters will appear here.</p>';
+                return;
+            }
+
+            savedStatblocks.forEach(stat => {
+                const hp = stat.hp || 0;
+                const ac = stat.ac || 0;
+                const toHit = stat.toHit || 0;
+                const initMod = stat.initMod || 0;
+
+                const element = document.createElement('div');
+                element.className = 'note-item card p-0 rounded-lg shadow-md'; 
+                const uniqueId = `statblock-${stat.id}`;
+                element.id = uniqueId;
+
+                const header = document.createElement('div');
+                header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150';
+                header.onclick = () => toggleCollapse(uniqueId);
+                header.innerHTML = `
+                    <span class="font-semibold text-lg text-indigo-300 truncate">${stat.name}</span>
+                    <svg class="arrow-icon w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                `;
+                
+                const content = document.createElement('div');
+                content.className = 'collapsible-content'; 
+                content.id = `content-${uniqueId}`; 
+
+                content.innerHTML = `
+                    <div class="p-3"> 
+                        <div class="flex justify-end space-x-2 mb-2">
+                            <button onclick="editStatblock('${stat.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded transition duration-300">Edit</button>
+                            <button onclick="deleteStatblock('${stat.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded transition duration-300">Delete</button>
+                        </div>
+                        <div class="grid grid-cols-2 text-sm gap-y-1 text-gray-300">
+                            <span class="font-semibold text-green-400">HP: ${hp}</span>
+                            <span class="font-semibold text-blue-400">AC: ${ac}</span>
+                            <span>Init Mod: ${initMod > 0 ? '+' : ''}${initMod}</span>
+                            <span>To Hit: ${toHit > 0 ? '+' : ''}${toHit}</span>
+                            <div class="col-span-2 text-yellow-400 text-xs mt-1">
+                                <span class="font-semibold text-sm">DMG/Attack:</span>
+                                ${stat.dmg}
+                            </div>
+                        </div>
+                        <button onclick="importToCombat('${stat.name}', ${hp}, ${initMod}, ${ac})" class="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 rounded-lg transition duration-300 text-sm">
+                            Add to Combat Tracker
+                        </button>
+                    </div>
+                `;
+                
+                element.appendChild(header);
+                element.appendChild(content);
+                list.appendChild(element);
+            });
+        }
+        
+        window.editStatblock = function(statId) {
+            const stat = savedStatblocks.find(s => s.id === statId);
+            if (!stat) return;
+            document.getElementById('modal-statblock-id').value = stat.id;
+            document.getElementById('modal-stat-name').value = stat.name;
+            document.getElementById('modal-stat-hp').value = stat.hp;
+            document.getElementById('modal-stat-ac').value = stat.ac;
+            document.getElementById('modal-stat-tohit').value = stat.toHit;
+            document.getElementById('modal-stat-init-mod').value = stat.initMod;
+            document.getElementById('modal-stat-dmg').value = stat.dmg;
+            document.getElementById('edit-statblock-modal').classList.remove('hidden');
+            document.getElementById('statblock-status').textContent = ''; 
+        }
+
+        window.closeStatblockEditModal = function() {
+            document.getElementById('edit-statblock-modal').classList.add('hidden');
+            document.getElementById('statblock-status').textContent = 'Edit cancelled.';
+        }
+        
+        window.saveEditedStatblock = async function() {
+            if (!window.isAuthReady || !window.db) {
+                document.getElementById('statblock-status').textContent = 'Database not ready. Please wait for authentication.';
+                return;
+            }
+
+            const statId = document.getElementById('modal-statblock-id').value;
+            const name = document.getElementById('modal-stat-name').value.trim();
+            const hp = parseInt(document.getElementById('modal-stat-hp').value, 10) || 0;
+            const ac = parseInt(document.getElementById('modal-stat-ac').value, 10) || 0;
+            const toHit = parseInt(document.getElementById('modal-stat-tohit').value, 10) || 0;
+            const initMod = parseInt(document.getElementById('modal-stat-init-mod').value, 10) || 0;
+            const dmg = document.getElementById('modal-stat-dmg').value.trim();
+            const statusElement = document.getElementById('statblock-status');
+
+            if (!name || hp <= 0 || ac <= 0 || !dmg) {
+                 statusElement.textContent = 'Name, HP, AC, and Damage are required.';
+                 return;
+            }
+
+            const docRef = window.doc(getStatblocksCollectionRef(), statId);
+            
+            try {
+                await window.setDoc(docRef, {
+                    name, hp, ac, toHit, initMod, dmg
+                }, { merge: true });
+
+                statusElement.textContent = `Statblock "${name}" updated successfully!`;
+                closeStatblockEditModal();
+            } catch (error) {
+                console.error("Error updating statblock: ", error);
+                statusElement.textContent = `Error updating statblock: ${error.message}`;
+            }
+        }
+
+
+        async function deleteStatblock(docId) {
+            if (!window.isAuthReady || !window.db) return;
+            try {
+                const docRef = window.doc(getStatblocksCollectionRef(), docId);
+                await window.deleteDoc(docRef);
+            } catch (error) {
+                console.error("Error deleting statblock: ", error);
+            }
+        }
+        
+        function importToCombat(name, hp, initMod, ac) {
+            document.getElementById('combatant-name').value = name;
+            document.getElementById('combatant-hp').value = hp;
+            document.getElementById('combatant-init').value = initMod; 
+            document.getElementById('combatant-ac').value = ac; 
+            
+            switchTab('combat');
+        }
+
+
+        // --- UI Logic (Shared) ---
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('text-gray-400');
+                if (btn.textContent.includes(
+                    tabId === 'improv' ? 'Prep & Improv' :
+                    tabId === 'combat' ? 'Combat Tracker' :
+                    tabId === 'statblocks' ? 'Statblocks' :
+                    tabId === 'monsters' ? 'Monsters' :
+                    'Rulings & Notes' 
+                )) {
+                     btn.classList.add('active');
+                     btn.classList.remove('text-gray-400');
+                }
+            });
+            if (tabId === 'notes') {
+                switchSubTab(currentSubTab);
+            }
+        }
+        
+        function switchSubTab(tabId) {
+            currentSubTab = tabId;
+            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`${tabId}-sub-content`).classList.remove('hidden');
+
+            document.querySelectorAll('.sub-tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-gray-400');
+                if (btn.dataset.subtab === tabId) {
+                     btn.classList.add('active');
+                     btn.classList.remove('text-gray-400');
+                } else {
+                     btn.classList.add('text-gray-400');
+                }
+            });
+            renderStructuredNotes(currentSubTab);
+        }
+
+
+        // --- Gemini API Logic (Core) ---
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
+        const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=`; // NEW
+        const apiKey = ""; 
+
+        // [Schema definitions removed for brevity, they remain the same as previous]
+        const combatSchema = {
+            type: "OBJECT",
+            properties: {
+                name: { "type": "STRING", "description": "A creative and appropriate name for the NPC." },
+                level_or_cr: { "type": "STRING", "description": "The requested level or challenge rating." },
+                armor_class_ac: { "type": "INTEGER", "description": "The NPC's calculated Armor Class (AC)." },
+                max_hit_points: { "type": "INTEGER", "description": "The NPC's maximum Hit Points (HP)." },
+                initiative_bonus: { "type": "INTEGER", "description": "The modifier (DEX bonus) added to the d20 roll for initiative." },
+                main_attack: { "type": "STRING", "description": "The NPC's primary attack description including attack roll modifier and damage (e.g., '+5 to hit, 1d12+3 slashing damage')." }
+            },
+            required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"]
+        };
+
+        const monsterSchema = {
+            type: "OBJECT",
+            properties: {
+                name: { type: "STRING", description: "The monster's name." },
+                size: { type: "STRING", description: "Size (e.g., Medium, Large)." },
+                type: { type: "STRING", description: "Type (e.g., humanoid, beast, monstrosity)." },
+                alignment: { type: "STRING", description: "Alignment (e.g., chaotic evil, unaligned)." },
+                armor_class: { type: "INTEGER", description: "Armor Class (AC)." },
+                ac_type: { type: "STRING", description: "Type of AC (e.g., 'natural armor', 'plate mail')." },
+                hit_points: { type: "INTEGER", description: "Average Hit Points." },
+                hit_dice: { type: "STRING", description: "Hit Dice formula (e.g., '10d8 + 40')." },
+                speed: { type: "STRING", description: "All movement speeds (e.g., '30 ft., fly 60 ft.')." },
+                ability_scores: {
+                    type: "OBJECT",
+                    properties: {
+                        STR: { type: "INTEGER" },
+                        DEX: { type: "INTEGER" },
+                        CON: { type: "INTEGER" },
+                        INT: { type: "INTEGER" },
+                        WIS: { type: "INTEGER" },
+                        CHA: { type: "INTEGER" }
+                    },
+                    required: ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+                },
+                saving_throws: { 
+                    type: "ARRAY", 
+                    items: { type: "STRING" },
+                    description: "List of saving throw proficiencies (e.g., 'DEX +5', 'CON +8')."
+                },
+                skills: { 
+                    type: "ARRAY", 
+                    items: { type: "STRING" },
+                    description: "List of skill proficiencies (e.g., 'Perception +4', 'Stealth +5')."
+                },
+                damage_vulnerabilities: { type: "ARRAY", items: { type: "STRING" } },
+                damage_resistances: { type: "ARRAY", items: { type: "STRING" } },
+                damage_immunities: { type: "ARRAY", items: { type: "STRING" } },
+                condition_immunities: { type: "ARRAY", items: { type: "STRING" } },
+                senses: { type: "STRING", description: "Senses (e.g., 'darkvision 60 ft., passive Perception 14')." },
+                languages: { type: "STRING", description: "Languages known (e.g., 'Common, Giant')." },
+                challenge_rating: { type: "STRING", description: "Challenge Rating (CR) (e.g., '5')." },
+                xp: { type: "INTEGER", description: "Experience Points (XP) for the CR." },
+                abilities: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            name: { type: "STRING" },
+                            description: { type: "STRING" }
+                        },
+                        required: ["name", "description"]
+                    },
+                    description: "Special abilities (e.g., 'Pack Tactics', 'Magic Resistance')."
+                },
+                actions: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            name: { type: "STRING" },
+                            description: { type: "STRING" }
+                        },
+                        required: ["name", "description"]
+                    },
+                    description: "Actions the monster can take (e.g., 'Multiattack', 'Greataxe')."
+                },
+                legendary_actions: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            name: { type: "STRING" },
+                            description: { type: "STRING" }
+                        },
+                        required: ["name", "description"]
+                    },
+                    description: "Legendary actions, if any."
+                }
+            },
+            required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"]
+        };
+
+
+        // --- MODE 1: Structured Combat Generation ---
+        async function generateCombatNpc() {
+            const level = document.getElementById('npc-level').value.trim();
+            const type = document.getElementById('npc-type').value.trim();
+
+            if (!level || !type) {
+                document.getElementById('combat-status-message').textContent = "Please provide both a level/CR and an NPC type.";
+                document.getElementById('combat-status-message').classList.remove('hidden');
+                return;
+            }
+
+            const button = document.getElementById('generate-combat-button');
+            const buttonText = document.getElementById('generate-combat-text');
+            const spinner = document.getElementById('combat-loading-spinner');
+            const outputDiv = document.getElementById('ai-output');
+            const saveStatusElement = document.getElementById('npc-save-status');
+
+            document.getElementById('combat-status-message').classList.add('hidden');
+            saveStatusElement.classList.add('hidden'); 
+            document.getElementById('save-options-creative').classList.add('hidden'); 
+
+            button.disabled = true;
+            buttonText.textContent = 'Generating...';
+            spinner.classList.remove('hidden');
+            outputDiv.innerHTML = 'Generating combat stats...';
+            lastGeneratedNpc = null; 
+
+            const systemPrompt = `You are a dedicated and expert Tabletop RPG (TTRPG) Combat Encounter Generator. Your sole function is to create combat statistics for an NPC based on the provided level and type. You MUST return the data exactly according to the JSON schema provided. Assume a standard high-fantasy ruleset (like Dungeons & Dragons 5th Edition) for balancing.`;
+            const userQuery = `Generate an NPC with a level/CR of ${level} and the description: ${type}.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: combatSchema
+                },
+            };
+
+            try {
+                const response = await fetchWithExponentialBackoff(API_URL + apiKey, payload);
+                const result = await response.json();
+                const jsonString = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!jsonString) {
+                    throw new Error("Received an empty or invalid response from the model.");
+                }
+
+                const npcStats = JSON.parse(jsonString);
+                lastGeneratedNpc = npcStats; 
+
+                // --- Render Structured Output ---
+                const saveButtonsHtml = `
+                    <p class="text-sm text-center text-gray-400 mt-4 mb-2">Save descriptive lore to Rulings & Notes (Collapsible):</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="saveGeneratedContent('prepNotes')" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Notes</button>
+                        <button onclick="saveGeneratedContent('enemyNotes')" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Enemies</button>
+                        <button onclick="saveGeneratedContent('npcNotes')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to NPCs</button>
+                    </div>
+                `;
+
+                let outputHtml = `
+                    <div class="text-2xl font-bold text-green-400 mb-2">${npcStats.name}</div>
+                    <div class="text-gray-300">Level/CR: <span class="font-medium text-white">${npcStats.level_or_cr}</span></div>
+                    <div class="grid grid-cols-2 gap-3 mt-4">
+                        <div class="p-3 bg-gray-600 rounded-lg">AC: <span class="font-semibold text-2xl block">${npcStats.armor_class_ac}</span></div>
+                        <div class="p-3 bg-gray-600 rounded-lg">HP: <span class="font-semibold text-2xl block">${npcStats.max_hit_points}</span></div>
+                        <div class="p-3 bg-gray-600 rounded-lg col-span-2">
+                            <span class="text-gray-400">Initiative Bonus:</span> 
+                            <span class="font-semibold text-2xl text-yellow-300">${npcStats.initiative_bonus >= 0 ? '+' : ''}${npcStats.initiative_bonus}</span>
+                        </div>
+                        <div class="p-3 bg-gray-600 rounded-lg col-span-2">
+                            <span class="text-gray-400">Main Attack:</span> 
+                            <span class="font-medium block mt-1">${npcStats.main_attack}</span>
+                        </div>
+                    </div>
+                    <button onclick="addNpcToStatblocks()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
+                        💾 Add to Statblocks Tab (Quick Import)
+                    </button>
+                    ${saveButtonsHtml}
+                `;
+                outputDiv.innerHTML = outputHtml;
+
+            } catch (error) {
+                console.error("Combat Generation Error:", error);
+                outputDiv.innerHTML = `<span class="text-red-400">Error generating combat stats: ${error.message}. Please try again.</span>`;
+            } finally {
+                button.disabled = false;
+                buttonText.textContent = 'Generate Combat Stats';
+                spinner.classList.add('hidden');
+            }
+        }
+ 
+        // --- MODE 2: Creative Lore Generation (Missing Function) ---
+        async function generateCreativeIdea() {
+            const prompt = document.getElementById('improv-prompt').value.trim();
+
+            if (!prompt) {
+                document.getElementById('ai-output').innerHTML = '<span class="text-red-400">Please enter a prompt first.</span>';
+                return;
+            }
+
+            const button = document.getElementById('generate-button');
+            const buttonText = document.getElementById('generate-text');
+            const spinner = document.getElementById('creative-loading-spinner');
+            const outputDiv = document.getElementById('ai-output');
+            const saveOptionsDiv = document.getElementById('save-options-creative');
+            const saveStatusElement = document.getElementById('npc-save-status');
+            
+            const imageOutputDiv = document.getElementById('ai-image-output');
+            imageOutputDiv.classList.add('hidden');
+
+            saveStatusElement.classList.add('hidden');
+            saveOptionsDiv.classList.add('hidden');
+            button.disabled = true;
+            buttonText.textContent = 'Generating...';
+            spinner.classList.remove('hidden');
+            outputDiv.textContent = 'Generating creative idea...';
+            lastGeneratedNpc = null; 
+
+            const systemPromptText = `You are a creative D&D Dungeon Master Assistant. The user will provide a prompt, and you should generate a creative and useful response based on it. This could be an NPC backstory, location description, quest hook, or piece of lore. Format the response with simple markdown for readability (bolding, bullet points).`;
+            
+            const textPayload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemPromptText }] },
+                tools: [{ "google_search": {} }], 
+            };
+
+            try {
+                const response = await fetchWithExponentialBackoff(API_URL + apiKey, textPayload);
+                const result = await response.json();
+                const resultText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!resultText) {
+                    throw new Error('Received an empty or invalid response from the model.');
+                }
+                
+                outputDiv.textContent = resultText;
+                saveOptionsDiv.classList.remove('hidden'); 
+
+            } catch (error) {
+                console.error("Creative Generation Error:", error);
+                outputDiv.textContent = `Error: Could not generate idea. ${error.message}`;
+            } finally {
+                button.disabled = false;
+                buttonText.textContent = 'Generate Idea';
+                spinner.classList.add('hidden');
+            }
+        }
+
+
+        // --- REWRITTEN: MODE 3: Settlement Generation (with Image) ---
+        async function generateSettlement() {
+            const type = document.getElementById('settlement-type').value;
+            const vibe = document.getElementById('settlement-vibe').value.trim();
+            
+            if (!vibe) {
+                document.getElementById('ai-output').innerHTML = '<span class="text-red-400">Please enter a vibe or description for the settlement.</span>';
+                return;
+            }
+
+            const button = document.getElementById('generate-settlement-button');
+            const buttonText = document.getElementById('generate-settlement-text');
+            const spinner = document.getElementById('settlement-loading-spinner');
+            const outputDiv = document.getElementById('ai-output');
+            const saveOptionsDiv = document.getElementById('save-options-creative');
+            const saveStatusElement = document.getElementById('npc-save-status');
+            
+            const imageOutputDiv = document.getElementById('ai-image-output');
+            const generatedImage = document.getElementById('generated-image');
+            const imageLoadingStatus = document.getElementById('image-loading-status');
+
+            saveStatusElement.classList.add('hidden');
+            saveOptionsDiv.classList.add('hidden');
+            button.disabled = true;
+            buttonText.textContent = 'Generating...';
+            spinner.classList.remove('hidden');
+            
+            outputDiv.textContent = 'Building your settlement details...';
+            imageOutputDiv.classList.remove('hidden');
+            generatedImage.src = '';
+            generatedImage.classList.add('hidden'); 
+            imageLoadingStatus.textContent = 'Generating settlement image (this may take a moment)...';
+            imageLoadingStatus.classList.remove('hidden');
+            
+            lastGeneratedNpc = null; 
+
+            const systemPromptText = `You are a D&D Dungeon Master Assistant specializing in rapid world-building. Generate a settlement based on the user's requested type and vibe.
+
+Format the response strictly with markdown for readability. You MUST include all requested sections. Use bullet points for lists.
+                
+**Name:** [Generate a creative name]
+**Type:** [The user's requested type, e.g., Village, Town]
+**Description:** [A 1-2 sentence summary based on the user's vibe]
+
+---
+
+**Lore:**
+* [1-2 bullet points on the settlement's brief history or a local legend.]
+
+---
+
+**Politics:**
+* **[Who's in Charge]:** [Brief 1-sentence description of the ruling power (e.g., 'Mayor Grom, a grizzled ex-adventurer').]
+* **[Local Tension]:** [Brief 1-sentence description of a political issue (e.g., 'Tensions are high with the local miners guild over taxes.').]
+
+---
+
+**Key Areas (3-4):**
+* **[Area Name]:** [Brief description of the location (e.g., tavern, shop, ruin).]
+
+---
+
+**NPCs & Quests (2-3):**
+* **[NPC Name] ([Occupation]) at [Location]:** [1-sentence personality trait].
+* **Quick Quest:** [A very simple 1-sentence quest hook related to this NPC.]
+`;
+            
+            const userQuery = `Generate a ${type} with the vibe: ${vibe}.`;
+            const textPayload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPromptText }] },
+                tools: [{ "google_search": {} }],
+            };
+
+            const imagePrompt = `A high-quality, atmospheric, bird's-eye-view concept art of a fantasy ${type} that feels like a ${vibe}. No text or labels. D&D, fantasy art style.`;
+
+            try {
+                const [textResult, imageResult] = await Promise.allSettled([
+                    fetchSettlementText(textPayload),
+                    fetchSettlementImage(imagePrompt)
+                ]);
+
+                if (textResult.status === 'fulfilled') {
+                    outputDiv.textContent = textResult.value;
+                    saveOptionsDiv.classList.remove('hidden'); 
+                } else {
+                    console.error("Settlement Text Generation Error:", textResult.reason);
+                    outputDiv.textContent = `Error: Could not generate settlement text. ${textResult.reason.message}`;
+                }
+
+                if (imageResult.status === 'fulfilled') {
+                    generatedImage.src = imageResult.value;
+                    generatedImage.classList.remove('hidden');
+                    imageLoadingStatus.textContent = ''; 
+                    imageLoadingStatus.classList.add('hidden');
+                } else {
+                    console.error("Settlement Image Generation Error:", imageResult.reason);
+                    imageLoadingStatus.textContent = `Error generating image: ${imageResult.reason.message}`;
+                    imageLoadingStatus.classList.remove('hidden');
+                    generatedImage.classList.add('hidden'); 
+                }
+
+            } catch (error) {
+                console.error("Settlement Generation Error:", error);
+                outputDiv.textContent = `Error: Could not generate settlement. ${error.message}`;
+                imageLoadingStatus.textContent = `Image generation failed.`;
+            } finally {
+                button.disabled = false;
+                buttonText.textContent = 'Generate Settlement';
+                spinner.classList.add('hidden');
+            }
+        }
+
+        async function fetchSettlementText(payload) {
+            const response = await fetchWithExponentialBackoff(API_URL + apiKey, payload);
+            const result = await response.json();
+            const resultText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!resultText) {
+                throw new Error('Invalid text response from API.');
+            }
+            return resultText;
+        }
+        
+        async function fetchSettlementImage(prompt) {
+            const payload = {
+                instances: { prompt: prompt },
+                parameters: { "sampleCount": 1 }
+            };
+            
+            const response = await fetchWithExponentialBackoff(IMAGE_API_URL + apiKey, payload);
+            const result = await response.json();
+            
+            if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                return `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+            } else {
+                console.warn("Image API response missing data:", result);
+                throw new Error('Invalid or empty image response from API.');
+            }
+        }
+
+
+        // --- RENAMED: MODE 4: Monster Stat Block Generation ---
+        async function generateMonsterStatblock() {
+            const name = document.getElementById('monster-name').value.trim();
+            const cr = document.getElementById('monster-cr').value.trim();
+
+            if (!name || !cr) {
+                document.getElementById('monster-status-message').textContent = "Please provide both a Monster Name and a CR.";
+                document.getElementById('monster-status-message').classList.remove('hidden');
+                return;
+            }
+
+            const button = document.getElementById('generate-monster-button');
+            const buttonText = document.getElementById('generate-monster-text');
+            const spinner = document.getElementById('monster-loading-spinner');
+            const outputDiv = document.getElementById('monster-output');
+            const saveStatusElement = document.getElementById('monster-save-status');
+            const saveOptionsDiv = document.getElementById('save-options-monster');
+
+            document.getElementById('monster-status-message').classList.add('hidden');
+            saveStatusElement.classList.add('hidden');
+            saveOptionsDiv.classList.add('hidden');
+
+            button.disabled = true;
+            buttonText.textContent = 'Generating...';
+            spinner.classList.remove('hidden');
+            outputDiv.innerHTML = 'Generating full monster stat block...';
+            lastGeneratedMonster = null; 
+
+            const systemPrompt = `You are an expert D&D 5e Monster Designer. Your task is to generate a complete and balanced monster stat block based on the user's provided name and Challenge Rating (CR). You MUST return the data exactly according to the JSON schema provided. Ensure abilities, actions, and stats are appropriate for the requested CR.`;
+            const userQuery = `Generate a full monster stat block for a "${name}" with a Challenge Rating (CR) of ${cr}.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: monsterSchema
+                },
+            };
+
+            try {
+                const response = await fetchWithExponentialBackoff(API_URL + apiKey, payload);
+                const result = await response.json();
+                const jsonString = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!jsonString) {
+                    throw new Error("Received an empty or invalid response from the model.");
+                }
+
+                const stats = JSON.parse(jsonString);
+                lastGeneratedMonster = stats; 
+
+                // Render the stat block
+                outputDiv.innerHTML = renderMonsterStatblock(stats);
+                saveOptionsDiv.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Monster Generation Error:", error);
+                outputDiv.innerHTML = `<span class="text-red-400">Error generating monster: ${error.message}. Please try again.</span>`;
+            } finally {
+                button.disabled = false;
+                buttonText.textContent = 'Generate Monster';
+                spinner.classList.add('hidden');
+            }
+        }
+
+        // --- NEW: Monster Stat Block HTML Renderer ---
+        function renderMonsterStatblock(stats) {
+            const getMod = (score) => Math.floor((score - 10) / 2);
+            const modSign = (score) => getMod(score) >= 0 ? `+${getMod(score)}` : getMod(score);
+
+            const abilities = stats.abilities || [];
+            const actions = stats.actions || [];
+            const legendaryActions = stats.legendary_actions || [];
+
+            const renderSection = (title, items) => {
+                if (!items || items.length === 0) return '';
+                return `
+                    <h4 class="text-lg font-bold text-indigo-300 mt-2 pb-1 border-b border-indigo-400">${title}</h4>
+                    ${items.map(item => `
+                        <p class="mt-2 text-sm">
+                            <strong class="text-white">${item.name}.</strong> 
+                            <span class="text-gray-300">${item.description}</span>
+                        </p>
+                    `).join('')}
+                `;
+            };
+
+            const renderList = (items) => {
+                if (!items || items.length === 0) return '—';
+                return items.join(', ');
+            };
+
+            return `
+                <div class="stat-block bg-gray-800 p-4 rounded-lg border border-indigo-500">
+                    <h3 class="text-2xl font-bold text-indigo-300 mb-1">${stats.name}</h3>
+                    <p class="text-sm italic text-gray-400">${stats.size} ${stats.type}, ${stats.alignment}</p>
+                    
+                    <div class="h-px bg-indigo-400 my-2"></div>
+
+                    <p class="text-sm"><strong class="text-white">Armor Class:</strong> ${stats.armor_class} (${stats.ac_type || 'N/A'})</p>
+                    <p class="text-sm"><strong class="text-white">Hit Points:</strong> ${stats.hit_points} (${stats.hit_dice})</p>
+                    <p class="text-sm"><strong class="text-white">Speed:</strong> ${stats.speed}</p>
+
+                    <div class="h-px bg-indigo-400 my-2"></div>
+
+                    <div class="grid grid-cols-6 gap-2 text-center my-3">
+                        ${['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'].map(ability => `
+                            <div class="text-sm">
+                                <strong class="text-white">${ability}</strong>
+                                <div>${stats.ability_scores[ability]} (${modSign(stats.ability_scores[ability])})</div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="h-px bg-indigo-400 my-2"></div>
+
+                    <p class="text-sm"><strong class="text-white">Saving Throws:</strong> ${renderList(stats.saving_throws)}</p>
+                    <p class="text-sm"><strong class="text-white">Skills:</strong> ${renderList(stats.skills)}</p>
+                    <p class="text-sm"><strong class="text-white">Damage Vulnerabilities:</strong> ${renderList(stats.damage_vulnerabilities)}</p>
+                    <p class="text-sm"><strong class="text-white">Damage Resistances:</strong> ${renderList(stats.damage_resistances)}</p>
+                    <p class="text-sm"><strong class="text-white">Damage Immunities:</strong> ${renderList(stats.damage_immunities)}</p>
+                    <p class="text-sm"><strong class="text-white">Condition Immunities:</strong> ${renderList(stats.condition_immunities)}</p>
+                    <p class="text-sm"><strong class="text-white">Senses:</strong> ${stats.senses}</p>
+                    <p class="text-sm"><strong class="text-white">Languages:</strong> ${stats.languages}</p>
+                    <p class="text-sm"><strong class="text-white">Challenge:</strong> ${stats.challenge_rating} (${stats.xp} XP)</p>
+
+                    ${renderSection('Abilities', abilities)}
+                    ${renderSection('Actions', actions)}
+                    ${renderSection('Legendary Actions', legendaryActions)}
+                </div>
+            `;
+        }
+
+        // --- NEW: Save functions for generated monster ---
+        window.addMonsterToStatblocks = async function () {
+            const statusElement = document.getElementById('monster-save-status');
+            if (!window.isAuthReady || !window.db) {
+                statusElement.textContent = 'Database not ready.';
+                statusElement.classList.remove('hidden');
+                return;
+            }
+            if (!lastGeneratedMonster) {
+                statusElement.textContent = 'No monster data to save.';
+                statusElement.classList.remove('hidden');
+                return;
+            }
+
+            const monster = lastGeneratedMonster;
+            
+            // Try to find the 'to hit' bonus and damage from the first action
+            let toHit = 0;
+            let dmg = 'N/A';
+            if (monster.actions && monster.actions.length > 0) {
+                const firstAction = monster.actions[0].description;
+                const hitMatch = firstAction.match(/(\+|\-)\d+\s+to hit/);
+                if (hitMatch) toHit = parseInt(hitMatch[0].replace(' to hit', ''), 10);
+
+                dmg = monster.actions.map(action => {
+                    return `<span class='block mt-1'><strong>${action.name}:</strong> ${action.description}</span>`;
+                }).join('');
+            }
+            
+            const initMod = Math.floor((monster.ability_scores.DEX - 10) / 2);
+
+            statusElement.textContent = `Saving ${monster.name} to Statblocks...`;
+            statusElement.classList.remove('hidden', 'text-red-400', 'text-green-400');
+            statusElement.classList.add('text-yellow-400');
+
+            try {
+                await window.addDoc(getStatblocksCollectionRef(), {
+                    name: monster.name,
+                    hp: monster.hit_points,
+                    ac: monster.armor_class,
+                    toHit: toHit,
+                    initMod: initMod,
+                    dmg: dmg,
+                    timestamp: new Date().toISOString()
+                });
+                
+                statusElement.textContent = `${monster.name} added to Statblocks!`;
+                statusElement.classList.remove('text-yellow-400');
+                statusElement.classList.add('text-green-400');
+            } catch (error) {
+                console.error("Error saving monster to statblocks: ", error);
+                statusElement.textContent = `Error saving statblock: ${error.message}`;
+                statusElement.classList.add('text-red-400');
+            }
+        }
+
+        window.saveMonsterToNotes = async function() {
+            const statusElement = document.getElementById('monster-save-status');
+            const outputDiv = document.getElementById('monster-output');
+            const content = outputDiv.innerHTML; 
+
+            if (!lastGeneratedMonster) {
+                statusElement.textContent = 'No monster data to save.';
+                statusElement.classList.remove('hidden');
+                return;
+            }
+            if (!window.isAuthReady || !window.db) {
+                statusElement.textContent = 'Database not ready.';
+                statusElement.classList.remove('hidden');
+                return;
+            }
+            
+            statusElement.textContent = `Saving ${lastGeneratedMonster.name} to Enemy Notes...`;
+            statusElement.classList.remove('hidden', 'text-red-400', 'text-green-400');
+            statusElement.classList.add('text-yellow-400');
+
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: `${lastGeneratedMonster.name} (CR ${lastGeneratedMonster.challenge_rating})`,
+                content: content, 
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes['enemyNotes'].unshift(newNote); 
+            await saveStructuredNotes('enemyNotes', structuredNotes['enemyNotes']);
+
+            statusElement.textContent = `${lastGeneratedMonster.name} saved to Enemy Notes!`;
+            statusElement.classList.remove('text-yellow-400');
+            statusElement.classList.add('text-green-400');
+
+            switchTab('notes');
+            switchSubTab('enemyNotes');
+        }
+
+
+        // --- NEW: Unified Saving Function ---
+        
+        function generateTitleFromContent(content) {
+            const nameMatch = content.match(/\*\*Name:\*\*\s*(.*?)\n/);
+            if (nameMatch) {
+                return nameMatch[1].trim() || 'Untitled Generated Note';
+            }
+            const shortTitle = content.substring(0, 50).trim().replace(/[\n\r]/g, ' ');
+            return shortTitle + (content.length > 50 ? '...' : '');
+        }
+
+        window.saveGeneratedContent = async function(destinationTab) {
+            const outputDiv = document.getElementById('ai-output');
+            const idea = outputDiv.textContent.trim();
+            const statusElement = document.getElementById('notes-status');
+
+            if (idea === 'Results will appear here.' || idea.startsWith('Error:')) {
+                statusElement.textContent = 'Nothing valid to save.';
+                return;
+            }
+
+            if (!window.isAuthReady || !window.db) {
+                statusElement.textContent = 'Database not ready. Please wait for authentication.';
+                return;
+            }
+
+            const title = generateTitleFromContent(idea);
+
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: title,
+                content: idea,
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes[destinationTab].unshift(newNote); 
+            await saveStructuredNotes(destinationTab, structuredNotes[destinationTab]);
+
+            switchTab('notes');
+            switchSubTab(destinationTab);
+            statusElement.textContent = `New note saved and placed in the collapsible list for '${destinationTab}'!`;
+        }
+
+
+        // --- Shared API Helper ---
+        async function fetchWithExponentialBackoff(apiUrl, payload) {
+            const maxAttempts = 5;
+            const urlWithKey = apiUrl.endsWith('?key=') ? apiUrl + apiKey : apiUrl;
+
+            for (let attempts = 0; attempts < maxAttempts; attempts++) {
+                try {
+                    const response = await fetch(urlWithKey, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429) {
+                        const delay = Math.pow(2, attempts) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+                    }
+                    return response;
+                } catch (error) {
+                    if (attempts === maxAttempts - 1) throw error;
+                    const delay = Math.pow(2, attempts) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+
+        // --- Combat Tracker Logic (Includes Dice Roller) ---
+
+        function renderCombatants() {
+            const list = document.getElementById('initiative-list');
+            list.innerHTML = '';
+            
+            if (combatants.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 pt-8">Add your players and monsters to start tracking combat!</p>';
+                currentTurnIndex = -1;
+                lastRoll = 0;
+                const rollDisplay = document.getElementById('last-roll-display');
+                if(rollDisplay) rollDisplay.textContent = '?';
+                const assignButton = document.getElementById('assign-roll-button');
+                if(assignButton) assignButton.disabled = true;
+                return;
+            }
+
+            combatants.forEach((c, index) => {
+                const isActive = index === currentTurnIndex;
+                if (c.initModifier === undefined) {
+                    c.initModifier = c.init > 10 ? 0 : c.init;
+                }
+                if (c.ac === undefined) {
+                    c.ac = 0;
+                }
+                const initModifierDisplay = c.initModifier >= 0 ? `+${c.initModifier}` : c.initModifier.toString();
+
+
+                const element = document.createElement('div');
+                element.className = `flex items-center space-x-1 p-3 rounded-lg transition duration-200 ${isActive ? 'bg-indigo-700 glow-shadow' : 'bg-gray-700'}`;
+                
+                element.innerHTML = `
+                    <div class="text-lg font-bold w-6 text-center ${isActive ? 'text-white' : 'text-indigo-400'}">${c.init}</div>
+                    <div class="flex-1 min-w-[50px]">
+                        <div class="font-semibold text-sm truncate ${isActive ? 'text-white' : 'text-gray-200'}">${c.name}</div>
+                        <div class="text-xs">
+                            <span class="${c.currentHp <= 0 ? 'text-red-400' : 'text-green-400'}">HP: ${c.currentHp} / ${c.maxHp}</span> 
+                            <span class="text-blue-300 ml-1">AC: ${c.ac}</span>
+                            <span class="text-gray-400"> (Mod: ${initModifierDisplay})</span>
+                        </div>
+                    </div>
+                    <div class="flex space-x-1 items-center">
+                        <input type="number" placeholder="Amt" id="damage-input-${index}" class="w-12 p-1 rounded-lg input-style text-center text-xs" />
+                        <button onclick="applyHpChange(${index}, 'heal')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300">Heal</button>
+                        <button onclick="applyHpChange(${index}, 'damage')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300">DMG</button>
+                    </div>
+                    <button onclick="removeCombatant(${index})" class="bg-gray-500 hover:bg-gray-600 text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300">Rem</button>
+                `;
+                list.appendChild(element);
+            });
+            populateCombatantSelector();
+        }
+
+        window.applyHpChange = async function(index, type) { 
+            const damageInput = document.getElementById(`damage-input-${index}`);
+            let value = parseInt(damageInput.value, 10);
+
+            if (isNaN(value) || value <= 0) { 
+                damageInput.value = '';
+                return;
+            }
+
+            let newHp = combatants[index].currentHp;
+            if (type === 'damage') {
+                newHp -= value;
+            } else if (type === 'heal') {
+                newHp += value;
+            }
+            newHp = Math.max(0, Math.min(newHp, combatants[index].maxHp));
+
+            const combatantDocRef = window.doc(getCombatantsCollectionRef(), combatants[index].id);
+            try {
+                await window.updateDoc(combatantDocRef, {
+                    currentHp: newHp 
+                });
+            } catch (error) {
+                console.error("Error updating HP:", error);
+            }
+
+            damageInput.value = '';
+        }
+
+        async function addCombatant() {
+            const nameInput = document.getElementById('combatant-name');
+            const initInput = document.getElementById('combatant-init');
+            const acInput = document.getElementById('combatant-ac'); 
+            const hpInput = document.getElementById('combatant-hp');
+
+            const name = nameInput.value.trim();
+            const initValue = parseInt(initInput.value, 10) || 0; 
+            const ac = parseInt(acInput.value, 10); 
+            const hp = parseInt(hpInput.value, 10);
+
+            if (!name || isNaN(hp) || hp <= 0 || isNaN(ac) || ac <= 0) {
+                console.error("Invalid combatant input: Name, positive HP, and positive AC are required.");
+                return;
+            }
+
+            try {
+                await window.addDoc(getCombatantsCollectionRef(), { 
+                    name, 
+                    init: initValue, 
+                    maxHp: hp, 
+                    currentHp: hp, 
+                    initModifier: initValue,
+                    ac: ac 
+                });
+            } catch (error) {
+                console.error("Error adding combatant:", error);
+            }
+
+            nameInput.value = '';
+            initInput.value = '';
+            acInput.value = ''; 
+            hpInput.value = '';
+        }
+
+        function sortInitiative() {
+            currentTurnIndex = 0;
+            saveCombatStateToFirestore();
+        }
+
+        async function removeCombatant(index) {
+            if (!combatants[index] || !combatants[index].id) {
+                console.error("Cannot remove combatant, missing ID.");
+                return;
+            }
+            
+            const combatantDocRef = window.doc(getCombatantsCollectionRef(), combatants[index].id);
+            try {
+                await window.deleteDoc(combatantDocRef);
+            } catch (error) {
+                console.error("Error removing combatant:", error);
+            }
+            
+            if (currentTurnIndex >= combatants.length - 1) {
+                currentTurnIndex = combatants.length > 1 ? combatants.length - 2 : -1;
+                saveCombatStateToFirestore();
+            }
+        }
+
+        function nextTurn() {
+            if (combatants.length === 0) {
+                currentTurnIndex = -1;
+                return;
+            }
+            currentTurnIndex = (currentTurnIndex + 1) % combatants.length;
+            saveCombatStateToFirestore();
+        }
+        
+        async function clearCombat() {
+            if (!window.isAuthReady || !window.db) return;
+            
+            try {
+                const batch = window.writeBatch(window.db);
+                
+                combatants.forEach(c => {
+                    const docRef = window.doc(getCombatantsCollectionRef(), c.id);
+                    batch.delete(docRef);
+                });
+                
+                batch.delete(getCombatStateDocRef());
+
+                await batch.commit();
+
+            } catch (error) {
+                console.error("Error clearing combat:", error);
+            }
+        }
+
+        // --- NEW: Custom Dice Roller for Statblocks Tab ---
+        window.rollCustomDice = function() {
+            const numDiceInput = document.getElementById('dice-num');
+            const diceTypeInput = document.getElementById('dice-type');
+            const modInput = document.getElementById('dice-mod');
+            const resultDisplay = document.getElementById('dice-roll-result');
+            const detailsDisplay = document.getElementById('dice-roll-details');
+
+            const numDice = parseInt(numDiceInput.value, 10) || 1;
+            const diceType = parseInt(diceTypeInput.value, 10) || 20;
+            const modifier = parseInt(modInput.value, 10) || 0;
+
+            if (numDice <= 0) {
+                resultDisplay.textContent = 'Error';
+                detailsDisplay.textContent = 'Number of dice must be 1 or more.';
+                return;
+            }
+
+            let totalRoll = 0;
+            const rolls = [];
+            for (let i = 0; i < numDice; i++) {
+                const roll = Math.floor(Math.random() * diceType) + 1;
+                rolls.push(roll);
+                totalRoll += roll;
+            }
+
+            const finalTotal = totalRoll + modifier;
+            const modString = modifier > 0 ? `+${modifier}` : (modifier < 0 ? `${modifier}` : '');
+
+            resultDisplay.textContent = `Total: ${finalTotal}`;
+            
+            if (modifier !== 0) {
+                detailsDisplay.textContent = `Rolls: [${rolls.join(', ')}] (Mod: ${modString})`;
+            } else {
+                detailsDisplay.textContent = `Rolls: [${rolls.join(', ')}]`;
+            }
+        }
+
+        function rollD20() {
+            lastRoll = Math.floor(Math.random() * 20) + 1;
+            document.getElementById('last-roll-display').textContent = lastRoll;
+            document.getElementById('assign-roll-button').disabled = combatants.length === 0;
+        }
+
+        function populateCombatantSelector() {
+            const selector = document.getElementById('combatant-selector');
+            selector.innerHTML = '<option value="" disabled selected>Select Target</option>';
+            
+            combatants.forEach((c, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                const mod = c.initModifier !== undefined ? c.initModifier : 0;
+                const modDisplay = mod >= 0 ? `+${mod}` : mod.toString();
+
+                option.textContent = `${c.name} (Mod: ${modDisplay})`;
+                selector.appendChild(option);
+            });
+            document.getElementById('assign-roll-button').disabled = combatants.length === 0 || lastRoll === 0;
+        }
+
+        async function assignInitiativeRoll() {
+            const selector = document.getElementById('combatant-selector');
+            const selectedIndex = parseInt(selector.value, 10);
+            
+            if (isNaN(selectedIndex) || selectedIndex < 0 || lastRoll === 0) {
+                console.error("No combatant selected or no roll made to assign.");
+                return;
+            }
+            
+            const modifier = combatants[selectedIndex].initModifier || 0; 
+
+            const newInitiative = lastRoll + modifier;
+            
+            const combatantDocRef = window.doc(getCombatantsCollectionRef(), combatants[selectedIndex].id);
+            try {
+                await window.updateDoc(combatantDocRef, {
+                    init: newInitiative
+                });
+            } catch (error) {
+                console.error("Error assigning initiative:", error);
+            }
+            
+            lastRoll = 0;
+            document.getElementById('last-roll-display').textContent = '?';
+            selector.value = '';
+            document.getElementById('assign-roll-button').disabled = true;
+        }
+        
+        // --- START: EXPLICITLY ATTACH ALL ONCLICK FUNCTIONS TO WINDOW ---
+        window.switchTab = switchTab;
+        window.generateCombatNpc = generateCombatNpc;
+        window.generateCreativeIdea = generateCreativeIdea;
+        window.generateSettlement = generateSettlement;
+        window.saveGeneratedContent = saveGeneratedContent;
+        window.addCombatant = addCombatant;
+        window.rollD20 = rollD20;
+        window.assignInitiativeRoll = assignInitiativeRoll;
+        window.sortInitiative = sortInitiative;
+        window.nextTurn = nextTurn;
+        window.clearCombat = clearCombat;
+        window.saveStatblock = saveStatblock;
+        window.generateMonsterStatblock = generateMonsterStatblock;
+        window.addMonsterToStatblocks = addMonsterToStatblocks;
+        window.saveMonsterToNotes = saveMonsterToNotes;
+        window.switchSubTab = switchSubTab;
+        window.addNewNote = addNewNote;
+        window.closeEditModal = closeEditModal;
+        window.saveEditedNote = saveEditedNote;
+        window.closeStatblockEditModal = closeStatblockEditModal;
+        window.saveEditedStatblock = saveEditedStatblock;
+        window.deleteStatblock = deleteStatblock;
+        window.importToCombat = importToCombat;
+        window.removeCombatant = removeCombatant;
+        window.rollCustomDice = rollCustomDice; 
+        window.applyHpChange = applyHpChange; 
+        window.deleteNote = deleteNote; 
+        window.editNote = editNote; 
+        window.editStatblock = editStatblock; 
+        window.addNpcToStatblocks = addNpcToStatblocks; 
+        window.openLoginModal = openLoginModal;
+        window.closeLoginModal = closeLoginModal;
+        window.performSignIn = performSignIn;
+        window.performSignOut = performSignOut;
+        // --- END: EXPLICITLY ATTACH ALL ONCLICK FUNCTIONS TO WINDOW ---
+
+
+        // Initial render for combat tracker (before data loads)
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCombatants(); 
+            populateCombatantSelector();
+            switchTab(currentTab);
+        });
+
+    </script>
+</body>
+</html>
 
