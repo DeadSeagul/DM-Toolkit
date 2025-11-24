@@ -969,6 +969,7 @@
                 timestamp: new Date().toISOString()
             };
             
+            // Save to 'enemyNotes' specifically
             structuredNotes['enemyNotes'].unshift(newNote);
             await window.saveStructuredNotes('enemyNotes', structuredNotes['enemyNotes']);
             alert("Saved to Enemy Notes!");
@@ -1026,11 +1027,13 @@
         
         window.generateSettlement = async () => {
              const btn = document.getElementById('generate-settlement-button'); btn.disabled = true;
+             const outputDiv = document.getElementById('ai-output'); // Use outputDiv for text output
              try {
                  const p = document.getElementById('settlement-vibe').value;
                  const data = await callAI(API_URL, { contents: [{ parts: [{ text: `Generate D&D settlement: ${p}` }] }] });
-                 document.getElementById('ai-output').innerText = data.candidates[0].content.parts[0].text;
-             } catch(e) {}
+                 outputDiv.innerText = data.candidates[0].content.parts[0].text;
+                 document.getElementById('save-options-creative').classList.remove('hidden'); // Show save buttons
+             } catch(e) { outputDiv.innerText = "Error."; }
              btn.disabled = false;
         };
 
