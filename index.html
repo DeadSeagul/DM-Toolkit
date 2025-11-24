@@ -51,9 +51,9 @@
         const envFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        const firebaseConfig = (manualFirebaseConfig.apiKey && manualFirebaseConfig.apiKey !== "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg") 
-            ? manualFirebaseConfig 
-            : envFirebaseConfig;
+        // Determine which config to use
+        const isManualConfig = (manualFirebaseConfig.apiKey && manualFirebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE");
+        const firebaseConfig = isManualConfig ? manualFirebaseConfig : envFirebaseConfig;
 
         if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
             setLogLevel('debug'); 
@@ -64,20 +64,27 @@
             // Authenticate
             onAuthStateChanged(window.auth, async (user) => {
                 if (!user) {
-                    // If no user, try anonymous (or custom token)
-                    try {
-                        if (initialAuthToken) {
+                    // Logic Fix: 
+                    // If we are using a manual config (e.g. your own Firebase project), 
+                    // the 'initialAuthToken' provided by the Canvas environment will NOT match.
+                    // So we should only try custom token auth if we are NOT using manual config.
+                    if (initialAuthToken && !isManualConfig) {
+                        try {
                             await signInWithCustomToken(window.auth, initialAuthToken);
-                        } else {
-                            // Only auto-sign in anonymously if we aren't waiting for a user action
-                            // For this app, we default to anonymous, but user can upgrade to Google
+                        } catch (error) {
+                            console.warn("Custom token auth failed (likely mismatch), falling back to anonymous:", error);
                             await signInAnonymously(window.auth);
                         }
-                    } catch (error) {
-                        console.error("Firebase Auth Error:", error);
+                    } else {
+                        // Default to anonymous for manual configs or if no token exists
+                        try {
+                            await signInAnonymously(window.auth);
+                        } catch (error) {
+                            console.error("Anonymous login failed:", error);
+                        }
                     }
                 } else {
-                    // Force token refresh
+                    // Force token refresh to prevent stale connection issues
                     try {
                         await user.getIdToken(true); 
                     } catch (tokenError) {
@@ -211,6 +218,17 @@
         <div id="content-area">
             <!-- 1. Prep & Improv Engine (Gemini API) -->
             <div id="improv" class="tab-content">
+                
+                <!-- NEW: AI Configuration Card (User Input for API Key) -->
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
+                    <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
+                    <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key to enable AI generation features. Your key is saved locally in your browser.</p>
+                    <div class="flex gap-2">
+                        <input type="password" id="user-api-key" placeholder="Paste API Key (AIza...)" class="flex-1 p-2 rounded-lg input-style text-sm">
+                        <button onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-200">Save</button>
+                    </div>
+                    <p id="api-key-status" class="mt-2 text-xs text-gray-500">Status: No key saved.</p>
+                </div>
 
                 <!-- Structured Combat NPC Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
@@ -309,7 +327,11 @@
             <div id="combat" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Initiative & Monster Tracker</h2>
-                    <p class="text-sm text-gray-400 mb-4">Keeps combat flowing smoothly and **now saves your data!**</p>
+                    <!-- Added Connectivity Status Indicator -->
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-sm text-gray-400">Keeps combat flowing smoothly.</p>
+                        <span id="db-status" class="text-xs px-2 py-1 rounded bg-gray-700 text-gray-400">Connecting...</span>
+                    </div>
 
                     <!-- Responsive Input Group -->
                     <div class="flex flex-wrap gap-2 mb-4">
@@ -716,6 +738,10 @@
             npcNotes: []
         };
 
+        // --- Global Variable for API Key ---
+        let userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
+
+
         // --- Firebase/Data Functions (using the global variables defined in the module script) ---
         
         // Data is now saved to a PUBLIC path for sharing/collaboration
@@ -1038,6 +1064,9 @@
          */
         window.setupCombatDataListeners = function() {
             if (!window.isAuthReady || !window.db) return;
+            
+            const dbStatus = document.getElementById('db-status');
+            if(dbStatus) dbStatus.textContent = "Connecting...";
 
             // --- LISTENER 1: For the combatants list ---
             // REFACTORED: Removed .orderBy() from the query to avoid needing a Firestore index.
@@ -1058,8 +1087,22 @@
                 renderCombatants();
                 console.log("Combatants list updated from Firestore and sorted in-memory.");
                 
+                if(dbStatus) {
+                    dbStatus.textContent = "Connected";
+                    dbStatus.classList.remove('text-red-400', 'text-gray-400');
+                    dbStatus.classList.add('text-green-400');
+                }
+                
             }, (error) => {
                 console.error("Error setting up combatants listener: ", error);
+                if(dbStatus) {
+                    dbStatus.textContent = "Disconnected";
+                    dbStatus.classList.remove('text-green-400', 'text-gray-400');
+                    dbStatus.classList.add('text-red-400');
+                }
+                // Alert the user if permissions fail
+                const list = document.getElementById('initiative-list');
+                if(list) list.innerHTML = `<p class="text-center text-red-400 pt-8">Error loading data: ${error.message}</p>`;
             });
 
             // --- LISTENER 2: For the combat state (turn index) ---
@@ -1417,7 +1460,7 @@
         // --- Gemini API Logic (Core) ---
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
         const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=`; // NEW
-        const apiKey = ""; 
+        const apiKey = "PASTE_YOUR_NEW_KEY_HERE"; // PASTE YOUR NEW API KEY HERE
 
         // Define the required structured output format for combat stats
         const combatSchema = {
@@ -2477,6 +2520,13 @@ Format the response strictly with markdown for readability. You MUST include all
             renderCombatants(); 
             populateCombatantSelector();
             switchTab(currentTab);
+            
+            // --- NEW: Load saved key on startup ---
+            const status = document.getElementById('api-key-status');
+            if (userApiKey && status) {
+                status.textContent = "Status: Key loaded from local storage.";
+                status.className = "mt-2 text-xs text-green-400";
+            }
         });
 
         // --- NEW FUNCTION: Generate Loot ---
@@ -3332,6 +3382,23 @@ Format the response strictly with markdown for readability. You MUST include all
             // Reset UI
             document.querySelectorAll('.sound-btn').forEach(btn => btn.classList.remove('active-loop'));
             currentAmbience = null;
+        }
+        // --- NEW: Save API Key Logic ---
+        window.saveApiKey = function() {
+            const input = document.getElementById('user-api-key');
+            const status = document.getElementById('api-key-status');
+            const key = input.value.trim();
+            
+            if (key) {
+                localStorage.setItem('dm_toolkit_api_key', key);
+                userApiKey = key;
+                status.textContent = "Status: Key saved!";
+                status.className = "mt-2 text-xs text-green-400";
+                input.value = ""; // Clear for security
+            } else {
+                status.textContent = "Status: Please enter a valid key.";
+                status.className = "mt-2 text-xs text-red-400";
+            }
         }
 
     </script>
