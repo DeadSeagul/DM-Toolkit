@@ -11,31 +11,16 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, setLogLevel, addDoc, updateDoc, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Expose necessary Firestore functions globally
-        window.doc = doc;
-        window.setDoc = setDoc;
-        window.deleteDoc = deleteDoc;
-        window.collection = collection;
-        window.query = query;
-        window.onSnapshot = onSnapshot;
-        window.addDoc = addDoc;
-        window.getDoc = getDoc; 
-        window.updateDoc = updateDoc; 
-        window.orderBy = orderBy; 
-        window.writeBatch = writeBatch; 
+        window.doc = doc; window.setDoc = setDoc; window.deleteDoc = deleteDoc; window.collection = collection;
+        window.query = query; window.onSnapshot = onSnapshot; window.addDoc = addDoc; window.getDoc = getDoc; 
+        window.updateDoc = updateDoc; window.orderBy = orderBy; window.writeBatch = writeBatch; 
 
-        // Expose Auth functions
         window.GoogleAuthProvider = GoogleAuthProvider;
         window.signInWithPopup = signInWithPopup;
         window.signOut = signOut;
 
-        // Global Firebase variables for the app to use
-        window.db = null;
-        window.auth = null;
-        window.userId = null;
-        window.isAuthReady = false;
+        window.db = null; window.auth = null; window.userId = null; window.isAuthReady = false;
 
-        // --- FIREBASE CONFIGURATION ---
         const manualFirebaseConfig = {
             apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
             authDomain: "aegisdmtoolkit.firebaseapp.com",
@@ -49,7 +34,6 @@
         const envFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Determine if we are using the manual config
         const isManualConfig = (manualFirebaseConfig.apiKey && manualFirebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE");
         const firebaseConfig = isManualConfig ? manualFirebaseConfig : envFirebaseConfig;
 
@@ -58,60 +42,35 @@
             window.db = getFirestore(app);
             window.auth = getAuth(app);
             
-            // Authenticate
             onAuthStateChanged(window.auth, async (user) => {
                 if (!user) {
-                    // Attempt to sign in
-                    if (initialAuthToken && !isManualConfig) {
-                        // Only try custom token if we are NOT using a manual config
-                        try {
+                    try {
+                        if (initialAuthToken && !isManualConfig) {
                             await signInWithCustomToken(window.auth, initialAuthToken);
-                        } catch (error) {
-                            console.warn("Custom token auth failed (likely mismatch), falling back to anonymous:", error);
-                            try {
-                                await signInAnonymously(window.auth);
-                            } catch (anonError) {
-                                console.error("Anonymous login failed after fallback:", anonError);
-                            }
-                        }
-                    } else {
-                        // Default to anonymous for manual configs or if no token exists
-                        try {
+                        } else {
                             await signInAnonymously(window.auth);
-                        } catch (error) {
-                            console.error("Anonymous login failed:", error);
                         }
+                    } catch (error) {
+                        console.warn("Auth error, using anonymous:", error);
+                        try { await signInAnonymously(window.auth); } catch(e) {}
                     }
                 } else {
-                    // Force token refresh
-                    try {
-                        await user.getIdToken(true);
-                    } catch (tokenError) {
-                        console.error("Error refreshing ID token:", tokenError);
-                    }
-
+                    try { await user.getIdToken(true); } catch (e) {}
                     window.userId = user.uid;
                     window.isAuthReady = true;
-                    console.log("User authenticated:", window.userId);
-                    
-                    // Update UI
                     updateLoginUI(user);
-                    
                     if (window.setupNotesListener) window.setupNotesListener();
                     if (window.setupCombatDataListeners) window.setupCombatDataListeners();
                     if (window.setupStatblocksListener) window.setupStatblocksListener();
                 }
             });
-        } else {
-            console.error("Firebase configuration not found.");
-        }
+        } else { console.error("Firebase config missing."); }
 
         function updateLoginUI(user) {
             const loginBtn = document.getElementById('login-btn');
             const userProfile = document.getElementById('user-profile');
             const userAvatar = document.getElementById('user-avatar');
             const userName = document.getElementById('user-name');
-
             if (user.isAnonymous) {
                 if(loginBtn) loginBtn.classList.remove('hidden');
                 if(userProfile) userProfile.classList.add('hidden');
@@ -146,1281 +105,1069 @@
         .sound-btn:active { transform: scale(0.95); }
         .sound-btn.active-loop { border-color: #34d399; background-color: #059669; box-shadow: 0 0 15px #34d399; animation: pulse-green 2s infinite; }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
+        /* Range Slider Style */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #34d399; cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #475569; border-radius: 2px; }
     </style>
 </head>
 <body class="p-4 sm:p-8">
     <div class="max-w-4xl mx-auto">
-        
-        <!-- Top Header with Login -->
+        <!-- Header -->
         <div class="flex justify-between items-center mb-6 bg-gray-800 p-3 rounded-lg border border-gray-700 shadow-lg">
-            <h1 class="text-2xl font-bold text-indigo-400 flex items-center gap-2">
-                <span>🛡️</span> Aegis DM Toolkit
-            </h1>
-            
-            <!-- Login / User Section -->
+            <h1 class="text-2xl font-bold text-indigo-400 flex items-center gap-2"><span>🛡️</span> Aegis DM Toolkit</h1>
             <div>
                 <button id="login-btn" onclick="loginWithGoogle()" class="hidden bg-white text-gray-900 hover:bg-gray-200 font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-2 transition duration-200">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
                     Sign in with Google
                 </button>
                 <div id="user-profile" class="hidden flex items-center gap-3">
-                    <div class="text-right hidden sm:block">
-                        <div id="user-name" class="text-sm font-semibold text-white">Adventurer</div>
-                        <div class="text-xs text-green-400">Online & Saving</div>
-                    </div>
+                    <div class="text-right hidden sm:block"><div id="user-name" class="text-sm font-semibold text-white">Adventurer</div><div class="text-xs text-green-400">Online & Saving</div></div>
                     <img id="user-avatar" src="" alt="User" class="w-9 h-9 rounded-full border-2 border-indigo-500">
-                    <button onclick="logoutUser()" class="bg-red-900/50 hover:bg-red-800 text-red-200 p-2 rounded-lg text-xs border border-red-800 transition duration-200" title="Sign Out">
-                        Sign Out
-                    </button>
+                    <button onclick="logoutUser()" class="bg-red-900/50 hover:bg-red-800 text-red-200 p-2 rounded-lg text-xs border border-red-800 transition duration-200">Sign Out</button>
                 </div>
             </div>
         </div>
         
-        <!-- Tab Navigation -->
+        <!-- Nav -->
         <div class="flex border-b border-gray-600 mb-6 overflow-x-auto">
-            <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active min-w-[100px]" onclick="switchTab('improv')">
-                🔮 Prep
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('combat')">
-                ⚔️ Combat
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('statblocks')">
-                👹 Stats
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('monsters')">
-                🐲 Monsters
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('loot')">
-                💰 Loot
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('soundboard')">
-                🔊 Sound
-            </button>
-            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('notes')">
-                📜 Notes
-            </button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active min-w-[100px]" onclick="switchTab('improv')">🔮 Prep</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('combat')">⚔️ Combat</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('statblocks')">👹 Stats</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('monsters')">🐲 Monsters</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('loot')">💰 Loot</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('soundboard')">🔊 Sound</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('notes')">📜 Notes</button>
         </div>
 
-        <!-- Content Area -->
+        <!-- Content -->
         <div id="content-area">
-            <!-- 1. Prep & Improv Engine (Gemini API) -->
+            <!-- Prep Tab -->
             <div id="improv" class="tab-content">
-                
-                <!-- API Key Configuration Card -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
                     <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
-                    <p class="text-sm text-gray-400 mb-3">
-                        To use the AI generators (NPCs, Settlements, Loot), you need a Google Gemini API Key.
-                        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-400 hover:text-blue-300 underline">Get one here for free.</a>
-                    </p>
+                    <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key. Saved locally.</p>
                     <div class="flex gap-2">
-                        <input type="password" id="user-api-key" placeholder="Paste your API Key here (starts with AIza...)" 
-                            class="flex-1 p-2 rounded-lg input-style text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                            onchange="updateApiKey(this.value)">
+                        <input type="password" id="user-api-key" placeholder="Paste API Key (AIza...)" class="flex-1 p-2 rounded-lg input-style text-sm">
+                        <button onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-200">Save</button>
                     </div>
-                    <p id="api-key-status" class="mt-2 text-xs text-gray-500">Key status: Not set</p>
+                    <p id="api-key-status" class="mt-2 text-xs text-gray-500">Status: No key saved.</p>
                 </div>
 
-                <!-- Structured Combat NPC Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-green-300">Structured Combat NPC Stats</h2>
-                    <p class="text-sm text-gray-400 mb-4">Generate immediate, initiative-ready stats based on a target level/CR.</p>
+                    <h2 class="text-xl font-semibold mb-4 text-green-300">Combat NPC Stats</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="npc-level" class="block text-xs font-medium text-gray-400 mb-1">Level or CR (e.g., 5 or 1/2)</label>
-                            <input type="text" id="npc-level" value="3" placeholder="Level/CR"
-                                class="w-full p-2 rounded-lg input-style transition text-sm">
-                        </div>
-                        <div>
-                            <label for="npc-type" class="block text-xs font-medium text-gray-400 mb-1">NPC Type (e.g., Goblin Shaman)</label>
-                            <input type="text" id="npc-type" value="Shadow Rogue" placeholder="Type or Vibe"
-                                class="w-full p-2 rounded-lg input-style transition text-sm">
-                        </div>
+                        <div><label class="block text-xs font-medium text-gray-400 mb-1">Level/CR</label><input type="text" id="npc-level" value="3" class="w-full p-2 rounded-lg input-style text-sm"></div>
+                        <div><label class="block text-xs font-medium text-gray-400 mb-1">NPC Type</label><input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
-                    <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
-                        <span id="generate-combat-text">Generate Combat Stats</span>
-                        <div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div>
-                    </button>
+                    <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                     <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
-
-                <!-- Free-Form Creative Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore & Backstory</h2>
-                    <p class="text-sm text-gray-400 mb-4">Need an NPC's backstory, a quick location, or lore?</p>
-                    <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g., A grumpy female blacksmith who secretly loves high fantasy romance novels and has a quest for a rare flower."></textarea>
-                    <button onclick="generateCreativeIdea()" id="generate-button" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
-                        <span id="generate-text">Generate Idea</span>
-                        <div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div>
-                    </button>
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore</h2>
+                    <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none" placeholder="Enter a prompt..."></textarea>
+                    <button onclick="generateCreativeIdea()" id="generate-button" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-text">Generate Idea</span><div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
-
-                <!-- Settlement Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
-                    <p class="text-sm text-gray-400 mb-4">Quickly generate a city, town, or village with key locations, NPCs, and quest hooks.</p>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="settlement-type" class="block text-xs font-medium text-gray-400 mb-1">Settlement Type</label>
-                            <select id="settlement-type" class="w-full p-2 rounded-lg input-style transition text-sm">
-                                <option value="Village" selected>Village</option>
-                                <option value="Town">Town</option>
-                                <option value="City">City</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="settlement-vibe" class="block text-xs font-medium text-gray-400 mb-1">Vibe/Description</label>
-                            <input type="text" id="settlement-vibe" value="haunted fishing village" placeholder="e.g., 'desert trade post'"
-                                class="w-full p-2 rounded-lg input-style transition text-sm">
-                        </div>
+                        <div><label class="block text-xs font-medium text-gray-400 mb-1">Type</label><select id="settlement-type" class="w-full p-2 rounded-lg input-style text-sm"><option value="Village">Village</option><option value="Town">Town</option><option value="City">City</option></select></div>
+                        <div><label class="block text-xs font-medium text-gray-400 mb-1">Vibe</label><input type="text" id="settlement-vibe" value="haunted fishing village" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
-                    <button onclick="generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
-                        <span id="generate-settlement-text">Generate Settlement</span>
-                        <div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div>
-                    </button>
+                    <button onclick="generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-settlement-text">Generate</span><div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
-
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Generated Idea</h2>
-                    <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden shadow-lg">
-                        <img id="generated-image" src="" alt="Generated Settlement Image" class="w-full h-auto object-cover bg-gray-700/30 min-h-[150px]">
-                        <p id="image-loading-status" class="text-center text-gray-400 p-3 bg-gray-800"></p>
-                    </div>
-                    <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
-                        Results will appear here.
-                    </div>
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
+                    <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden shadow-lg"><img id="generated-image" class="w-full h-auto object-cover bg-gray-700/30 min-h-[150px]"><p id="image-loading-status" class="text-center text-gray-400 p-3 bg-gray-800"></p></div>
+                    <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Results appear here.</div>
                     <p id="npc-save-status" class="mt-2 text-sm text-center hidden"></p>
-                    
                     <div id="save-options-creative" class="mt-4 hidden">
-                        <p class="text-sm text-center text-gray-400 mb-2">Save generated content to the Rulings & Notes tab:</p>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button onclick="saveGeneratedContent('prepNotes')" class="save-notes-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Notes</button>
-                            <button onclick="saveGeneratedContent('enemyNotes')" class="save-notes-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Enemies</button>
-                            <button onclick="saveGeneratedContent('npcNotes')" class="save-notes-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to NPCs</button>
-                        </div>
+                        <p class="text-sm text-center text-gray-400 mb-2">Save to:</p>
+                        <div class="grid grid-cols-3 gap-2"><button onclick="saveCombatNpcToNotes('prepNotes')" class="save-notes-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg text-xs">Notes</button><button onclick="saveCombatNpcToNotes('enemyNotes')" class="save-notes-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-xs">Enemies</button><button onclick="saveCombatNpcToNotes('npcNotes')" class="save-notes-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs">NPCs</button></div>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. Combat Tracker -->
+            <!-- Combat Tab -->
             <div id="combat" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Initiative & Monster Tracker</h2>
-                    <!-- Added Connectivity Status Indicator -->
-                    <div class="flex justify-between items-center mb-2">
-                        <p class="text-sm text-gray-400">Keeps combat flowing smoothly.</p>
-                        <span id="db-status" class="text-xs px-2 py-1 rounded bg-gray-700 text-gray-400">Connecting...</span>
-                    </div>
-
-                    <!-- Responsive Input Group -->
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Tracker</h2>
+                    <div class="flex justify-between items-center mb-2"><span id="db-status" class="text-xs px-2 py-1 rounded bg-gray-700 text-gray-400">Connecting...</span></div>
                     <div class="flex flex-wrap gap-2 mb-4">
-                        <input id="combatant-name" type="text" placeholder="Name" class="flex-1 min-w-[100px] p-2 rounded-lg input-style" />
-                        <!-- Initiative can be a fixed score or a modifier -->
-                        <input id="combatant-init" type="number" placeholder="Init Score/Mod" class="w-24 p-2 rounded-lg input-style text-center text-sm" />
-                        <!-- AC Input -->
-                        <input id="combatant-ac" type="number" placeholder="AC" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
-                        <input id="combatant-hp" type="number" placeholder="HP" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
-                        <button onclick="addCombatant()" id="add-combatant-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-lg transition duration-300 text-sm">Add</button>
+                        <input id="combatant-name" type="text" placeholder="Name" class="flex-1 min-w-[100px] p-2 rounded-lg input-style">
+                        <input id="combatant-init" type="number" placeholder="Init" class="w-20 p-2 rounded-lg input-style text-center text-sm">
+                        <input id="combatant-ac" type="number" placeholder="AC" class="w-16 p-2 rounded-lg input-style text-center text-sm">
+                        <input id="combatant-hp" type="number" placeholder="HP" class="w-16 p-2 rounded-lg input-style text-center text-sm">
+                        <button onclick="addCombatant()" id="add-combatant-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-lg text-sm">Add</button>
                     </div>
-
-                    <!-- Dice Roller Section -->
                     <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50">
-                        <h3 class="text-md font-semibold mb-2 text-indigo-400">Initiative Dice Roller (D20)</h3>
-                        <div class="flex items-center space-x-2">
-                            <button onclick="rollD20()" id="d20-roll-button" class="w-1/3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition duration-300 text-sm flex items-center justify-center">
-                                Roll D20
-                            </button>
-                            <div id="last-roll-display" class="w-1/3 text-4xl font-extrabold text-center text-yellow-400 border-2 border-yellow-400 p-2 rounded-lg bg-gray-900/50 select-none">
-                                ?
-                            </div>
-                            <select id="combatant-selector" class="w-1/3 p-2 rounded-lg input-style text-sm">
-                                <option value="" disabled selected>Select Target</option>
-                            </select>
-                        </div>
-                        <button onclick="assignInitiativeRoll()" id="assign-roll-button" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition duration-300 text-sm disabled:opacity-50" disabled>
-                            Assign Roll to Selected + Stored Modifier
-                        </button>
-                        <p class="text-xs text-gray-400 mt-2 text-center">
-                            *The combatant's **stored** Initiative Modifier is automatically used for the final score calculation.
-                        </p>
+                        <h3 class="text-md font-semibold mb-2 text-indigo-400">Dice Roller</h3>
+                        <div class="flex items-center space-x-2"><button onclick="rollD20()" class="w-1/3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg text-sm">Roll D20</button><div id="last-roll-display" class="w-1/3 text-4xl font-extrabold text-center text-yellow-400 border-2 border-yellow-400 p-2 rounded-lg bg-gray-900/50 select-none">?</div><select id="combatant-selector" class="w-1/3 p-2 rounded-lg input-style text-sm"><option value="" disabled selected>Target</option></select></div>
+                        <button onclick="assignInitiativeRoll()" id="assign-roll-button" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-sm disabled:opacity-50" disabled>Assign Roll</button>
                     </div>
-
-
                     <div class="flex justify-between items-center mb-4">
-                        <button onclick="sortInitiative()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-sm">Sort Initiative</button>
-                        <button onclick="nextTurn()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-sm">Next Turn &raquo;</button>
-                        <button onclick="clearCombat()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 text-sm">Clear All</button>
+                        <button onclick="sortInitiative()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Sort</button>
+                        <button onclick="nextTurn()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Next &raquo;</button>
+                        <button onclick="clearCombat()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Clear</button>
                     </div>
-                    
-                    <div id="initiative-list" class="scrollable-content space-y-2">
-                        <!-- Combatant list will be dynamically inserted here -->
-                        <p class="text-center text-gray-500 pt-8">Add your players and monsters to start tracking combat!</p>
-                    </div>
+                    <div id="initiative-list" class="scrollable-content space-y-2"><p class="text-center text-gray-500 pt-8">List empty.</p></div>
                 </div>
             </div>
 
-            <!-- 3. Statblocks Tab -->
+            <!-- Statblocks Tab -->
             <div id="statblocks" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Save NPC & Monster Statblocks</h2>
-                    <p class="text-sm text-gray-400 mb-4">Define common enemies and allies for quick reference and future combat imports.</p>
-                    
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Save NPC</h2>
                     <div class="grid grid-cols-2 gap-2 mb-4">
-                        <input id="stat-name" type="text" placeholder="Name (e.g., Orc Grunt)" class="col-span-2 p-2 rounded-lg input-style" />
-                        <input id="stat-hp" type="number" placeholder="HP (e.g., 15)" class="p-2 rounded-lg input-style text-center text-sm" />
-                        <input id="stat-ac" type="number" placeholder="AC (e.g., 13)" class="p-2 rounded-lg input-style text-center text-sm" />
-                        <input id="stat-tohit" type="number" placeholder="To Hit Mod (e.g., +4)" class="p-2 rounded-lg input-style text-center text-sm" />
-                        <input id="stat-init-mod" type="number" placeholder="Init Mod (e.g., +1)" class="p-2 rounded-lg input-style text-center text-sm" />
-                        <input id="stat-dmg" type="text" placeholder="Attack DMG (e.g., 1d8+2)" class="col-span-2 p-2 rounded-lg input-style" />
+                        <input id="stat-name" type="text" placeholder="Name" class="col-span-2 p-2 rounded-lg input-style">
+                        <input id="stat-hp" type="number" placeholder="HP" class="p-2 rounded-lg input-style text-center text-sm">
+                        <input id="stat-ac" type="number" placeholder="AC" class="p-2 rounded-lg input-style text-center text-sm">
+                        <input id="stat-tohit" type="number" placeholder="Hit Mod" class="p-2 rounded-lg input-style text-center text-sm">
+                        <input id="stat-init-mod" type="number" placeholder="Init Mod" class="p-2 rounded-lg input-style text-center text-sm">
+                        <input id="stat-dmg" type="text" placeholder="Damage" class="col-span-2 p-2 rounded-lg input-style">
                     </div>
-
-                    <button onclick="saveStatblock()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">
-                        Save Statblock
-                    </button>
+                    <button onclick="saveStatblock()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg">Save</button>
                     <p id="statblock-status" class="mt-2 text-sm text-center text-gray-400"></p>
                 </div>
-
-                <!-- NEW DICE ROLLER CARD -->
-                <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-teal-300">Quick Dice Roller</h2>
-                    <div class="flex flex-wrap items-center gap-2 mb-4">
-                        <input id="dice-num" type="number" value="1" min="1" class="w-16 p-2 rounded-lg input-style text-center text-sm" aria-label="Number of Dice" />
-                        <span class="text-lg font-semibold text-gray-400">d</span>
-                        <select id="dice-type" class="p-2 rounded-lg input-style text-sm" aria-label="Dice Type">
-                            <option value="4">4</option>
-                            <option value="6">6</option>
-                            <option value="8">8</option>
-                            <option value="10">10</option>
-                            <option value="12">12</option>
-                            <option value="20" selected>20</option>
-                            <option value="100">100</option>
-                        </select>
-                        <span class="text-lg font-semibold text-gray-400">+</span>
-                        <input id="dice-mod" type="number" value="0" class="w-16 p-2 rounded-lg input-style text-center text-sm" aria-label="Modifier" />
-                    </div>
-                    <button onclick="rollCustomDice()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg transition duration-300">
-                        Roll Dice
-                    </button>
-                    <div id="dice-roll-result" class="mt-4 text-center text-xl font-bold text-yellow-300 bg-gray-700/50 p-3 rounded-lg min-h-[50px] flex items-center justify-center">
-                        Result will appear here
-                    </div>
-                    <p id="dice-roll-details" class="mt-2 text-center text-sm text-gray-400"></p>
-                </div>
-
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Saved Statblocks</h2>
-                    <div id="statblocks-list" class="scrollable-content space-y-2">
-                         <p class="text-center text-gray-500 pt-8">Your saved NPCs and monsters will appear here.</p>
-                    </div>
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Saved</h2>
+                    <div id="statblocks-list" class="scrollable-content space-y-2"><p class="text-center text-gray-500 pt-8">No stats saved.</p></div>
                 </div>
             </div>
 
-            <!-- 4. NEW Monsters Tab -->
+            <!-- Monsters Tab -->
             <div id="monsters" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-green-300">Full Monster Stat Block Generator</h2>
-                    <p class="text-sm text-gray-400 mb-4">Generate a complete D&D 5e-style monster stat block using AI.</p>
-                    
+                    <h2 class="text-xl font-semibold mb-4 text-green-300">Monster Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="monster-name" class="block text-xs font-medium text-gray-400 mb-1">Monster Name (e.g., "Goblin Boss")</label>
-                            <input type="text" id="monster-name" value="Cave Troll" placeholder="Monster Name"
-                                class="w-full p-2 rounded-lg input-style transition text-sm">
-                        </div>
-                        <div>
-                            <label for="monster-cr" class="block text-xs font-medium text-gray-400 mb-1">Challenge Rating (e.g., "5" or "1/4")</label>
-                            <input type="text" id="monster-cr" value="4" placeholder="CR"
-                                class="w-full p-2 rounded-lg input-style transition text-sm">
-                        </div>
+                        <div><label class="block text-xs font-medium text-gray-400 mb-1">Name</label><input type="text" id="monster-name" value="Cave Troll" class="w-full p-2 rounded-lg input-style text-sm"></div>
+                        <div><label class="block text-xs font-medium text-gray-400 mb-1">CR</label><input type="text" id="monster-cr" value="4" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
-
-                    <button onclick="generateMonsterStatblock()" id="generate-monster-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
-                        <span id="generate-monster-text">Generate Monster</span>
-                        <div id="monster-loading-spinner" class="loading-spinner ml-2 hidden"></div>
-                    </button>
+                    <button onclick="generateMonsterStatblock()" id="generate-monster-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-monster-text">Generate</span><div id="monster-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                     <p id="monster-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
-
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Generated Stat Block</h2>
-                    <!-- Output div for the monster stat block -->
-                    <div id="monster-output" class="min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
-                        Monster stat block will appear here.
-                    </div>
-                    <!-- Status message for saving -->
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
+                    <div id="monster-output" class="min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Stat block will appear here.</div>
                     <p id="monster-save-status" class="mt-2 text-sm text-center hidden"></p>
-                    
-                    <!-- Save Options for Monster -->
                     <div id="save-options-monster" class="mt-4 hidden">
-                        <p class="text-sm text-center text-gray-400 mb-2">Save generated monster:</p>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button onclick="addMonsterToStatblocks()" class="save-monster-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Statblocks (Combat)</button>
-                            <button onclick="saveMonsterToNotes()" class="save-monster-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg transition duration-300 text-xs">Save to Enemy Notes (Full)</button>
-                        </div>
+                        <div class="grid grid-cols-2 gap-2"><button onclick="addMonsterToStatblocks()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg text-xs">Save to Stats</button><button onclick="saveMonsterToNotes()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-xs">Save to Notes</button></div>
                     </div>
                 </div>
             </div>
 
-            <!-- NEW: Loot Generator Tab -->
+            <!-- Loot Tab -->
             <div id="loot" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-yellow-300">AI Loot Generator</h2>
-                    <p class="text-sm text-gray-400 mb-4">Generate balanced loot drops for individual enemies or entire treasure hoards.</p>
-                    
+                    <h2 class="text-xl font-semibold mb-4 text-yellow-300">Loot Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="loot-level" class="block text-xs font-medium text-gray-400 mb-1">Party Level or CR</label>
-                            <input type="text" id="loot-level" value="3" placeholder="Level/CR"
-                                class="w-full p-2 rounded-lg input-style transition text-sm">
-                        </div>
-                        <div>
-                            <label for="loot-type" class="block text-xs font-medium text-gray-400 mb-1">Loot Type</label>
-                            <select id="loot-type" class="w-full p-2 rounded-lg input-style transition text-sm">
-                                <option value="Individual">Individual Pockets</option>
-                                <option value="Hoard">Boss Hoard / Chest</option>
-                                <option value="Shop Inventory">Shop Inventory</option>
-                            </select>
-                        </div>
+                        <div><label class="block text-xs font-medium text-gray-400 mb-1">Level/CR</label><input type="text" id="loot-level" value="3" class="w-full p-2 rounded-lg input-style text-sm"></div>
+                        <div><label class="block text-xs font-medium text-gray-400 mb-1">Type</label><select id="loot-type" class="w-full p-2 rounded-lg input-style text-sm"><option value="Individual">Individual</option><option value="Hoard">Hoard</option><option value="Shop Inventory">Shop</option></select></div>
                     </div>
-
-                    <button onclick="generateLoot()" id="generate-loot-button" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
-                        <span id="generate-loot-text">Generate Loot</span>
-                        <div id="loot-loading-spinner" class="loading-spinner ml-2 hidden"></div>
-                    </button>
+                    <button onclick="generateLoot()" id="generate-loot-button" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-loot-text">Generate</span><div id="loot-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
-
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Loot Results</h2>
-                    <div id="loot-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
-                        Loot drops will appear here.
-                    </div>
-                    <!-- Save Option for Loot -->
-                    <button onclick="saveGeneratedContent('prepNotes')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg transition duration-300 text-sm">
-                        Save to Notes
-                    </button>
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
+                    <div id="loot-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Loot appears here.</div>
+                    <button onclick="saveGeneratedContent('lootNotes')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg text-sm">Save to Loot Notes</button>
                 </div>
             </div>
 
-            <!-- NEW: Soundboard Tab -->
+            <!-- Soundboard Tab -->
             <div id="soundboard" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-pink-300">Synth Soundboard</h2>
-                    <p class="text-sm text-gray-400 mb-4">Instant sound effects and looping ambiences synthesized in your browser. No external files required.</p>
                     
-                    <!-- One-Shot SFX -->
-                    <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider">One-Shot Effects</h3>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-                        <!-- Success Sounds -->
-                        <button onclick="playTone('success')" class="sound-btn bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">✨</span>
-                            <span class="text-xs">Success</span>
-                        </button>
-                        <button onclick="playTone('critical')" class="sound-btn bg-green-700 hover:bg-green-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-900 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">🎉</span>
-                            <span class="text-xs">Crit Success</span>
-                        </button>
-                        
-                        <!-- Failure Sounds -->
-                        <button onclick="playTone('fail')" class="sound-btn bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-red-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">❌</span>
-                            <span class="text-xs">Fail</span>
-                        </button>
-                        
-                        <!-- Combat Sounds -->
-                        <button onclick="playTone('combat_start')" class="sound-btn bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-orange-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">⚔️</span>
-                            <span class="text-xs">Combat!</span>
-                        </button>
-                        <button onclick="playTone('spell')" class="sound-btn bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-purple-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">🔮</span>
-                            <span class="text-xs">Spell</span>
-                        </button>
-                        
-                        <!-- Ambient/Misc -->
-                        <button onclick="playTone('mystery')" class="sound-btn bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-indigo-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">👻</span>
-                            <span class="text-xs">Mystery</span>
-                        </button>
-                        <button onclick="playTone('rest')" class="sound-btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-blue-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">💤</span>
-                            <span class="text-xs">Rest</span>
-                        </button>
-                        <button onclick="playTone('trap')" class="sound-btn bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-yellow-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">⚠️</span>
-                            <span class="text-xs">Trap!</span>
-                        </button>
-                        <button onclick="playTone('boss')" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-gray-900 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">💀</span>
-                            <span class="text-xs">Boss</span>
-                        </button>
+                    <!-- Volume Slider -->
+                    <div class="mb-6 flex items-center gap-4 bg-gray-800 p-3 rounded-lg border border-gray-700">
+                        <label for="master-volume" class="text-sm font-bold text-indigo-400">Master Volume:</label>
+                        <input type="range" id="master-volume" min="0" max="1" step="0.01" value="0.5" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-400">
                     </div>
 
-                    <!-- Ambience Loops -->
-                    <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider border-t border-gray-700 pt-4">Generative Ambience Loops (Click to Toggle)</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                        <button onclick="playTone('success')" class="sound-btn bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">✨</span><span class="text-xs">Success</span></button>
+                        <button onclick="playTone('critical')" class="sound-btn bg-green-700 hover:bg-green-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-900 flex flex-col items-center justify-center"><span class="text-2xl mb-1">🎉</span><span class="text-xs">Crit</span></button>
+                        <button onclick="playTone('fail')" class="sound-btn bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-red-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">❌</span><span class="text-xs">Fail</span></button>
+                        <button onclick="playTone('combat_start')" class="sound-btn bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-orange-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">⚔️</span><span class="text-xs">Combat</span></button>
+                        <button onclick="playTone('spell')" class="sound-btn bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-purple-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">🔮</span><span class="text-xs">Spell</span></button>
+                        <button onclick="playTone('mystery')" class="sound-btn bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-indigo-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">👻</span><span class="text-xs">Mystery</span></button>
+                        <button onclick="playTone('rest')" class="sound-btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-blue-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">💤</span><span class="text-xs">Rest</span></button>
+                        <button onclick="playTone('trap')" class="sound-btn bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-yellow-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">⚠️</span><span class="text-xs">Trap</span></button>
+                        <button onclick="playTone('boss')" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-gray-900 flex flex-col items-center justify-center"><span class="text-2xl mb-1">💀</span><span class="text-xs">Boss</span></button>
+                    </div>
+                    <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider border-t border-gray-700 pt-4">Ambience Loops</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <button onclick="toggleAmbience('village')" id="ambience-village" class="sound-btn bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow-md border border-teal-600 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🏘️</span>
-                            <span class="text-xs">Village Market</span>
-                        </button>
-                        <button onclick="toggleAmbience('city')" id="ambience-city" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-lg shadow-md border border-gray-500 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🏰</span>
-                            <span class="text-xs">City Life</span>
-                        </button>
-                        <button onclick="toggleAmbience('tavern')" id="ambience-tavern" class="sound-btn bg-yellow-900 hover:bg-yellow-800 text-white font-bold py-3 rounded-lg shadow-md border border-yellow-700 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🍺</span>
-                            <span class="text-xs">Tavern</span>
-                        </button>
-                        <button onclick="toggleAmbience('ocean')" id="ambience-ocean" class="sound-btn bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow-md border border-blue-700 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">⚓</span>
-                            <span class="text-xs">Sea Shanty</span>
-                        </button>
-                        <button onclick="toggleAmbience('dungeon')" id="ambience-dungeon" class="sound-btn bg-purple-900 hover:bg-purple-800 text-white font-bold py-3 rounded-lg shadow-md border border-purple-700 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">⛓️</span>
-                            <span class="text-xs">Dungeon</span>
-                        </button>
-                        <button onclick="toggleAmbience('battle_minor')" id="ambience-battle_minor" class="sound-btn bg-red-900 hover:bg-red-800 text-white font-bold py-3 rounded-lg shadow-md border border-red-700 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🛡️</span>
-                            <span class="text-xs">Battle (Minor)</span>
-                        </button>
-                        <button onclick="toggleAmbience('battle_major')" id="ambience-battle_major" class="sound-btn bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-md border border-gray-600 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🔥</span>
-                            <span class="text-xs">Battle (Major)</span>
-                        </button>
-                        <button onclick="toggleAmbience('sleep')" id="ambience-sleep" class="sound-btn bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-3 rounded-lg shadow-md border border-indigo-700 flex flex-col items-center justify-center col-span-1 sm:col-span-1">
-                            <span class="text-xl mb-1">⛺💤</span>
-                            <span class="text-xs">Campfire Rest</span>
-                        </button>
+                        <button onclick="toggleAmbience('village')" id="ambience-village" class="sound-btn bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow-md border border-teal-600 flex flex-col items-center justify-center"><span class="text-xl mb-1">🏘️</span><span class="text-xs">Village</span></button>
+                        <button onclick="toggleAmbience('city')" id="ambience-city" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-lg shadow-md border border-gray-500 flex flex-col items-center justify-center"><span class="text-xl mb-1">🏰</span><span class="text-xs">City</span></button>
+                        <button onclick="toggleAmbience('tavern')" id="ambience-tavern" class="sound-btn bg-yellow-900 hover:bg-yellow-800 text-white font-bold py-3 rounded-lg shadow-md border border-yellow-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">🍺</span><span class="text-xs">Tavern</span></button>
+                        <button onclick="toggleAmbience('ocean')" id="ambience-ocean" class="sound-btn bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow-md border border-blue-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">⚓</span><span class="text-xs">Sea Shanty</span></button>
+                        <button onclick="toggleAmbience('dungeon')" id="ambience-dungeon" class="sound-btn bg-purple-900 hover:bg-purple-800 text-white font-bold py-3 rounded-lg shadow-md border border-purple-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">⛓️</span><span class="text-xs">Dungeon</span></button>
+                        <button onclick="toggleAmbience('battle_minor')" id="ambience-battle_minor" class="sound-btn bg-red-900 hover:bg-red-800 text-white font-bold py-3 rounded-lg shadow-md border border-red-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">🛡️</span><span class="text-xs">Minor Battle</span></button>
+                        <button onclick="toggleAmbience('battle_major')" id="ambience-battle_major" class="sound-btn bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-md border border-gray-600 flex flex-col items-center justify-center"><span class="text-xl mb-1">🔥</span><span class="text-xs">Major Battle</span></button>
+                        <button onclick="toggleAmbience('sleep')" id="ambience-sleep" class="sound-btn bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-3 rounded-lg shadow-md border border-indigo-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">⛺</span><span class="text-xs">Rest</span></button>
                     </div>
                     <div id="ambience-status" class="mt-2 text-center text-xs text-green-400 h-4"></div>
                 </div>
             </div>
 
-            <!-- 5. Rulings & Notes (was 4) -->
+            <!-- Notes Tab -->
             <div id="notes" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Collapsible & Editable Prep Notes</h2>
-                    <p class="text-sm text-gray-400 mb-4">Your generated content and custom notes are now saved as a **collapsible list** for better organization.</p>
-                    
-                    <!-- Sub-Tab Navigation -->
-                    <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4">
-                        <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="switchSubTab('prepNotes')">
-                            📜 General Notes
-                        </button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="enemyNotes" onclick="switchSubTab('enemyNotes')">
-                            💀 Enemies
-                        </button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="switchSubTab('npcNotes')">
-                            👥 NPCs
-                        </button>
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Notes</h2>
+                    <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4 overflow-x-auto">
+                        <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="switchSubTab('prepNotes')">📜 General</button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="enemyNotes" onclick="switchSubTab('enemyNotes')">💀 Enemies</button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="switchSubTab('npcNotes')">👥 NPCs</button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="lootNotes" onclick="switchSubTab('lootNotes')">💰 Loot</button>
                     </div>
-
-                    <!-- Sub-Tab Content: Notes List -->
-                    <div id="prepNotes-sub-content" class="sub-tab-content">
-                        <div id="prepNotes-list" class="scrollable-content space-y-3">
-                            <!-- Notes will be rendered here -->
-                        </div>
-                    </div>
-                    <!-- Sub-Tab Content: Enemies List -->
-                    <div id="enemyNotes-sub-content" class="sub-tab-content hidden">
-                        <div id="enemyNotes-list" class="scrollable-content space-y-3">
-                            <!-- Enemy notes will be rendered here -->
-                        </div>
-                    </div>
-                    <!-- Sub-Tab Content: NPCs List -->
-                    <div id="npcNotes-sub-content" class="sub-tab-content hidden">
-                        <div id="npcNotes-list" class="scrollable-content space-y-3">
-                            <!-- NPC notes will be rendered here -->
-                        </div>
-                    </div>
-
-                    <!-- Button to add a new manual note -->
-                    <button onclick="addNewNote(currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">
-                        + Add Manual Note
-                    </button>
+                    <div id="prepNotes-sub-content" class="sub-tab-content"><div id="prepNotes-list" class="scrollable-content space-y-3"></div></div>
+                    <div id="enemyNotes-sub-content" class="sub-tab-content hidden"><div id="enemyNotes-list" class="scrollable-content space-y-3"></div></div>
+                    <div id="npcNotes-sub-content" class="sub-tab-content hidden"><div id="npcNotes-list" class="scrollable-content space-y-3"></div></div>
+                    <div id="lootNotes-sub-content" class="sub-tab-content hidden"><div id="lootNotes-list" class="scrollable-content space-y-3"></div></div>
+                    <button onclick="addNewNote(currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">+ Add Manual Note</button>
                     <p id="notes-status" class="mt-2 text-sm text-center text-gray-400"></p>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Notes Editing MODAL (For Rulings & Notes) -->
+
+    <!-- Modals -->
     <div id="edit-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
             <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Note</h3>
-            <input type="hidden" id="modal-note-id">
-            <input type="hidden" id="modal-tab-name">
-
-            <label for="modal-title" class="block text-sm font-medium text-gray-400 mb-1">Title</label>
-            <input type="text" id="modal-title" class="w-full p-3 rounded-lg input-style mb-4">
-
-            <label for="modal-content" class="block text-sm font-medium text-gray-400 mb-1">Content</label>
-            <textarea id="modal-content" rows="6" class="w-full p-3 rounded-lg input-style mb-6 resize-none"></textarea>
-
-            <div class="flex justify-end space-x-3">
-                <button onclick="closeEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
-                <button onclick="saveEditedNote()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Changes</button>
-            </div>
+            <input type="hidden" id="modal-note-id"><input type="hidden" id="modal-tab-name">
+            <label class="block text-sm font-medium text-gray-400 mb-1">Title</label><input type="text" id="modal-title" class="w-full p-3 rounded-lg input-style mb-4">
+            <label class="block text-sm font-medium text-gray-400 mb-1">Content</label><textarea id="modal-content" rows="6" class="w-full p-3 rounded-lg input-style mb-6 resize-none"></textarea>
+            <div class="flex justify-end space-x-3"><button onclick="closeEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button><button onclick="saveEditedNote()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Save</button></div>
         </div>
     </div>
-    
-    <!-- Statblock Editing MODAL (NEW) -->
+
     <div id="edit-statblock-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
             <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Statblock</h3>
             <input type="hidden" id="modal-statblock-id">
-
-            <label for="modal-stat-name" class="block text-sm font-medium text-gray-400 mb-1">Name</label>
-            <input type="text" id="modal-stat-name" placeholder="Name" class="w-full p-3 rounded-lg input-style mb-4">
-
+            <label class="block text-sm font-medium text-gray-400 mb-1">Name</label><input type="text" id="modal-stat-name" class="w-full p-3 rounded-lg input-style mb-4">
             <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label for="modal-stat-hp" class="block text-sm font-medium text-gray-400 mb-1">HP</label>
-                    <input type="number" id="modal-stat-hp" placeholder="HP" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4">
-                </div>
-                <div>
-                    <label for="modal-stat-ac" class="block text-sm font-medium text-gray-400 mb-1">AC</label>
-                    <input type="number" id="modal-stat-ac" placeholder="AC" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4">
-                </div>
-                <div>
-                    <label for="modal-stat-tohit" class="block text-sm font-medium text-gray-400 mb-1">To Hit Mod</label>
-                    <input type="number" id="modal-stat-tohit" placeholder="To Hit Mod" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4">
-                </div>
-                <div>
-                    <label for="modal-stat-init-mod" class="block text-sm font-medium text-gray-400 mb-1">Init Mod</label>
-                    <input type="number" id="modal-stat-init-mod" placeholder="Init Mod" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4">
-                </div>
+                <div><label class="block text-sm font-medium text-gray-400 mb-1">HP</label><input type="number" id="modal-stat-hp" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div>
+                <div><label class="block text-sm font-medium text-gray-400 mb-1">AC</label><input type="number" id="modal-stat-ac" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div>
+                <div><label class="block text-sm font-medium text-gray-400 mb-1">To Hit</label><input type="number" id="modal-stat-tohit" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div>
+                <div><label class="block text-sm font-medium text-gray-400 mb-1">Init</label><input type="number" id="modal-stat-init-mod" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div>
             </div>
-
-            <label for="modal-stat-dmg" class="block text-sm font-medium text-gray-400 mb-1">Attack DMG (e.g., 1d8+2)</label>
-            <input type="text" id="modal-stat-dmg" placeholder="Attack DMG" class="w-full p-3 rounded-lg input-style mb-6">
-
-
-            <div class="flex justify-end space-x-3">
-                <button onclick="closeStatblockEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
-                <button onclick="saveEditedStatblock()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Changes</button>
-            </div>
+            <label class="block text-sm font-medium text-gray-400 mb-1">Damage</label><input type="text" id="modal-stat-dmg" class="w-full p-3 rounded-lg input-style mb-6">
+            <div class="flex justify-end space-x-3"><button onclick="closeStatblockEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button><button onclick="saveEditedStatblock()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Save</button></div>
         </div>
     </div>
-    
+
     <script>
-        // --- Global State Variables ---
-        let currentTab = 'improv'; 
-        let currentSubTab = 'prepNotes';
-        let savedStatblocks = []; 
-        let lastGeneratedNpc = null;
-        let lastGeneratedMonster = null;
-        let structuredNotes = {
-            prepNotes: [],
-            enemyNotes: [],
-            npcNotes: []
-        };
-        // API Key is loaded from localStorage on startup
-        let apiKey = localStorage.getItem('dm_toolkit_api_key') || "";
-        let combatants = [];
-        let currentTurnIndex = -1;
-        let lastRoll = 0;
+        // --- Global State ---
+        let currentTab = 'improv', currentSubTab = 'prepNotes', savedStatblocks = [], lastGeneratedNpc = null, lastGeneratedMonster = null, combatants = [], currentTurnIndex = -1, lastRoll = 0;
+        let structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+        let userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
 
-        // --- Core Firebase Functions ---
-        function getUserDocRef() {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            return window.doc(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_data', 'shared_notes');
-        }
-        function getCombatantsCollectionRef() {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            return window.collection(window.db, 'artifacts', appId, 'public', 'data', 'shared_combatants');
-        }
-        function getCombatStateDocRef() {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            return window.doc(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_data', 'shared_combat_state');
-        }
-        function getStatblocksCollectionRef() {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            return window.collection(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_statblocks');
-        }
-        function getFirestoreKey(tabName) {
-            return `structured${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`;
-        }
-
-        // --- UI/Tab Switching Logic ---
-
+        // --- UI Helpers ---
         window.switchTab = function(tabId) {
             currentTab = tabId;
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
-
             document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active');
-                btn.classList.add('text-gray-400');
-                
-                const btnText = btn.textContent.trim();
-                let targetText = '';
-                switch (tabId) {
-                    case 'improv': targetText = 'Prep'; break;
-                    case 'combat': targetText = 'Combat'; break;
-                    case 'statblocks': targetText = 'Stats'; break;
-                    case 'monsters': targetText = 'Monsters'; break;
-                    case 'loot': targetText = 'Loot'; break;
-                    case 'soundboard': targetText = 'Sound'; break;
-                    case 'notes': targetText = 'Notes'; break;
-                }
-
-                if (btnText.includes(targetText)) {
-                    btn.classList.add('active');
-                    btn.classList.remove('text-gray-400');
+                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
+                btn.classList.add('text-gray-400', 'border-transparent');
+                // Match button text to tab ID (simple heuristic)
+                const text = btn.textContent.toLowerCase();
+                if (text.includes(tabId) || (tabId === 'improv' && text.includes('prep'))) {
+                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
                 }
             });
-            if (tabId === 'notes') {
-                switchSubTab(currentSubTab);
-            }
-        }
-        
+            if (tabId === 'notes') switchSubTab(currentSubTab);
+        };
+
         window.switchSubTab = function(tabId) {
             currentSubTab = tabId;
             document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`${tabId}-sub-content`).classList.remove('hidden');
-
             document.querySelectorAll('.sub-tab-button').forEach(btn => {
                 btn.classList.remove('active', 'text-gray-400');
-                if (btn.dataset.subtab === tabId) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.add('text-gray-400');
-                }
+                if (btn.dataset.subtab === tabId) btn.classList.add('active');
+                else btn.classList.add('text-gray-400');
             });
             renderStructuredNotes(currentSubTab);
-        }
+        };
 
-        // --- API Key Management ---
-        window.updateApiKey = function(value) {
-            apiKey = value.trim();
-            localStorage.setItem('dm_toolkit_api_key', apiKey);
-            
-            const statusEl = document.getElementById('api-key-status');
-            if (statusEl) {
-                if (apiKey.length > 10) {
-                    statusEl.textContent = "Key status: Set (Ready to use)";
-                    statusEl.className = "mt-2 text-xs text-green-400";
-                } else {
-                    statusEl.textContent = "Key status: Invalid or empty";
-                    statusEl.className = "mt-2 text-xs text-red-400";
+        window.updateApiKey = function(val) {
+            userApiKey = val.trim();
+            localStorage.setItem('dm_toolkit_api_key', userApiKey);
+            const status = document.getElementById('api-key-status');
+            if(userApiKey.length > 5) { status.textContent = "Key saved!"; status.className="mt-2 text-xs text-green-400"; }
+            else { status.textContent = "Key empty"; status.className="mt-2 text-xs text-red-400"; }
+        };
+
+        window.saveApiKey = function() {
+            // Wrapper to trigger visual feedback on save button click
+            const val = document.getElementById('user-api-key').value;
+            window.updateApiKey(val);
+            alert("API Key Saved!");
+        };
+
+        // --- Firebase Helpers ---
+        const getCol = (name) => window.collection(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', 'public', 'data', name);
+        const getDocRef = (col, id) => window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', 'public', 'data', col, id);
+        const getSharedDoc = (name) => window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', 'public', 'data', 'dm_toolkit_data', name);
+
+        window.saveStructuredNotes = async (tab, data) => {
+            if(!window.isAuthReady) return;
+            const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+            try { await window.setDoc(getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error(e); }
+        };
+
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady) return;
+            window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    structuredNotes.prepNotes = d.structuredPrepNotes || [];
+                    structuredNotes.enemyNotes = d.structuredEnemyNotes || [];
+                    structuredNotes.npcNotes = d.structuredNpcNotes || [];
+                    structuredNotes.lootNotes = d.structuredLootNotes || [];
+                    if(currentTab==='notes') renderStructuredNotes(currentSubTab);
                 }
-            }
-        }
-
-        function checkApiKey(outputElementId) {
-            if (!apiKey || apiKey.includes("PASTE_YOUR")) {
-                const el = document.getElementById(outputElementId);
-                if (el) {
-                    el.innerHTML = '<span class="text-red-400">⚠️ Missing API Key. Please enter your Gemini API Key in the "Prep" tab.</span>';
-                    el.classList.remove('hidden');
-                }
-                return false;
-            }
-            return true;
-        }
-
-
-        // --- NOTES Logic ---
-
-        window.saveStructuredNotes = async function(tabName, notesArray) {
-            if (!window.isAuthReady || !window.db) {
-                document.getElementById('notes-status').textContent = 'Database not ready. Please wait for authentication.';
-                return;
-            }
-
-            const statusElement = document.getElementById('notes-status');
-            statusElement.textContent = `Saving ${tabName}...`;
-            
-            const firestoreKey = getFirestoreKey(tabName);
-            const dataToSave = {};
-            dataToSave[firestoreKey] = notesArray;
-            dataToSave.lastSaved = new Date().toISOString();
-
-            try {
-                await window.setDoc(getUserDocRef(), dataToSave, { merge: true });
-                statusElement.textContent = `${tabName} saved successfully!`;
-            } catch (error) {
-                console.error("Error saving structured notes: ", error);
-                statusElement.textContent = 'Error saving notes. Check console for details.';
-            }
-        }
-        
-        window.setupNotesListener = function() {
-            if (!window.isAuthReady || !window.db) return;
-
-            window.onSnapshot(getUserDocRef(), (doc) => {
-                if (doc.exists()) {
-                    const data = doc.data();
-                    
-                    structuredNotes.prepNotes = data[getFirestoreKey('prepNotes')] || [];
-                    structuredNotes.enemyNotes = data[getFirestoreKey('enemyNotes')] || [];
-                    structuredNotes.npcNotes = data[getFirestoreKey('npcNotes')] || [];
-
-                    if (currentTab === 'notes') {
-                        renderStructuredNotes('prepNotes');
-                        renderStructuredNotes('enemyNotes');
-                        renderStructuredNotes('npcNotes');
-                    }
-                } else {
-                    console.log("Notes document does not exist yet. Will be created on first save.");
-                }
-            }, (error) => {
-                console.error("Error setting up notes listener: ", error);
             });
-        } 
-        
-        function renderStructuredNotes(tabName) {
-            const notesArray = structuredNotes[tabName];
-            const listContainer = document.getElementById(`${tabName}-list`);
-            
-            if (!listContainer) { return; }
+        };
 
-            listContainer.innerHTML = ''; 
-
-            if (!notesArray || notesArray.length === 0) {
-                listContainer.innerHTML = `<p class="text-center text-gray-500 pt-8">No notes in this category yet. Add one manually or save from the Improv tab!</p>`;
-                return;
-            }
-
-            notesArray.forEach(note => {
-                const noteElement = document.createElement('div');
-                noteElement.className = 'note-item card p-0 rounded-lg shadow-md';
-                noteElement.id = `note-${note.id}`;
-
-                const header = document.createElement('div');
-                header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150';
-                header.onclick = () => toggleCollapse(note.id);
-                header.innerHTML = `
-                    <span class="font-semibold text-lg text-indigo-300 truncate">${note.title}</span>
-                    <svg class="arrow-icon w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                    </svg>
-                `;
-
-                const content = document.createElement('div');
-                content.className = 'collapsible-content';
-                content.id = `content-${note.id}`;
-                
-                const isHtml = /<[a-z][\s\S]*>/i.test(note.content);
-                
-                if (isHtml) {
-                    content.innerHTML = `
-                        <div class="p-2">
-                            ${note.content}
-                        </div>
-                        <div class="flex justify-end space-x-2 pt-2 pb-1">
-                            <button onclick="editNote('${note.id}', '${tabName}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Edit</button>
-                            <button onclick="deleteNote('${note.id}', '${tabName}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Delete</button>
-                        </div>
-                    `;
-                } else {
-                    content.innerHTML = `
-                        <div class="whitespace-pre-wrap text-sm text-gray-300 p-2 border-l-4 border-indigo-400 bg-gray-700/50">
-                            ${note.content}
-                        </div>
-                        <div class="flex justify-end space-x-2 pt-2 pb-1">
-                            <button onclick="editNote('${note.id}', '${tabName}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Edit</button>
-                            <button onclick="deleteNote('${note.id}', '${tabName}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Delete</button>
-                        </div>
-                    `;
-                }
-                
-                noteElement.appendChild(header);
-                noteElement.appendChild(content);
-                listContainer.appendChild(noteElement);
+        function renderStructuredNotes(tab) {
+            const list = document.getElementById(`${tab}-list`);
+            if(!list) return;
+            list.innerHTML = structuredNotes[tab].length ? '' : '<p class="text-center text-gray-500 pt-8">No notes.</p>';
+            structuredNotes[tab].forEach(n => {
+                const div = document.createElement('div'); div.className = 'note-item card p-0 rounded-lg shadow-md'; div.id = `note-${n.id}`;
+                div.innerHTML = `<div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')"><span class="font-bold text-indigo-300 truncate">${n.title}</span><span class="text-gray-400">▼</span></div>
+                <div class="collapsible-content" id="content-${n.id}"><div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div><div class="flex justify-end p-2 gap-2"><button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 px-2 py-1 rounded">Edit</button><button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 px-2 py-1 rounded">Delete</button></div></div>`;
+                list.appendChild(div);
             });
         }
-        
-        window.toggleCollapse = function(noteId) {
-            const content = document.getElementById(`content-${noteId}`);
-            if (!content) { return; }
-            const isExpanded = content.classList.contains('expanded');
 
-            if (isExpanded) {
-                content.classList.remove('expanded');
-                content.style.maxHeight = null;
-            } else {
-                content.classList.add('expanded');
-                content.style.maxHeight = content.scrollHeight + "px";
-            }
-        }
-        
-        window.addNewNote = function(tabName) {
-            const newNote = {
-                id: crypto.randomUUID(),
-                title: 'New Manual Note (Click Edit to change)',
-                content: 'Start typing your detailed note content here.',
-                timestamp: new Date().toISOString()
-            };
-            structuredNotes[tabName].unshift(newNote); 
-            saveStructuredNotes(tabName, structuredNotes[tabName]);
-        }
-        
-        window.deleteNote = function(noteId, tabName) {
-            const newArray = structuredNotes[tabName].filter(note => note.id !== noteId);
-            structuredNotes[tabName] = newArray;
-            saveStructuredNotes(tabName, newArray);
-        }
+        window.toggleCollapse = (id) => {
+            const el = document.getElementById(`content-${id}`);
+            if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; }
+        };
 
-        window.editNote = function(noteId, tabName) {
-            const note = structuredNotes[tabName].find(n => n.id === noteId);
-            if (!note) { document.getElementById('notes-status').textContent = 'Error: Note not found.'; return; }
-            document.getElementById('modal-note-id').value = note.id;
-            document.getElementById('modal-tab-name').value = tabName;
-            document.getElementById('modal-title').value = note.title;
-            document.getElementById('modal-content').value = note.content;
+        window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+        window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+        window.editNote = (id, tab) => {
+            const n = structuredNotes[tab].find(x => x.id === id);
+            if(!n) return;
+            document.getElementById('modal-note-id').value = id; document.getElementById('modal-tab-name').value = tab;
+            document.getElementById('modal-title').value = n.title; document.getElementById('modal-content').value = n.content;
             document.getElementById('edit-modal').classList.remove('hidden');
-            document.getElementById('notes-status').textContent = ''; 
-        }
-        
-        window.closeEditModal = function() {
-            document.getElementById('edit-modal').classList.add('hidden');
-            document.getElementById('notes-status').textContent = 'Edit cancelled.'; 
-        }
-
-        window.saveEditedNote = function() {
-            const statusElement = document.getElementById('notes-status');
-            const noteId = document.getElementById('modal-note-id').value;
-            const tabName = document.getElementById('modal-tab-name').value;
-            const newTitle = document.getElementById('modal-title').value.trim();
-            const newContent = document.getElementById('modal-content').value.trim();
-
-            const noteIndex = structuredNotes[tabName].findIndex(note => note.id === noteId);
-            if (noteIndex === -1) { statusElement.textContent = 'Error: Note not found during save.'; document.getElementById('edit-modal').classList.add('hidden'); return; }
-
-            const oldNote = structuredNotes[tabName][noteIndex];
-
-            const finalTitle = newTitle || 'Untitled Note';
-            const finalContent = newContent;
-
-            if (finalTitle !== oldNote.title || finalContent !== oldNote.content) {
-                structuredNotes[tabName][noteIndex].title = finalTitle;
-                structuredNotes[tabName][noteIndex].content = finalContent;
-                saveStructuredNotes(tabName, structuredNotes[tabName]);
-                statusElement.textContent = `Note "${finalTitle}" updated and saved!`;
-
-                const contentDiv = document.getElementById(`content-${noteId}`);
-                if(contentDiv && contentDiv.classList.contains('expanded')) {
-                      contentDiv.classList.remove('expanded');
-                      contentDiv.style.maxHeight = null;
-                }
-            } else {
-                statusElement.textContent = 'No changes detected. Note was not saved.';
+        };
+        window.saveEditedNote = () => {
+            const id = document.getElementById('modal-note-id').value, tab = document.getElementById('modal-tab-name').value;
+            const idx = structuredNotes[tab].findIndex(x => x.id === id);
+            if(idx > -1) {
+                structuredNotes[tab][idx].title = document.getElementById('modal-title').value;
+                structuredNotes[tab][idx].content = document.getElementById('modal-content').value;
+                window.saveStructuredNotes(tab, structuredNotes[tab]);
             }
+            document.getElementById('edit-modal').classList.add('hidden');
+        };
+        window.closeEditModal = () => document.getElementById('edit-modal').classList.add('hidden');
 
-            document.getElementById('edit-modal').classList.add('hidden'); 
-        }
-        
         // --- Combat Logic ---
-        
-        async function saveCombatStateToFirestore() {
-            if (!window.isAuthReady || !window.db) { console.warn("Firestore not ready. Cannot save combat state."); return; }
-            try { await window.setDoc(getCombatStateDocRef(), { currentTurnIndex: currentTurnIndex }); } catch (error) { console.error("Error saving combat state:", error); }
-        }
-
-        window.setupCombatDataListeners = function() {
-            if (!window.isAuthReady || !window.db) return;
-            const combatantsQuery = window.query(getCombatantsCollectionRef());
-            
-            window.onSnapshot(combatantsQuery, (snapshot) => {
-                const loadedCombatants = [];
-                snapshot.forEach(doc => { loadedCombatants.push({ id: doc.id, ...doc.data() }); });
-                loadedCombatants.sort((a, b) => (b.init || 0) - (a.init || 0)); 
-                combatants = loadedCombatants;
+        window.setupCombatDataListeners = () => {
+            if(!window.isAuthReady) return;
+            const status = document.getElementById('db-status');
+            window.onSnapshot(window.query(getCol('shared_combatants')), (snap) => {
+                combatants = []; snap.forEach(d => combatants.push({id: d.id, ...d.data()}));
+                combatants.sort((a,b) => (b.init||0) - (a.init||0));
                 renderCombatants();
-                console.log("Combatants list updated from Firestore and sorted in-memory.");
-            }, (error) => { console.error("Error setting up combatants listener: ", error); });
-
-            window.onSnapshot(getCombatStateDocRef(), (doc) => {
-                if (doc.exists()) {
-                    const data = doc.data();
-                    currentTurnIndex = data.currentTurnIndex !== undefined ? data.currentTurnIndex : -1;
-                } else {
-                    currentTurnIndex = -1;
-                }
+                if(status) { status.textContent = "Connected"; status.className = "text-xs px-2 py-1 rounded bg-gray-700 text-green-400"; }
+            });
+            window.onSnapshot(getSharedDoc('shared_combat_state'), (doc) => {
+                currentTurnIndex = doc.exists() ? (doc.data().currentTurnIndex || 0) : -1;
                 renderCombatants();
-                console.log("Combat state (turn) updated from Firestore.");
-            }, (error) => { console.error("Error setting up combat state listener: ", error); });
-        }
-        
+            });
+        };
+
         function renderCombatants() {
             const list = document.getElementById('initiative-list');
-            list.innerHTML = '';
+            if(!list) return;
+            list.innerHTML = combatants.length ? '' : '<p class="text-center text-gray-500 pt-8">No combatants.</p>';
+            combatants.forEach((c, idx) => {
+                const active = idx === currentTurnIndex ? 'bg-indigo-700 glow-shadow' : 'bg-gray-700';
+                const div = document.createElement('div'); div.className = `flex items-center space-x-1 p-3 rounded-lg transition ${active}`;
+                div.innerHTML = `<div class="text-lg font-bold w-6 text-center text-white">${c.init}</div>
+                <div class="flex-1"><div class="font-semibold text-sm text-white">${c.name}</div><div class="text-xs text-gray-300">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</div></div>
+                <div class="flex items-center gap-1"><input type="number" id="dmg-${idx}" class="w-10 p-1 text-xs rounded text-black"><button onclick="modHp('${c.id}', ${idx}, 1)" class="bg-green-600 px-2 py-1 rounded text-xs">Heal</button><button onclick="modHp('${c.id}', ${idx}, -1)" class="bg-red-600 px-2 py-1 rounded text-xs">Dmg</button></div>
+                <button onclick="delCombatant('${c.id}')" class="bg-gray-500 px-2 py-1 rounded text-xs">X</button>`;
+                list.appendChild(div);
+            });
+            // Update Roller
+            const sel = document.getElementById('combatant-selector');
+            if(sel) { sel.innerHTML = '<option value="" disabled selected>Target</option>'; combatants.forEach((c,i) => sel.innerHTML += `<option value="${i}">${c.name}</option>`); }
+            const btn = document.getElementById('assign-roll-button'); if(btn) btn.disabled = combatants.length === 0;
+        }
+
+        window.addCombatant = async () => {
+            if(!window.isAuthReady) { alert("Wait for DB"); return; }
+            const name = document.getElementById('combatant-name').value.trim();
+            if(!name) return;
+            const init = parseInt(document.getElementById('combatant-init').value)||0;
+            const hp = parseInt(document.getElementById('combatant-hp').value)||0;
+            const ac = parseInt(document.getElementById('combatant-ac').value)||0;
+            await window.addDoc(getCol('shared_combatants'), { name, init, maxHp: hp, currentHp: hp, ac, initModifier: init });
+            document.getElementById('combatant-name').value = '';
+        };
+        
+        window.modHp = async (id, idx, mul) => {
+            const val = parseInt(document.getElementById(`dmg-${idx}`).value);
+            if(isNaN(val)) return;
+            const c = combatants[idx];
+            const newHp = Math.max(0, Math.min(c.maxHp, c.currentHp + (val * mul)));
+            await window.updateDoc(getDocRef('shared_combatants', id), { currentHp: newHp });
+            document.getElementById(`dmg-${idx}`).value = '';
+        };
+
+        window.delCombatant = async (id) => await window.deleteDoc(getDocRef('shared_combatants', id));
+        window.clearCombat = async () => {
+             const batch = window.writeBatch(window.db);
+             combatants.forEach(c => batch.delete(getDocRef('shared_combatants', c.id)));
+             batch.delete(getSharedDoc('shared_combat_state'));
+             await batch.commit();
+        };
+        window.nextTurn = async () => {
+             if(!combatants.length) return;
+             const next = (currentTurnIndex + 1) % combatants.length;
+             await window.setDoc(getSharedDoc('shared_combat_state'), { currentTurnIndex: next });
+        };
+        window.sortInitiative = async () => {
+             await window.setDoc(getSharedDoc('shared_combat_state'), { currentTurnIndex: 0 });
+        };
+        
+        // --- Statblocks ---
+        window.setupStatblocksListener = () => {
+            if(!window.isAuthReady) return;
+            window.onSnapshot(window.query(getCol('dm_toolkit_statblocks')), (snap) => {
+                savedStatblocks = []; snap.forEach(d => savedStatblocks.push({id: d.id, ...d.data()}));
+                savedStatblocks.sort((a,b) => a.name.localeCompare(b.name));
+                renderStatblocks();
+            });
+        };
+        function renderStatblocks() {
+             const list = document.getElementById('statblocks-list'); if(!list) return;
+             list.innerHTML = savedStatblocks.length ? '' : '<p class="text-center text-gray-500">No stats.</p>';
+             savedStatblocks.forEach(s => {
+                 const div = document.createElement('div'); div.className = 'card p-2 mb-2 bg-gray-800';
+                 // Safe string escape
+                 const safeName = s.name.replace(/'/g, "\\'");
+                 div.innerHTML = `<div class="flex justify-between font-bold text-indigo-300"><span>${s.name}</span><div class="gap-2 flex"><button onclick="editStatblock('${s.id}')" class="text-xs text-blue-400">Edit</button><button onclick="delStat('${s.id}')" class="text-xs text-red-400">Del</button></div></div>
+                 <div class="text-xs text-gray-300 grid grid-cols-2 gap-1 mt-1"><span>HP: ${s.hp}</span><span>AC: ${s.ac}</span><span>Hit: ${s.toHit}</span><span>Init: ${s.initMod}</span></div>
+                 <div class="text-xs text-yellow-500 mt-1 truncate">${s.dmg}</div>
+                 <button onclick="importStat('${safeName}', ${s.hp}, ${s.initMod}, ${s.ac})" class="w-full bg-purple-900 text-xs rounded mt-2 py-1">Add to Tracker</button>`;
+                 list.appendChild(div);
+             });
+        }
+        window.saveStatblock = async () => {
+             const name = document.getElementById('stat-name').value.trim(); if(!name) return;
+             await window.addDoc(getCol('dm_toolkit_statblocks'), {
+                 name, hp: parseInt(document.getElementById('stat-hp').value)||0,
+                 ac: parseInt(document.getElementById('stat-ac').value)||0,
+                 toHit: parseInt(document.getElementById('stat-tohit').value)||0,
+                 initMod: parseInt(document.getElementById('stat-init-mod').value)||0,
+                 dmg: document.getElementById('stat-dmg').value
+             });
+             document.getElementById('stat-name').value = '';
+        };
+        window.delStat = async (id) => await window.deleteDoc(getDocRef('dm_toolkit_statblocks', id));
+        window.importStat = (n, h, i, a) => {
+             document.getElementById('combatant-name').value = n; 
+             document.getElementById('combatant-hp').value = h;
+             document.getElementById('combatant-init').value = i; 
+             document.getElementById('combatant-ac').value = a;
+             switchTab('combat');
+        };
+
+        // --- AI & API ---
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+        const IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict';
+        
+        const combatSchema = {
+            type: "OBJECT",
+            properties: {
+                name: { "type": "STRING", "description": "A creative and appropriate name for the NPC." },
+                level_or_cr: { "type": "STRING", "description": "The requested level or challenge rating." },
+                armor_class_ac: { "type": "INTEGER", "description": "The NPC's calculated Armor Class (AC)." },
+                max_hit_points: { "type": "INTEGER", "description": "The NPC's maximum Hit Points (HP)." },
+                initiative_bonus: { "type": "INTEGER", "description": "The modifier (DEX bonus) added to the d20 roll for initiative." },
+                main_attack: { "type": "STRING", "description": "The NPC's primary attack description including attack roll modifier and damage." }
+            },
+            required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"]
+        };
+
+        // ... (Monster Schema omitted for brevity, logic restored) ...
+        const monsterSchema = {
+            type: "OBJECT",
+            properties: {
+                name: { type: "STRING", description: "The monster's name." },
+                size: { type: "STRING", description: "Size (e.g., Medium, Large)." },
+                type: { type: "STRING", description: "Type (e.g., humanoid, beast, monstrosity)." },
+                alignment: { type: "STRING", description: "Alignment (e.g., chaotic evil, unaligned)." },
+                armor_class: { type: "INTEGER", description: "Armor Class (AC)." },
+                ac_type: { type: "STRING", description: "Type of AC (e.g., 'natural armor', 'plate mail')." },
+                hit_points: { type: "INTEGER", description: "Average Hit Points." },
+                hit_dice: { type: "STRING", description: "Hit Dice formula (e.g., '10d8 + 40')." },
+                speed: { type: "STRING", description: "All movement speeds (e.g., '30 ft., fly 60 ft.')." },
+                ability_scores: {
+                    type: "OBJECT",
+                    properties: {
+                        STR: { type: "INTEGER" },
+                        DEX: { type: "INTEGER" },
+                        CON: { type: "INTEGER" },
+                        INT: { type: "INTEGER" },
+                        WIS: { type: "INTEGER" },
+                        CHA: { type: "INTEGER" }
+                    },
+                    required: ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+                },
+                saving_throws: { type: "ARRAY", items: { type: "STRING" } },
+                skills: { type: "ARRAY", items: { type: "STRING" } },
+                damage_vulnerabilities: { type: "ARRAY", items: { type: "STRING" } },
+                damage_resistances: { type: "ARRAY", items: { type: "STRING" } },
+                damage_immunities: { type: "ARRAY", items: { type: "STRING" } },
+                condition_immunities: { type: "ARRAY", items: { type: "STRING" } },
+                senses: { type: "STRING", description: "Senses (e.g., 'darkvision 60 ft., passive Perception 14')." },
+                languages: { type: "STRING", description: "Languages known (e.g., 'Common, Giant')." },
+                challenge_rating: { type: "STRING", description: "Challenge Rating (CR) (e.g., '5')." },
+                xp: { type: "INTEGER", description: "Experience Points (XP) for the CR." },
+                abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } },
+                actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } },
+                legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } }
+            },
+            required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"]
+        };
+
+        async function callAI(url, payload) {
+            const key = userApiKey || "PASTE_KEY";
+            if(!key || key.includes("PASTE")) { alert("Please paste your API Key in the Prep tab!"); throw new Error("No Key"); }
+            const res = await fetch(`${url}?key=${key}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            if(!res.ok) throw new Error((await res.text()));
+            return await res.json();
+        }
+        
+        // --- RESTORED DETAILED LOGIC ---
+        window.generateCombatNpc = async () => {
+            const btn = document.getElementById('generate-combat-button'); btn.disabled = true;
+            const outputDiv = document.getElementById('ai-output');
+            outputDiv.textContent = "Generating combat stats...";
             
-            if (combatants.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 pt-8">Add your players and monsters to start tracking combat!</p>';
-                currentTurnIndex = -1;
-                lastRoll = 0;
-                const rollDisplay = document.getElementById('last-roll-display');
-                if(rollDisplay) rollDisplay.textContent = '?';
-                const assignButton = document.getElementById('assign-roll-button');
-                if(assignButton) assignButton.disabled = true;
-                return;
-            }
-
-            combatants.forEach((c, index) => {
-                const isActive = index === currentTurnIndex;
-                if (c.initModifier === undefined) { c.initModifier = c.init > 10 ? 0 : c.init; }
-                if (c.ac === undefined) { c.ac = 0; }
-                const initModifierDisplay = c.initModifier >= 0 ? `+${c.initModifier}` : c.initModifier.toString();
-
-
-                const element = document.createElement('div');
-                element.className = `flex items-center space-x-1 p-3 rounded-lg transition duration-200 ${isActive ? 'bg-indigo-700 glow-shadow' : 'bg-gray-700'}`;
+            try {
+                const txt = document.getElementById('npc-type').value; 
+                const lvl = document.getElementById('npc-level').value;
+                const prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON matching the schema provided.`;
                 
-                element.innerHTML = `
-                    <div class="text-lg font-bold w-6 text-center ${isActive ? 'text-white' : 'text-indigo-400'}">${c.init}</div>
-                    <div class="flex-1 min-w-[50px]">
-                        <div class="font-semibold text-sm truncate ${isActive ? 'text-white' : 'text-gray-200'}">${c.name}</div>
-                        <div class="text-xs">
-                            <span class="${c.currentHp <= 0 ? 'text-red-400' : 'text-green-400'}">HP: ${c.currentHp} / ${c.maxHp}</span> 
-                            <span class="text-blue-300 ml-1">AC: ${c.ac}</span>
-                            <span class="text-gray-400"> (Mod: ${initModifierDisplay})</span>
+                // Pass specific schema configuration
+                const payload = { 
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: combatSchema
+                    }
+                };
+
+                const data = await callAI(API_URL, payload);
+                const stats = JSON.parse(data.candidates[0].content.parts[0].text);
+                lastGeneratedNpc = stats;
+                
+                // Render Detailed UI
+                outputDiv.innerHTML = `
+                    <div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div>
+                    <div class="text-gray-300 text-sm mb-4">Level/CR: <span class="font-medium text-white">${stats.level_or_cr}</span></div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                            <div class="text-xs text-gray-400 uppercase">Armor Class</div>
+                            <div class="font-bold text-2xl text-blue-300">${stats.armor_class_ac}</div>
+                        </div>
+                        <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                            <div class="text-xs text-gray-400 uppercase">Hit Points</div>
+                            <div class="font-bold text-2xl text-green-300">${stats.max_hit_points}</div>
+                        </div>
+                        <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
+                             <div class="text-xs text-gray-400 uppercase">Initiative</div>
+                             <div class="font-bold text-xl text-yellow-300">${stats.initiative_bonus >= 0 ? '+' : ''}${stats.initiative_bonus}</div>
+                        </div>
+                        <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
+                             <div class="text-xs text-gray-400 uppercase">Main Attack</div>
+                             <div class="font-medium text-white mt-1">${stats.main_attack}</div>
                         </div>
                     </div>
-                    <div class="flex space-x-1 items-center">
-                        <input type="number" placeholder="Amt" id="damage-input-${index}" class="w-12 p-1 rounded-lg input-style text-center text-xs" />
-                        <button onclick="applyHpChange(${index}, 'heal')" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300">Heal</button>
-                        <button onclick="applyHpChange(${index}, 'damage')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300">DMG</button>
+                    <button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg transition flex items-center justify-center gap-2">
+                        <span>💾</span> Add to Statblocks
+                    </button>
+                    <div class="mt-4 pt-4 border-t border-gray-700 grid grid-cols-3 gap-2">
+                         <button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 hover:bg-gray-500 py-1 rounded text-xs text-gray-200">Save Note</button>
+                         <button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 hover:bg-yellow-700 py-1 rounded text-xs text-yellow-100">Save Enemy</button>
+                         <button onclick="saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 hover:bg-blue-700 py-1 rounded text-xs text-blue-100">Save NPC</button>
                     </div>
-                    <button onclick="removeCombatant(${index})" class="bg-gray-500 hover:bg-gray-600 text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300">Rem</button>
                 `;
-                list.appendChild(element);
-            });
-            populateCombatantSelector();
-        }
+            } catch(e) { console.error(e); outputDiv.textContent = "Error: " + e.message; }
+            btn.disabled = false;
+        };
 
-        window.applyHpChange = async function(index, type) { 
-            const damageInput = document.getElementById(`damage-input-${index}`);
-            let value = parseInt(damageInput.value, 10);
+        // --- ADD NPC TO STATBLOCKS LOGIC (FIXED) ---
+        window.addNpcToStatblocks = async function() {
+            if (!window.isAuthReady) { alert('Database not ready.'); return; }
+            if (!lastGeneratedNpc) { alert('No NPC generated yet.'); return; }
 
-            if (isNaN(value) || value <= 0) { damageInput.value = ''; return; }
-
-            let newHp = combatants[index].currentHp;
-            if (type === 'damage') { newHp -= value; } else if (type === 'heal') { newHp += value; }
-            newHp = Math.max(0, Math.min(newHp, combatants[index].maxHp));
-
-            const combatantDocRef = window.doc(getCombatantsCollectionRef(), combatants[index].id);
-            try { await window.updateDoc(combatantDocRef, { currentHp: newHp }); } catch (error) { console.error("Error updating HP:", error); }
-
-            damageInput.value = '';
-        }
-
-        window.addCombatant = async function() {
-            if (!window.isAuthReady) { console.error("Database not ready."); return; }
-            const nameInput = document.getElementById('combatant-name');
-            const initInput = document.getElementById('combatant-init');
-            const acInput = document.getElementById('combatant-ac');
-            const hpInput = document.getElementById('combatant-hp');
-
-            const name = nameInput.value.trim();
-            const initValue = parseInt(initInput.value, 10) || 0;
-            const ac = parseInt(acInput.value, 10) || 0;
-            const hp = parseInt(hpInput.value, 10) || 0;
-
-            if (!name || isNaN(hp) || hp <= 0 || isNaN(ac) || ac <= 0) {
-                // Relaxed validation (allowing 0 for now) was causing issues. Restore strict until relaxed logic is finalized.
-                console.error("Invalid combatant input: Name, positive HP, and positive AC are required.");
-                return;
+            const npc = lastGeneratedNpc;
+            // Extract To Hit safely
+            let toHit = 0;
+            if (npc.main_attack) {
+                const match = npc.main_attack.match(/(\+|\-)\d+/);
+                if (match) toHit = parseInt(match[0], 10);
+                else toHit = npc.initiative_bonus || 0;
             }
 
             try {
-                await window.addDoc(getCombatantsCollectionRef(), { 
-                    name, init: initValue, maxHp: hp, currentHp: hp, initModifier: initValue, ac: ac
+                // Use getCol() helper for consistency with manual save
+                await window.addDoc(getCol('dm_toolkit_statblocks'), {
+                    name: npc.name,
+                    hp: npc.max_hit_points,
+                    ac: npc.armor_class_ac,
+                    toHit: toHit,
+                    initMod: npc.initiative_bonus,
+                    dmg: npc.main_attack || "Attack",
+                    timestamp: new Date().toISOString()
                 });
-            } catch (error) { console.error("Error adding combatant:", error); }
-
-            nameInput.value = ''; initInput.value = ''; acInput.value = ''; hpInput.value = '';
-        }
-
-        window.sortInitiative = function() { currentTurnIndex = 0; saveCombatStateToFirestore(); }
-        window.removeCombatant = async function(index) {
-            if (!combatants[index] || !combatants[index].id) { console.error("Cannot remove combatant, missing ID."); return; }
-            const combatantDocRef = window.doc(getCombatantsCollectionRef(), combatants[index].id);
-            try { await window.deleteDoc(combatantDocRef); } catch (error) { console.error("Error removing combatant:", error); }
-            if (currentTurnIndex >= combatants.length - 1) { currentTurnIndex = combatants.length > 1 ? combatants.length - 2 : -1; saveCombatStateToFirestore(); }
-        }
-        window.nextTurn = function() {
-            if (combatants.length === 0) { currentTurnIndex = -1; return; }
-            currentTurnIndex = (currentTurnIndex + 1) % combatants.length;
-            saveCombatStateToFirestore();
-        }
-        
-        window.clearCombat = async function() {
-            if (!window.isAuthReady || !window.db) return;
-            try {
-                const batch = window.writeBatch(window.db);
-                combatants.forEach(c => { const docRef = window.doc(getCombatantsCollectionRef(), c.id); batch.delete(docRef); });
-                batch.delete(getCombatStateDocRef());
-                await batch.commit();
-            } catch (error) { console.error("Error clearing combat:", error); }
-        }
-
-        window.rollD20 = function() {
-            lastRoll = Math.floor(Math.random() * 20) + 1;
-            document.getElementById('last-roll-display').textContent = lastRoll;
-            document.getElementById('assign-roll-button').disabled = combatants.length === 0;
-        }
-
-        function populateCombatantSelector() {
-            const selector = document.getElementById('combatant-selector');
-            selector.innerHTML = '<option value="" disabled selected>Select Target</option>';
-            combatants.forEach((c, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                const mod = c.initModifier !== undefined ? c.initModifier : 0;
-                const modDisplay = mod >= 0 ? `+${mod}` : mod.toString();
-                option.textContent = `${c.name} (Mod: ${modDisplay})`;
-                selector.appendChild(option);
-            });
-            document.getElementById('assign-roll-button').disabled = combatants.length === 0 || lastRoll === 0;
-        }
-
-        window.assignInitiativeRoll = async function() {
-            const selector = document.getElementById('combatant-selector');
-            const selectedIndex = parseInt(selector.value, 10);
-            if (isNaN(selectedIndex) || selectedIndex < 0 || lastRoll === 0) { console.error("No combatant selected or no roll made to assign."); return; }
-            const modifier = combatants[selectedIndex].initModifier || 0; 
-            const newInitiative = lastRoll + modifier;
-            const combatantDocRef = window.doc(getCombatantsCollectionRef(), combatants[selectedIndex].id);
-            try { await window.updateDoc(combatantDocRef, { init: newInitiative }); } catch (error) { console.error("Error assigning initiative:", error); }
-            lastRoll = 0; document.getElementById('last-roll-display').textContent = '?'; selector.value = ''; document.getElementById('assign-roll-button').disabled = true;
-        }
-
-
-        // --- Statblocks Logic ---
-
-        window.saveStatblock = async function() {
-            if (!window.isAuthReady || !window.db) { document.getElementById('statblock-status').textContent = 'Database not ready.'; return; }
-            const name = document.getElementById('stat-name').value.trim();
-            const hp = parseInt(document.getElementById('stat-hp').value, 10) || 0;
-            const ac = parseInt(document.getElementById('stat-ac').value, 10) || 0;
-            const toHit = parseInt(document.getElementById('stat-tohit').value, 10) || 0;
-            const initMod = parseInt(document.getElementById('stat-init-mod').value, 10) || 0;
-            const dmg = document.getElementById('stat-dmg').value.trim();
-            const statusElement = document.getElementById('statblock-status');
-
-            if (!name || hp <= 0 || ac <= 0 || !dmg) { statusElement.textContent = 'Please fill out Name, HP, AC, and Attack DMG.'; return; }
-            
-            statusElement.textContent = 'Saving...';
-            try {
-                await window.addDoc(getStatblocksCollectionRef(), { name, hp, ac, toHit, initMod, dmg, timestamp: new Date().toISOString() });
-                statusElement.textContent = `${name} saved successfully!`;
-                document.getElementById('stat-name').value = ''; document.getElementById('stat-hp').value = ''; document.getElementById('stat-ac').value = ''; document.getElementById('stat-tohit').value = ''; document.getElementById('stat-init-mod').value = ''; document.getElementById('stat-dmg').value = '';
-            } catch (error) { console.error("Error saving statblock: ", error); statusElement.textContent = `Error saving statblock.`; }
-        }
-
-        window.setupStatblocksListener = function() {
-            if (!window.isAuthReady || !window.db) return;
-            window.onSnapshot(window.query(getStatblocksCollectionRef()), (snapshot) => {
-                savedStatblocks = [];
-                snapshot.forEach(doc => { savedStatblocks.push({ id: doc.id, ...doc.data() }); });
-                savedStatblocks.sort((a, b) => a.name.localeCompare(b.name));
-                renderStatblocks();
-            }, (error) => { console.error("Error setting up statblocks listener: ", error); });
-        }
-
-        function renderStatblocks() {
-            const list = document.getElementById('statblocks-list');
-            list.innerHTML = '';
-            if (savedStatblocks.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 pt-8">Your saved NPCs and monsters will appear here.</p>'; return; }
-            savedStatblocks.forEach(stat => {
-                const hp = stat.hp || 0; const ac = stat.ac || 0; const toHit = stat.toHit || 0; const initMod = stat.initMod || 0;
-                const element = document.createElement('div'); element.className = 'note-item card p-0 rounded-lg shadow-md'; const uniqueId = `statblock-${stat.id}`; element.id = uniqueId;
-                const header = document.createElement('div'); header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150'; header.onclick = () => toggleCollapse(uniqueId);
-                header.innerHTML = `<span class="font-semibold text-lg text-indigo-300 truncate">${stat.name}</span><svg class="arrow-icon w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>`;
-                const content = document.createElement('div'); content.className = 'collapsible-content'; content.id = `content-${uniqueId}`;
-                content.innerHTML = `<div class="p-3"> <div class="flex justify-end space-x-2 mb-2"><button onclick="editStatblock('${stat.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded transition duration-300">Edit</button><button onclick="deleteStatblock('${stat.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded transition duration-300">Delete</button></div><div class="grid grid-cols-2 text-sm gap-y-1 text-gray-300"><span class="font-semibold text-green-400">HP: ${hp}</span><span class="font-semibold text-blue-400">AC: ${ac}</span><span>Init Mod: ${initMod > 0 ? '+' : ''}${initMod}</span><span>To Hit: ${toHit > 0 ? '+' : ''}${toHit}</span><div class="col-span-2 text-yellow-400 text-xs mt-1"><span class="font-semibold text-sm">DMG/Attack:</span>${stat.dmg}</div></div><button onclick="importToCombat('${stat.name}', ${hp}, ${initMod}, ${ac})" class="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 rounded-lg transition duration-300 text-sm">Add to Combat Tracker</button></div>`;
-                element.appendChild(header); element.appendChild(content); list.appendChild(element);
-            });
-        }
-        window.editStatblock = function(statId) { const stat = savedStatblocks.find(s => s.id === statId); if (!stat) return; document.getElementById('modal-statblock-id').value = stat.id; document.getElementById('modal-stat-name').value = stat.name; document.getElementById('modal-stat-hp').value = stat.hp; document.getElementById('modal-stat-ac').value = stat.ac; document.getElementById('modal-stat-tohit').value = stat.toHit; document.getElementById('modal-stat-init-mod').value = stat.initMod; document.getElementById('modal-stat-dmg').value = stat.dmg; document.getElementById('edit-statblock-modal').classList.remove('hidden'); document.getElementById('statblock-status').textContent = ''; }
-        window.closeStatblockEditModal = function() { document.getElementById('edit-statblock-modal').classList.add('hidden'); document.getElementById('statblock-status').textContent = 'Edit cancelled.'; }
-        window.saveEditedStatblock = async function() { if (!window.isAuthReady || !window.db) { document.getElementById('statblock-status').textContent = 'Database not ready. Please wait for authentication.'; return; } const statId = document.getElementById('modal-statblock-id').value; const name = document.getElementById('modal-stat-name').value.trim(); const hp = parseInt(document.getElementById('modal-stat-hp').value, 10) || 0; const ac = parseInt(document.getElementById('modal-stat-ac').value, 10) || 0; const toHit = parseInt(document.getElementById('modal-stat-tohit').value, 10) || 0; const initMod = parseInt(document.getElementById('modal-stat-init-mod').value, 10) || 0; const dmg = document.getElementById('modal-stat-dmg').value.trim(); const statusElement = document.getElementById('statblock-status'); if (!name || hp <= 0 || ac <= 0 || !dmg) { statusElement.textContent = 'Name, HP, AC, and Damage are required.'; return; } const docRef = window.doc(getStatblocksCollectionRef(), statId); try { await window.setDoc(docRef, { name, hp, ac, toHit, initMod, dmg }, { merge: true }); statusElement.textContent = `Statblock "${name}" updated successfully!`; closeStatblockEditModal(); } catch (error) { console.error("Error updating statblock: ", error); statusElement.textContent = `Error updating statblock: ${error.message}`; } }
-        window.deleteStatblock = async function(docId) { if (!window.isAuthReady || !window.db) return; try { const docRef = window.doc(getStatblocksCollectionRef(), docId); await window.deleteDoc(docRef); } catch (error) { console.error("Error deleting statblock: ", error); } }
-        window.importToCombat = function(name, hp, initMod, ac) { document.getElementById('combatant-name').value = name; document.getElementById('combatant-hp').value = hp; document.getElementById('combatant-init').value = initMod; document.getElementById('combatant-ac').value = ac; switchTab('combat'); }
-
-        // --- Dice Roller Logic ---
-        window.rollCustomDice = function() {
-            const numDiceInput = document.getElementById('dice-num'); const diceTypeInput = document.getElementById('dice-type'); const modInput = document.getElementById('dice-mod'); const resultDisplay = document.getElementById('dice-roll-result'); const detailsDisplay = document.getElementById('dice-roll-details');
-            const numDice = parseInt(numDiceInput.value, 10) || 1; const diceType = parseInt(diceTypeInput.value, 10) || 20; const modifier = parseInt(modInput.value, 10) || 0;
-            if (numDice <= 0) { resultDisplay.textContent = 'Error'; detailsDisplay.textContent = 'Number of dice must be 1 or more.'; return; }
-            let totalRoll = 0; const rolls = []; for (let i = 0; i < numDice; i++) { const roll = Math.floor(Math.random() * diceType) + 1; rolls.push(roll); totalRoll += roll; }
-            const finalTotal = totalRoll + modifier; const modString = modifier > 0 ? `+${modifier}` : (modifier < 0 ? `${modifier}` : '');
-            resultDisplay.textContent = `Total: ${finalTotal}`;
-            if (modifier !== 0) { detailsDisplay.textContent = `Rolls: [${rolls.join(', ')}] (Mod: ${modString})`; } else { detailsDisplay.textContent = `Rolls: [${rolls.join(', ')}]`; }
-        }
-        
-        // --- AI Fetch Logic ---
-        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
-        const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=`; 
-        
-        async function fetchWithExponentialBackoff(apiUrl, payload) {
-            if (!apiKey || apiKey.includes("PASTE_YOUR")) { throw new Error("Invalid API Key. Please enter your Gemini API Key in the Prep tab."); }
-            const maxAttempts = 5;
-            const urlWithKey = apiUrl.endsWith('?key=') ? apiUrl + apiKey : apiUrl;
-
-            for (let attempts = 0; attempts < maxAttempts; attempts++) {
-                try {
-                    const response = await fetch(urlWithKey, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (response.status === 429) {
-                        const delay = Math.pow(2, attempts) * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        continue;
-                    }
-                    if (!response.ok) {
-                        const errorBody = await response.text();
-                        throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
-                    }
-                    return response;
-                } catch (error) {
-                    if (attempts === maxAttempts - 1) throw error;
-                    const delay = Math.pow(2, attempts) * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
+                alert(`${npc.name} added to Statblocks!`);
+            } catch (error) {
+                console.error("Error saving NPC:", error);
+                alert("Error saving: " + error.message);
             }
         }
         
-        // --- AI Generator Wrappers (Same logic as provided in history) ---
-        // These are intentionally kept as wrappers here for function visibility.
-        window.generateCombatNpc = async function() { /* ... full logic here ... */ };
-        window.generateCreativeIdea = async function() { /* ... full logic here ... */ };
-        window.generateSettlement = async function() { /* ... full logic here ... */ };
-        window.generateLoot = async function() { /* ... full logic here ... */ };
-        window.generateMonsterStatblock = async function() { /* ... full logic here ... */ };
-        
-        // --- Soundboard Logic (Need to re-add full definitions as they were missing) ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let activeNodes = [];
-        let currentAmbience = null;
-        function createNoiseBuffer() {
-            const b = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
-            const d = b.getChannelData(0);
-            for(let i=0; i<b.length; i++) d[i] = Math.random() * 2 - 1;
-            return b;
+        // --- NEW: Save Rich HTML Combat NPC to Notes ---
+        window.saveCombatNpcToNotes = async function(tab) {
+            if (!window.isAuthReady) { alert("Database not ready."); return; }
+            if (!lastGeneratedNpc) { alert("No NPC to save."); return; }
+            
+            // Save the visual layout from the output div
+            const content = document.getElementById('ai-output').innerHTML;
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: `${lastGeneratedNpc.name} (CR ${lastGeneratedNpc.level_or_cr})`,
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes[tab].unshift(newNote);
+            await window.saveStructuredNotes(tab, structuredNotes[tab]);
+            alert("Saved to " + tab + "!");
+            
+            // Switch to tab to show it
+            window.switchTab('notes');
+            window.switchSubTab(tab);
         }
-        const noiseBuffer = createNoiseBuffer();
+
+
+        window.generateLoot = async () => {
+             const btn = document.getElementById('generate-loot-button'); btn.disabled = true;
+             try {
+                 const lvl = document.getElementById('loot-level').value; const type = document.getElementById('loot-type').value;
+                 const data = await callAI(API_URL, { contents: [{ parts: [{ text: `Generate D&D 5e loot for Level ${lvl} ${type} as markdown list.` }] }] });
+                 document.getElementById('loot-output').innerText = data.candidates[0].content.parts[0].text;
+             } catch(e) { document.getElementById('loot-output').innerText = "Error."; }
+             btn.disabled = false;
+        };
         
+        // Other generators follow same pattern
+        window.generateCreativeIdea = async () => {
+             const btn = document.getElementById('generate-button'); btn.disabled = true;
+             try {
+                 const p = document.getElementById('improv-prompt').value;
+                 const prompt = `Generate a creative D&D idea based on: "${p}". Start with a catchy title using markdown header format (e.g. ## The Whispering Stone). Then provide the details.`;
+                 const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+                 document.getElementById('ai-output').innerText = data.candidates[0].content.parts[0].text;
+                 document.getElementById('save-options-creative').classList.remove('hidden');
+             } catch(e) { console.error(e); }
+             btn.disabled = false;
+        };
+        
+        window.generateSettlement = async () => {
+             const btn = document.getElementById('generate-settlement-button'); btn.disabled = true;
+             try {
+                 const p = document.getElementById('settlement-vibe').value;
+                 const data = await callAI(API_URL, { contents: [{ parts: [{ text: `Generate D&D settlement: ${p}` }] }] });
+                 document.getElementById('ai-output').innerText = data.candidates[0].content.parts[0].text;
+             } catch(e) {}
+             btn.disabled = false;
+        };
+
+        window.generateMonsterStatblock = async () => {
+             const btn = document.getElementById('generate-monster-button'); btn.disabled = true;
+             try {
+                 const name = document.getElementById('monster-name').value;
+                 const prompt = `Generate D&D 5e statblock for ${name} as JSON schema.`;
+                 const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } };
+                 const data = await callAI(API_URL, payload);
+                 let json = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
+                 const stats = JSON.parse(json);
+                 lastGeneratedMonster = stats;
+                 document.getElementById('monster-output').innerHTML = `<div class="text-green-400 font-bold text-xl">${stats.name}</div><div class="text-sm text-gray-400">CR ${stats.challenge_rating} - ${stats.type}</div><div class="my-2 h-px bg-gray-600"></div><div><strong>HP:</strong> ${stats.hit_points} <strong>AC:</strong> ${stats.armor_class}</div>`;
+                 document.getElementById('save-options-monster').classList.remove('hidden');
+             } catch(e) { document.getElementById('monster-output').innerText = "Error generating."; console.error(e); }
+             btn.disabled = false;
+        };
+        
+        // --- Soundboard ---
+        const ac = new (window.AudioContext||window.webkitAudioContext)();
+        const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
+        let ambNodes = []; let ambType = null;
+        const noiseBuf = ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate);
+        for(let i=0; i<noiseBuf.length; i++) noiseBuf.getChannelData(0)[i] = Math.random()*2-1;
+        
+        document.getElementById('master-volume').addEventListener('input', (e) => {
+            masterGain.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.01);
+        });
+
+        window.playTone = function(type) {
+            if (ac.state === 'suspended') { ac.resume(); }
+            const now = ac.currentTime;
+            const osc = ac.createOscillator();
+            const gain = ac.createGain();
+            // ALL SOUNDS MUST CONNECT TO MASTERGAIN
+            
+            switch (type) {
+                case 'success':
+                    // Bright Major Triad Arpeggio
+                    [523.25, 659.25, 783.99].forEach((freq, i) => {
+                        const o = ac.createOscillator(); const g = ac.createGain();
+                        o.type = 'triangle'; o.frequency.value = freq;
+                        o.connect(g); g.connect(masterGain);
+                        g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + i*0.1 + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+                        o.start(now + i*0.1); o.stop(now + 1.0);
+                    });
+                    break;
+                case 'critical':
+                    // Victory Fanfare
+                    [523.25, 1046.50, 1318.51].forEach((freq, i) => {
+                         const o = ac.createOscillator(); const g = ac.createGain();
+                         o.type = 'square'; o.frequency.value = freq;
+                         o.connect(g); g.connect(masterGain);
+                         g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+                         o.start(now); o.stop(now + 1.5);
+                    });
+                    break;
+                case 'fail':
+                    // Sad "Womp Womp"
+                    const o1 = ac.createOscillator(); const g1 = ac.createGain();
+                    o1.type = 'sawtooth'; o1.frequency.setValueAtTime(196.00, now); o1.frequency.linearRampToValueAtTime(185.00, now + 0.4);
+                    o1.connect(g1); g1.connect(masterGain); g1.gain.setValueAtTime(0.2, now); g1.gain.linearRampToValueAtTime(0, now + 0.4);
+                    o1.start(now); o1.stop(now+0.4);
+                    
+                    const o2 = ac.createOscillator(); const g2 = ac.createGain();
+                    o2.type = 'sawtooth'; o2.frequency.setValueAtTime(174.61, now + 0.45); o2.frequency.linearRampToValueAtTime(155.56, now + 1.0);
+                    o2.connect(g2); g2.connect(masterGain);
+                    g2.gain.setValueAtTime(0, now + 0.45); g2.gain.linearRampToValueAtTime(0.2, now + 0.5); g2.gain.linearRampToValueAtTime(0, now + 1.0);
+                    o2.start(now + 0.45); o2.stop(now + 1.0);
+                    break;
+                case 'combat_start':
+                    // War Horn
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = 60;
+                    const filter = ac.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(200, now);
+                    filter.frequency.linearRampToValueAtTime(1500, now + 0.1); 
+                    filter.frequency.exponentialRampToValueAtTime(200, now + 2);
+                    
+                    osc.connect(filter); filter.connect(gain); gain.connect(ac.destination);
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.4, now + 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 2);
+                    osc.start(now); osc.stop(now + 2);
+                    break;
+                case 'spell':
+                    // Magic Glissando
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(2000, now + 1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 1);
+                    osc.connect(gain); gain.connect(ac.destination);
+                    osc.start(now); osc.stop(now + 1);
+                    break;
+                case 'mystery':
+                    // Eerie Dissonance
+                    const mo1 = ac.createOscillator(); const mg1 = ac.createGain();
+                    mo1.type = 'sine'; mo1.frequency.value = 440;
+                    mo1.connect(mg1); mg1.connect(ac.destination);
+                    mg1.gain.setValueAtTime(0, now); mg1.gain.linearRampToValueAtTime(0.2, now + 1); mg1.gain.linearRampToValueAtTime(0, now + 3);
+                    mo1.start(now); mo1.stop(now + 3);
+                    
+                    const mo2 = ac.createOscillator(); const mg2 = ac.createGain();
+                    mo2.type = 'sine'; mo2.frequency.value = 455; 
+                    mo2.connect(mg2); mg2.connect(ac.destination);
+                    mg2.gain.setValueAtTime(0, now); mg2.gain.linearRampToValueAtTime(0.2, now + 1.5); mg2.gain.linearRampToValueAtTime(0, now + 3);
+                    mo2.start(now); mo2.stop(now + 3);
+                    break;
+                case 'rest':
+                    // Peaceful Chord
+                    [261.63, 329.63, 392.00, 523.25].forEach(f => {
+                        const o = ac.createOscillator(); const g = ac.createGain();
+                        o.type = 'sine'; o.frequency.value = f;
+                        o.connect(g); g.connect(ac.destination);
+                        g.gain.setValueAtTime(0, now);
+                        g.gain.linearRampToValueAtTime(0.05, now + 1);
+                        g.gain.linearRampToValueAtTime(0, now + 4);
+                        o.start(now); o.stop(now + 4);
+                    });
+                    break;
+                case 'trap':
+                    // Sharp Snap
+                    const n = ac.createBufferSource();
+                    n.buffer = noiseBuf;
+                    const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000;
+                    const ng = ac.createGain();
+                    n.connect(f); f.connect(ng); ng.connect(ac.destination);
+                    ng.gain.setValueAtTime(0.6, now);
+                    ng.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    n.start(now); n.stop(now + 0.1);
+                    
+                    // Low thud
+                    osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+                    osc.connect(gain); gain.connect(ac.destination);
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now); osc.stop(now + 0.2);
+                    break;
+                case 'boss':
+                    // Doom Drone
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(55, now);
+                    const bf = ac.createBiquadFilter(); bf.type='lowpass'; bf.frequency.value=150;
+                    osc.connect(bf); bf.connect(gain); gain.connect(ac.destination);
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.5, now + 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 3);
+                    osc.start(now); osc.stop(now + 3);
+                    break;
+            }
+        };
+
+        // --- Helper Functions for Soundboard ---
         function playNote(freq, t, dur, type = 'sine', vol = 0.3) {
-            const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type = type; o.frequency.value = freq; o.connect(g); g.connect(audioCtx.destination); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.01, t + dur); o.start(t); o.stop(t + dur);
+            const o = ac.createOscillator(); const g = ac.createGain(); o.type = type; o.frequency.value = freq; 
+            o.connect(g); g.connect(masterGain); 
+            g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.01, t + dur); o.start(t); o.stop(t + dur);
         }
         function playDrum(type, time) {
-            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination);
+            const osc = ac.createOscillator(); const gain = ac.createGain(); osc.connect(gain); gain.connect(masterGain);
             if (type === 'kick') { osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(0.01, time+0.5); gain.gain.setValueAtTime(0.5, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.5); osc.start(time); osc.stop(time+0.5); }
-            else if (type === 'snare') { const n = audioCtx.createBufferSource(); n.buffer = noiseBuffer; const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.2); n.start(time); n.stop(time+0.2); }
-            else if (type === 'hihat') { const n = audioCtx.createBufferSource(); n.buffer = noiseBuffer; const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 5000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.3, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.05); n.start(time); n.stop(time+0.05); }
+            else if (type === 'snare') { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.2); n.start(time); n.stop(time+0.2); }
+            else if (type === 'hihat') { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 5000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.3, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.05); n.start(time); n.stop(time+0.05); }
             else if (type === 'tom') { osc.frequency.setValueAtTime(100, time); osc.frequency.exponentialRampToValueAtTime(50, time+0.3); gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.3); osc.start(time); osc.stop(time+0.3); }
         }
         function playLute(freq, startTime, duration) {
-            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); const filter = audioCtx.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.setValueAtTime(1000, startTime); gain.gain.setValueAtTime(0.1, startTime); gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration); osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); osc.start(startTime); osc.stop(startTime + duration);
+            const osc = ac.createOscillator(); const gain = ac.createGain(); const filter = ac.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.setValueAtTime(1000, startTime); gain.gain.setValueAtTime(0.1, startTime); gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration); osc.connect(filter); filter.connect(gain); gain.connect(ac.destination); osc.start(startTime); osc.stop(startTime + duration);
         }
         function playAccordion(freq, startTime, duration, vol = 0.15) {
-             const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); const filter = audioCtx.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.value = 2500; osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); gain.gain.setValueAtTime(0, startTime); gain.gain.linearRampToValueAtTime(vol, startTime+0.1); gain.gain.setValueAtTime(vol, startTime + duration - 0.1); gain.gain.linearRampToValueAtTime(0, startTime+duration); osc.start(startTime); osc.stop(startTime + duration);
+             const osc = ac.createOscillator(); const gain = ac.createGain(); const filter = ac.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.value = 2500; osc.connect(filter); filter.connect(gain); gain.connect(ac.destination); gain.gain.setValueAtTime(0, startTime); gain.gain.linearRampToValueAtTime(vol, startTime+0.1); gain.gain.setValueAtTime(vol, startTime + duration - 0.1); gain.gain.linearRampToValueAtTime(0, startTime+duration); osc.start(startTime); osc.stop(startTime + duration);
         }
 
-        window.playTone = function(type) {
-            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
-            const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain(); osc.connect(gainNode); gainNode.connect(audioCtx.destination); const now = audioCtx.currentTime;
-            switch (type) {
-                case 'success': osc.type = 'sine'; osc.frequency.setValueAtTime(523.25, now); osc.frequency.exponentialRampToValueAtTime(1046.5, now + 0.1); gainNode.gain.setValueAtTime(0.3, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); break;
-                case 'critical': playNote(523.25, now, 0.1); playNote(659.25, now + 0.1, 0.1); playNote(783.99, now + 0.2, 0.4); break;
-                case 'fail': osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(100, now + 0.3); gainNode.gain.setValueAtTime(0.3, now); gainNode.gain.linearRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3); break;
-                case 'combat_start': osc.type = 'square'; osc.frequency.setValueAtTime(110, now); gainNode.gain.setValueAtTime(0.3, now); gainNode.gain.setValueAtTime(0, now + 0.1); gainNode.gain.setValueAtTime(0.3, now + 0.2); gainNode.gain.setValueAtTime(0, now + 0.3); gainNode.gain.setValueAtTime(0.3, now + 0.4); gainNode.gain.linearRampToValueAtTime(0, now + 0.8); osc.start(now); osc.stop(now + 0.8); break;
-                case 'spell': osc.type = 'sine'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(2000, now + 1); gainNode.gain.setValueAtTime(0.2, now); gainNode.gain.linearRampToValueAtTime(0, now + 1); osc.start(now); osc.stop(now + 1); break;
-                case 'mystery': osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(290, now + 1); osc.frequency.linearRampToValueAtTime(310, now + 2); gainNode.gain.setValueAtTime(0.1, now); gainNode.gain.linearRampToValueAtTime(0, now + 3); osc.start(now); osc.stop(now + 3); break;
-                case 'rest': playNote(261.63, now, 2, 'sine', 0.1); playNote(329.63, now, 2, 'sine', 0.1); playNote(392.00, now, 2, 'sine', 0.1); break;
-                case 'trap': playNote(440, now, 0.2, 'sawtooth', 0.2); playNote(466, now, 0.2, 'sawtooth', 0.2); break;
-                case 'boss': osc.type = 'sawtooth'; osc.frequency.setValueAtTime(55, now); gainNode.gain.setValueAtTime(0.3, now); gainNode.gain.exponentialRampToValueAtTime(0.01, now + 2); const subOsc = audioCtx.createOscillator(); const subGain = audioCtx.createGain(); subOsc.type = 'sine'; subOsc.frequency.setValueAtTime(27.5, now); subOsc.connect(subGain); subGain.connect(audioCtx.destination); subGain.gain.setValueAtTime(0.5, now); subGain.gain.linearRampToValueAtTime(0, now + 2); subOsc.start(now); subOsc.stop(now + 2); osc.start(now); osc.stop(now + 2); break;
+        window.toggleAmbience = function(t) {
+             if(ac.state==='suspended') ac.resume();
+             ambNodes.forEach(n => { try{n.stop()}catch(e){} try{n.disconnect()}catch(e){} }); ambNodes=[];
+             document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active-loop'));
+             if(ambType === t) { ambType = null; return; }
+             ambType = t; document.getElementById(`ambience-${t}`).classList.add('active-loop');
+             const now = ac.currentTime;
+             
+             if (t === 'village') {
+                // 1. Wind (Replaces Crowd Noise)
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(400, now); const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.1; const lfoGain = ac.createGain(); lfoGain.gain.value = 200; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = ac.createGain(); gain.gain.value = 0.05; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); lfo.start(now); ambNodes.push(noise, lfo, gain);
+                const waresInterval = setInterval(() => { if (Math.random() > 0.7) { playNote(1500 + Math.random() * 500, ac.currentTime, 0.05, 'triangle', 0.02); } }, 2000); ambNodes.push({ stop: () => clearInterval(waresInterval) });
+                const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; 
+                const musicInterval = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.3) { const pitch = scale[Math.floor(Math.random() * scale.length)]; playLute(pitch, t, 0.4); } if (Math.random() > 0.8) { playLute(196.00, t, 0.6); } }, 600); ambNodes.push({ stop: () => clearInterval(musicInterval) });
+             }
+             else if (t === 'city') {
+                 const rumble = ac.createBufferSource(); rumble.buffer = noiseBuf; rumble.loop = true; const rumbleFilter = ac.createBiquadFilter(); rumbleFilter.type = 'lowpass'; rumbleFilter.frequency.value = 150; const rumbleGain = ac.createGain(); rumbleGain.gain.value = 0.1; rumble.connect(rumbleFilter); rumbleFilter.connect(rumbleGain); rumbleGain.connect(masterGain); rumble.start(now); ambNodes.push(rumble, rumbleGain);
+                 const industryInterval = setInterval(() => { if (Math.random() > 0.6) { playNote(400 + Math.random() * 100, ac.currentTime, 0.1, 'square', 0.05); } if (Math.random() > 0.8) { playNote(80, ac.currentTime, 0.1, 'sine', 0.2); } }, 2000); ambNodes.push({ stop: () => clearInterval(industryInterval) });
+                 const bellInterval = setInterval(() => { if (Math.random() > 0.85) { const t = ac.currentTime; playNote(220, t, 2.5, 'sine', 0.15); playNote(554, t, 1.5, 'sine', 0.05); } }, 8000); ambNodes.push({ stop: () => clearInterval(bellInterval) });
+                 const cityScale = [293.66, 329.63, 369.99, 440.00, 493.88, 587.33]; let cityBeat = 0; const cityMusicInterval = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.2) { const note = cityScale[Math.floor(Math.random() * cityScale.length)]; playLute(note, t, 0.15); } if (cityBeat % 4 === 0 || cityBeat % 4 === 2) { playLute(146.83, t, 0.4); } cityBeat++; }, 250); ambNodes.push({ stop: () => clearInterval(cityMusicInterval) });
             }
-        }
+            else if (t === 'tavern') {
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 150; const gain = ac.createGain(); gain.gain.value = 0.25; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); ambNodes.push(noise, gain);
+                const clinkInterval = setInterval(() => { if (Math.random() > 0.6) { playNote(1200, ac.currentTime, 0.05, 'triangle', 0.05); } }, 2500); ambNodes.push({ stop: () => clearInterval(clinkInterval) });
+                const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; let beat = 0; const musicInterval = setInterval(() => { const t = ac.currentTime; if (beat % 4 === 0) { playLute(130.81, t, 0.8); } if (Math.random() > 0.2) { const noteIdx = Math.floor(Math.random() * scale.length); playLute(scale[noteIdx], t + 0.05, 0.4); } beat++; }, 300); ambNodes.push({ stop: () => clearInterval(musicInterval) });
+            }
+            else if (t === 'ocean') {
+                 const drone = ac.createOscillator(); drone.type = 'sawtooth'; drone.frequency.value = 73.42; 
+                 const droneFilter = ac.createBiquadFilter(); droneFilter.type = 'lowpass'; droneFilter.frequency.value = 300; 
+                 const droneGain = ac.createGain(); droneGain.gain.value = 0.05; 
+                 drone.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(masterGain); 
+                 drone.start(now); ambNodes.push(drone, droneGain);
+                 
+                 const shantyScale = [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]; let beat = 0; 
+                 const iv = setInterval(() => { const t = ac.currentTime; 
+                    if (beat % 2 === 0) { playDrum('kick', t); playAccordion(146.83, t, 0.4, 0.2); } 
+                    else { playDrum('snare', t); playAccordion(293.66, t, 0.2, 0.05); } 
+                    if (Math.random() > 0.3) { const n = shantyScale[Math.floor(Math.random()*shantyScale.length)]; playAccordion(n, t, 0.4, 0.15); } 
+                    beat++; 
+                 }, 600); 
+                 ambNodes.push({ stop: () => clearInterval(iv) });
+             }
+             else if (t === 'dungeon') {
+                 const drone1 = ac.createOscillator(); drone1.type = 'triangle'; drone1.frequency.value = 55; const drone2 = ac.createOscillator(); drone2.type = 'sine'; drone2.frequency.value = 58; const droneGain = ac.createGain(); droneGain.gain.value = 0.15; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 300; drone1.connect(filter); drone2.connect(filter); filter.connect(droneGain); droneGain.connect(masterGain); drone1.start(now); drone2.start(now); ambNodes.push(drone1, drone2, droneGain);
+                 const dripInterval = setInterval(() => { if (Math.random() > 0.6) { const t = ac.currentTime; const osc = ac.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(2000 + Math.random() * 500, t); const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15); const pan = ac.createStereoPanner(); pan.pan.value = Math.random() * 2 - 1; const delay = ac.createDelay(); delay.delayTime.value = 0.3; const delayGain = ac.createGain(); delayGain.gain.value = 0.3; osc.connect(g); g.connect(pan); pan.connect(masterGain); g.connect(delay); delay.connect(delayGain); delayGain.connect(masterGain); osc.start(t); osc.stop(t + 0.5); } }, 3000); ambNodes.push({ stop: () => clearInterval(dripInterval) });
+                 const scale = [164.81, 174.61, 196.00, 220.00, 246.94, 261.63, 293.66]; const musicInterval = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.4) { const note = scale[Math.floor(Math.random() * scale.length)]; playNote(note, t, 3.5, 'triangle', 0.08); if (Math.random() > 0.7) { playNote(note / 2, t, 4, 'sine', 0.15); } } }, 4500); ambNodes.push({ stop: () => clearInterval(musicInterval) });
+            }
+            else if (t === 'battle_minor') {
+                // Bum Bum Bum Chi (Kick Kick Kick Snare) with Hum
+                const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 50; 
+                const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 200; 
+                const gain = ac.createGain(); gain.gain.value = 0.1; 
+                osc.connect(filter); filter.connect(gain); gain.connect(masterGain); osc.start(now); ambNodes.push(osc, gain);
 
-        window.toggleAmbience = function(type) {
-            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
-            const btn = document.getElementById(`ambience-${type}`); const status = document.getElementById('ambience-status');
-            if (currentAmbience === type) { stopAmbience(); status.textContent = ''; return; }
-            stopAmbience(); currentAmbience = type; btn.classList.add('active-loop'); status.textContent = `Playing: ${type.replace('_', ' ').toUpperCase()}...`;
-            const now = audioCtx.currentTime;
+                let beat = 0; 
+                let drumCycleCount = 0;
+                let isHumming = false;
+                let humOsc = null;
+                let humGain = null;
+
+                const drumInterval = setInterval(() => { 
+                    const t = ac.currentTime; 
+                    
+                    // Drum Logic (Bum Bum Bum Chi)
+                    const step = beat % 4;
+                    if (step === 0 || step === 1 || step === 2) { // Bum Bum Bum
+                        playDrum('kick', t); 
+                    } else { // Chi
+                        playDrum('snare', t); 
+                    }
+                    
+                    // Hum Logic (Wait 4 cycles, Hum 4 sec, Wait 2 cycles)
+                    // 1 cycle = 4 beats. 1 beat = 500ms. 1 cycle = 2 seconds.
+                    if (step === 3) { // End of a cycle
+                        drumCycleCount++;
+                        
+                        // Start Hum after 4 cycles (8 seconds)
+                        if (drumCycleCount === 4 && !isHumming) {
+                            isHumming = true;
+                            humOsc = ac.createOscillator();
+                            humOsc.type = 'sine';
+                            humOsc.frequency.value = 55; // Low A drone
+                            humGain = ac.createGain();
+                            humGain.gain.setValueAtTime(0, t);
+                            humGain.gain.linearRampToValueAtTime(0.3, t + 1); // Fade in
+                            humOsc.connect(humGain);
+                            humGain.connect(masterGain);
+                            humOsc.start(t);
+                            ambNodes.push(humOsc, humGain);
+                            
+                            // Stop Hum after 4 seconds (2 cycles)
+                            setTimeout(() => {
+                                if (humGain) {
+                                    humGain.gain.linearRampToValueAtTime(0, ac.currentTime + 1);
+                                    setTimeout(() => {
+                                        if(humOsc) { 
+                                            try { humOsc.stop(); } catch(e){} 
+                                            // Cleanup form ambNodes array to prevent memory leak if running long
+                                            const idx = ambNodes.indexOf(humOsc);
+                                            if (idx > -1) ambNodes.splice(idx, 2); 
+                                        }
+                                        isHumming = false;
+                                        // Reset logic based on total sequence of 8 cycles
+                                        if (drumCycleCount >= 8) {
+                                            drumCycleCount = 0;
+                                        }
+                                    }, 1000);
+                                }
+                            }, 4000);
+                        }
+                    }
+
+                    beat++; 
+                }, 500); // 120 BPM
+                ambNodes.push({ stop: () => clearInterval(drumInterval) });
+            }
+            else if (t === 'battle_major') {
+                const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 35; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 200; const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.25; const lfoGain = ac.createGain(); lfoGain.gain.value = 150; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = ac.createGain(); gain.gain.value = 0.2; osc.connect(filter); filter.connect(gain); gain.connect(masterGain); osc.start(now); lfo.start(now); ambNodes.push(osc, filter, gain, lfo, lfoGain);
+                let beat = 0; const drumInterval = setInterval(() => { const t = ac.currentTime; if (beat % 4 === 0) { playDrum('kick', t); playDrum('tom', t + 0.1); } if (beat % 4 === 2) { playDrum('snare', t); playDrum('kick', t); } playDrum('hihat', t); playDrum('hihat', t + 0.21); beat++; }, 428); ambNodes.push({ stop: () => clearInterval(drumInterval) });
+            }
+            else if (t === 'sleep') {
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 120; const gain = ac.createGain(); gain.gain.value = 0.3; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); ambNodes.push(noise, gain);
+                const crackleInterval = setInterval(() => { if (Math.random() > 0.7) { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2000; const g = ac.createGain(); g.gain.value = 0.1 + Math.random() * 0.1; g.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.05); n.connect(f); f.connect(g); g.connect(masterGain); n.start(); n.stop(ac.currentTime + 0.05); } }, 200); ambNodes.push({ stop: () => clearInterval(crackleInterval) });
+                const scale = [196.00, 220.00, 246.94, 293.66, 329.63]; const sleepMusicInterval = setInterval(() => { if (Math.random() > 0.4) { const t = ac.currentTime; const noteIdx = Math.floor(Math.random() * scale.length); playNote(scale[noteIdx], t, 4, 'sine', 0.1); if (Math.random() > 0.5) { playNote(scale[(noteIdx + 2) % scale.length], t + 0.5, 4, 'sine', 0.08); } } }, 5000); ambNodes.push({ stop: () => clearInterval(sleepMusicInterval) });
+            }
+        };
+        
+        // --- Helper Function for Title Generation ---
+        function generateTitleFromContent(content) {
+            // Try to find a bolded name first
+            const nameMatch = content.match(/\*\*Name:\*\*\s*(.*?)\n/);
+            if (nameMatch) {
+                return nameMatch[1].trim();
+            }
+            // Try to find the first H1/H2 equivalent in markdown (e.g. ## Title)
+            const headerMatch = content.match(/^#+\s*(.*?)$/m);
+            if (headerMatch) {
+                return headerMatch[1].trim();
+            }
+            // Fallback: Use the first 50 characters
+            const shortTitle = content.substring(0, 50).trim().replace(/[\n\r]/g, ' ');
+            return (shortTitle + (content.length > 50 ? '...' : '')) || 'Untitled Generated Note';
+        }
+        
+        // --- NEW: Save Generated Content Logic (Restored) ---
+        window.saveGeneratedContent = async function(destinationTab) {
+            const outputDiv = document.getElementById('ai-output');
+            let idea = outputDiv.textContent.trim();
             
-            if (type === 'village') {
-                const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer; noise.loop = true; const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(400, now); const lfo = audioCtx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.1; const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 200; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = audioCtx.createGain(); gain.gain.value = 0.05; noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); noise.start(now); lfo.start(now); activeNodes.push(noise, lfo, gain);
-                const waresInterval = setInterval(() => { if (Math.random() > 0.6) { playNote(1500 + Math.random() * 500, audioCtx.currentTime, 0.05, 'triangle', 0.05); } if (Math.random() > 0.8) { playNote(200 + Math.random() * 50, audioCtx.currentTime, 0.05, 'square', 0.05); } }, 1500); activeNodes.push({ stop: () => clearInterval(waresInterval) });
-                const scale = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77]; let noteIndex = 0;
-                const musicInterval = setInterval(() => { const t = audioCtx.currentTime; if (Math.random() > 0.25) { const pitch = scale[Math.floor(Math.random() * scale.length)]; playLute(pitch, t, 0.15); } if (noteIndex % 8 === 0) { playLute(261.63, t, 0.3); } noteIndex++; }, 220); activeNodes.push({ stop: () => clearInterval(musicInterval) });
+            // If we are in the Loot tab, check the loot output instead
+            if (currentTab === 'loot') {
+                const lootDiv = document.getElementById('loot-output');
+                if (lootDiv) {
+                    idea = lootDiv.textContent.trim();
+                }
             }
-            // --- Rest of Ambience Logic is complex but retained in memory ---
-            // (Note: The complete logic for all ambiences is needed here for a working file)
-            else if (type === 'city') {
-                 const rumble = audioCtx.createBufferSource(); rumble.buffer = noiseBuffer; rumble.loop = true; const rumbleFilter = audioCtx.createBiquadFilter(); rumbleFilter.type = 'lowpass'; rumbleFilter.frequency.value = 150; const rumbleGain = audioCtx.createGain(); rumbleGain.gain.value = 0.1; rumble.connect(rumbleFilter); rumbleFilter.connect(rumbleGain); rumbleGain.connect(audioCtx.destination); rumble.start(now); activeNodes.push(rumble, rumbleGain);
-                 const industryInterval = setInterval(() => { if (Math.random() > 0.6) { playNote(400 + Math.random() * 100, audioCtx.currentTime, 0.1, 'square', 0.05); } if (Math.random() > 0.8) { playNote(80, audioCtx.currentTime, 0.1, 'sine', 0.2); } }, 2000); activeNodes.push({ stop: () => clearInterval(industryInterval) });
-                 const bellInterval = setInterval(() => { if (Math.random() > 0.85) { const t = audioCtx.currentTime; playNote(220, t, 2.5, 'sine', 0.15); playNote(554, t, 1.5, 'sine', 0.05); } }, 8000); activeNodes.push({ stop: () => clearInterval(bellInterval) });
-                 const cityScale = [293.66, 329.63, 369.99, 440.00, 493.88, 587.33]; let cityBeat = 0;
-                 const cityMusicInterval = setInterval(() => { const t = audioCtx.currentTime; if (Math.random() > 0.2) { const note = cityScale[Math.floor(Math.random() * cityScale.length)]; playLute(note, t, 0.15); } if (cityBeat % 4 === 0 || cityBeat % 4 === 2) { playLute(146.83, t, 0.4); } cityBeat++; }, 250); activeNodes.push({ stop: () => clearInterval(cityMusicInterval) });
+
+            const statusElement = document.getElementById('notes-status');
+
+            // Basic validation to avoid saving empty/placeholder text
+            if (!idea || idea === 'Results will appear here.' || idea === 'Loot appears here.' || idea.startsWith('Error:')) {
+                alert('Nothing valid to save.');
+                return;
             }
-            else if (type === 'tavern') {
-                const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer; noise.loop = true; const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 150; const gain = audioCtx.createGain(); gain.gain.value = 0.25; noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); noise.start(now); activeNodes.push(noise, gain);
-                const clinkInterval = setInterval(() => { if (Math.random() > 0.6) { playNote(1200, audioCtx.currentTime, 0.05, 'triangle', 0.05); } }, 2500); activeNodes.push({ stop: () => clearInterval(clinkInterval) });
-                const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; let beat = 0;
-                const musicInterval = setInterval(() => { const t = audioCtx.currentTime; if (beat % 4 === 0) { playLute(130.81, t, 0.8); } if (Math.random() > 0.2) { const noteIdx = Math.floor(Math.random() * scale.length); playLute(scale[noteIdx], t + 0.05, 0.4); } beat++; }, 300); activeNodes.push({ stop: () => clearInterval(musicInterval) });
+
+            if (!window.isAuthReady) {
+                alert('Database not ready. Please wait for authentication.');
+                return;
             }
-            else if (type === 'ocean') {
-                 const drone = audioCtx.createOscillator(); drone.type = 'sawtooth'; drone.frequency.value = 73.42; const droneFilter = audioCtx.createBiquadFilter(); droneFilter.type = 'lowpass'; droneFilter.frequency.value = 300; const droneGain = audioCtx.createGain(); droneGain.gain.value = 0.025; const lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.5; const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 0.01; lfo.connect(lfoGain); lfoGain.connect(droneGain.gain); lfo.start(now); drone.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(audioCtx.destination); drone.start(now); activeNodes.push(drone, droneGain, lfo, lfoGain);
-                 const shantyScale = [146.83, 174.61, 196.00, 220.00, 261.63, 293.66]; let beat = 0;
-                 const shantyInterval = setInterval(() => { const t = audioCtx.currentTime; if (beat % 2 === 0) { playDrum('kick', t); playAccordion(146.83, t, 0.4, 0.2); } else { playDrum('snare', t); playAccordion(293.66, t, 0.2, 0.05); playAccordion(349.23, t, 0.2, 0.05); playAccordion(440.00, t, 0.15, 0.1); if (beat % 4 === 3) { const shout = audioCtx.createBufferSource(); shout.buffer = noiseBuffer; const sf = audioCtx.createBiquadFilter(); sf.type = 'bandpass'; sf.frequency.value = 900; sf.Q.value = 3; const sg = audioCtx.createGain(); sg.gain.setValueAtTime(0, t); sg.gain.linearRampToValueAtTime(0.15, t + 0.05); sg.gain.exponentialRampToValueAtTime(0.01, t + 0.25); shout.connect(sf); sf.connect(sg); sg.connect(audioCtx.destination); shout.start(t); shout.stop(t + 0.3); } } if (Math.random() > 0.25) { const note = shantyScale[Math.floor(Math.random() * shantyScale.length)]; playAccordion(note, t, 0.25, 0.15); } beat++; }, 500); activeNodes.push({ stop: () => clearInterval(shantyInterval) });
-                 // Re-added ship creak/wind layer from previous update
-                 const atm = audioCtx.createBufferSource(); atm.buffer = noiseBuffer; atm.loop = true; const atmFilter = audioCtx.createBiquadFilter(); atmFilter.type = 'bandpass'; atmFilter.frequency.value = 300; atmFilter.Q.value = 1.5; const creakLFO = audioCtx.createOscillator(); creakLFO.type = 'sine'; creakLFO.frequency.value = 0.1; const creakGain = audioCtx.createGain(); creakGain.gain.value = 100; creakLFO.connect(creakGain); creakGain.connect(atmFilter.frequency); const atmGain = audioCtx.createGain(); atmGain.gain.value = 0.08; atm.connect(atmFilter); atmFilter.connect(atmGain); atmGain.connect(audioCtx.destination); atm.start(now); creakLFO.start(now); activeNodes.push(atm, atmFilter, atmGain, creakLFO, creakGain);
-            }
-            else if (type === 'dungeon') {
-                 const drone1 = audioCtx.createOscillator(); drone1.type = 'triangle'; drone1.frequency.value = 55; const drone2 = audioCtx.createOscillator(); drone2.type = 'sine'; drone2.frequency.value = 58; const droneGain = audioCtx.createGain(); droneGain.gain.value = 0.15; const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 300; drone1.connect(filter); drone2.connect(filter); filter.connect(droneGain); droneGain.connect(audioCtx.destination); drone1.start(now); drone2.start(now); activeNodes.push(drone1, drone2, droneGain);
-                 const dripInterval = setInterval(() => { if (Math.random() > 0.6) { const t = audioCtx.currentTime; const osc = audioCtx.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(2000 + Math.random() * 500, t); const g = audioCtx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15); const pan = audioCtx.createStereoPanner(); pan.pan.value = Math.random() * 2 - 1; const delay = audioCtx.createDelay(); delay.delayTime.value = 0.3; const delayGain = audioCtx.createGain(); delayGain.gain.value = 0.3; osc.connect(g); g.connect(pan); pan.connect(audioCtx.destination); g.connect(delay); delay.connect(delayGain); delayGain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.5); } }, 3000); activeNodes.push({ stop: () => clearInterval(dripInterval) });
-                 const scale = [164.81, 174.61, 196.00, 220.00, 246.94, 261.63, 293.66];
-                 const musicInterval = setInterval(() => { const t = audioCtx.currentTime; if (Math.random() > 0.4) { const note = scale[Math.floor(Math.random() * scale.length)]; playNote(note, t, 3.5, 'triangle', 0.08); if (Math.random() > 0.7) { playNote(note / 2, t, 4, 'sine', 0.15); } } }, 4500); activeNodes.push({ stop: () => clearInterval(musicInterval) });
-            }
-            else if (type === 'battle_minor') {
-                const osc = audioCtx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 50; const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 200; const gain = audioCtx.createGain(); gain.gain.value = 0.1; osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); osc.start(now); activeNodes.push(osc, gain);
-                let beat = 0; const drumInterval = setInterval(() => { const t = audioCtx.currentTime; playDrum('kick', t); if (beat % 4 === 0) { playDrum('tom', t + 0.3); } beat++; }, 600); activeNodes.push({ stop: () => clearInterval(drumInterval) });
-            }
-            else if (type === 'battle_major') {
-                const osc = audioCtx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 35; const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 200; const lfo = audioCtx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.25; const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 150; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = audioCtx.createGain(); gain.gain.value = 0.2; osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); osc.start(now); lfo.start(now); activeNodes.push(osc, filter, gain, lfo, lfoGain);
-                let beat = 0; const drumInterval = setInterval(() => { const t = audioCtx.currentTime; if (beat % 4 === 0) { playDrum('kick', t); playDrum('tom', t + 0.1); } if (beat % 4 === 2) { playDrum('snare', t); playDrum('kick', t); } playDrum('hihat', t); playDrum('hihat', t + 0.21); beat++; }, 428); activeNodes.push({ stop: () => clearInterval(drumInterval) });
-            }
-            else if (type === 'sleep') {
-                const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer; noise.loop = true; const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 120; const gain = audioCtx.createGain(); gain.gain.value = 0.3; noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); noise.start(now); activeNodes.push(noise, gain);
-                const crackleInterval = setInterval(() => { if (Math.random() > 0.7) { const n = audioCtx.createBufferSource(); n.buffer = noiseBuffer; const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2000; const g = audioCtx.createGain(); g.gain.value = 0.1 + Math.random() * 0.1; g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05); n.connect(f); f.connect(g); g.connect(audioCtx.destination); n.start(); n.stop(audioCtx.currentTime + 0.05); } }, 200); activeNodes.push({ stop: () => clearInterval(crackleInterval) });
-                const scale = [196.00, 220.00, 246.94, 293.66, 329.63]; 
-                const sleepMusicInterval = setInterval(() => { if (Math.random() > 0.4) { const t = audioCtx.currentTime; const noteIdx = Math.floor(Math.random() * scale.length); playNote(scale[noteIdx], t, 4, 'sine', 0.1); if (Math.random() > 0.5) { playNote(scale[(noteIdx + 2) % scale.length], t + 0.5, 4, 'sine', 0.08); } } }, 5000); activeNodes.push({ stop: () => clearInterval(sleepMusicInterval) });
-            }
+
+            const title = generateTitleFromContent(idea);
+
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: title,
+                content: idea,
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes[destinationTab].unshift(newNote); // Add to beginning
+            
+            // Save the updated array
+            await window.saveStructuredNotes(destinationTab, structuredNotes[destinationTab]);
+
+            // Switch and display feedback
+            window.switchTab('notes');
+            window.switchSubTab(destinationTab);
+             alert(`New note saved to ${destinationTab}!`);
         }
 
-        function stopAmbience() {
-            activeNodes.forEach(node => {
-                if (node.stop) { try { node.stop(); } catch(e) {} } 
-                else if (node.disconnect) { node.disconnect(); }
-            });
-            activeNodes = [];
-            document.querySelectorAll('.sound-btn').forEach(btn => btn.classList.remove('active-loop'));
-            currentAmbience = null;
-        }
 
-        // --- Initialization ---
+        // Init
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialize API Key from localStorage and update status
-            const initialKey = localStorage.getItem('dm_toolkit_api_key') || "";
-            if (initialKey) {
-                document.getElementById('user-api-key').value = initialKey;
-                window.updateApiKey(initialKey);
-            } else {
-                // Ensure status shows not set
-                 const statusEl = document.getElementById('api-key-status');
-                 if (statusEl) statusEl.textContent = "Key status: Not set";
-            }
-            
-            renderCombatants();
-            populateCombatantSelector();
-            switchTab(currentTab);
+            if(userApiKey) document.getElementById('user-api-key').value = userApiKey;
+            window.updateApiKey(userApiKey);
+            switchTab('improv');
         });
     </script>
 </body>
