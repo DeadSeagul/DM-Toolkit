@@ -139,10 +139,12 @@
 <body class="p-4 sm:p-8">
     <div class="max-w-4xl mx-auto">
         
+        <!-- NEW: Top Header with Login -->
         <div class="flex justify-between items-center mb-6 bg-gray-800 p-3 rounded-lg border border-gray-700 shadow-lg">
             <h1 class="text-2xl font-bold text-indigo-400 flex items-center gap-2">
                 <span>🛡️</span> Aegis DM Toolkit
             </h1>
+            
             <div>
                 <button id="login-btn" onclick="loginWithGoogle()" class="hidden bg-white text-gray-900 hover:bg-gray-200 font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-2 transition duration-200">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
@@ -161,6 +163,7 @@
             </div>
         </div>
         
+        <!-- Tab Navigation -->
         <div class="flex border-b border-gray-600 mb-6 overflow-x-auto">
             <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active min-w-[100px]" onclick="switchTab('improv')">🔮 Prep</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('combat')">⚔️ Combat</button>
@@ -173,6 +176,7 @@
 
         <div id="content-area">
             <div id="improv" class="tab-content">
+                <!-- NEW: AI Configuration Card (User Input for API Key) -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
                     <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
                     <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key to enable AI generation features. Your key is saved locally in your browser.</p>
@@ -185,7 +189,6 @@
 
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Structured Combat NPC Stats</h2>
-                    <p class="text-sm text-gray-400 mb-4">Generate immediate, initiative-ready stats based on a target level/CR.</p>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="npc-level" class="block text-xs font-medium text-gray-400 mb-1">Level or CR (e.g., 5 or 1/2)</label>
@@ -215,7 +218,6 @@
 
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
-                    <p class="text-sm text-gray-400 mb-4">Quickly generate a city, town, or village with key locations, NPCs, and quest hooks.</p>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="settlement-type" class="block text-xs font-medium text-gray-400 mb-1">Settlement Type</label>
@@ -295,7 +297,6 @@
             <div id="statblocks" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Save NPC & Monster Statblocks</h2>
-                    <p class="text-sm text-gray-400 mb-4">Define common enemies and allies for quick reference and future combat imports.</p>
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <input id="stat-name" type="text" placeholder="Name (e.g., Orc Grunt)" class="col-span-2 p-2 rounded-lg input-style" />
                         <input id="stat-hp" type="number" placeholder="HP (e.g., 15)" class="p-2 rounded-lg input-style text-center text-sm" />
@@ -313,13 +314,7 @@
                         <input id="dice-num" type="number" value="1" min="1" class="w-16 p-2 rounded-lg input-style text-center text-sm" aria-label="Number of Dice" />
                         <span class="text-lg font-semibold text-gray-400">d</span>
                         <select id="dice-type" class="p-2 rounded-lg input-style text-sm" aria-label="Dice Type">
-                            <option value="4">4</option>
-                            <option value="6">6</option>
-                            <option value="8">8</option>
-                            <option value="10">10</option>
-                            <option value="12">12</option>
-                            <option value="20" selected>20</option>
-                            <option value="100">100</option>
+                            <option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="10">10</option><option value="12">12</option><option value="20" selected>20</option><option value="100">100</option>
                         </select>
                         <span class="text-lg font-semibold text-gray-400">+</span>
                         <input id="dice-mod" type="number" value="0" class="w-16 p-2 rounded-lg input-style text-center text-sm" aria-label="Modifier" />
@@ -339,7 +334,6 @@
             <div id="monsters" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Full Monster Stat Block Generator</h2>
-                    <p class="text-sm text-gray-400 mb-4">Generate a complete D&D 5e-style monster stat block using AI.</p>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="monster-name" class="block text-xs font-medium text-gray-400 mb-1">Monster Name (e.g., "Goblin Boss")</label>
@@ -373,7 +367,6 @@
             <div id="loot" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-yellow-300">AI Loot Generator</h2>
-                    <p class="text-sm text-gray-400 mb-4">Generate balanced loot drops for individual enemies or entire treasure hoards.</p>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="loot-level" class="block text-xs font-medium text-gray-400 mb-1">Party Level or CR</label>
@@ -403,65 +396,29 @@
             <div id="soundboard" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-pink-300">Synth Soundboard</h2>
-                    <p class="text-sm text-gray-400 mb-4">Instant sound effects and looping ambiences synthesized in your browser. No external files required.</p>
-                    
                     <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider">One-Shot Effects</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-                        <button onclick="playTone('success')" class="sound-btn bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">✨</span><span class="text-xs">Success</span>
-                        </button>
-                        <button onclick="playTone('critical')" class="sound-btn bg-green-700 hover:bg-green-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-900 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">🎉</span><span class="text-xs">Crit Success</span>
-                        </button>
-                        <button onclick="playTone('fail')" class="sound-btn bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-red-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">❌</span><span class="text-xs">Fail</span>
-                        </button>
-                        <button onclick="playTone('combat_start')" class="sound-btn bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-orange-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">⚔️</span><span class="text-xs">Combat!</span>
-                        </button>
-                        <button onclick="playTone('spell')" class="sound-btn bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-purple-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">🔮</span><span class="text-xs">Spell</span>
-                        </button>
-                        <button onclick="playTone('mystery')" class="sound-btn bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-indigo-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">👻</span><span class="text-xs">Mystery</span>
-                        </button>
-                        <button onclick="playTone('rest')" class="sound-btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-blue-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">💤</span><span class="text-xs">Rest</span>
-                        </button>
-                        <button onclick="playTone('trap')" class="sound-btn bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-yellow-800 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">⚠️</span><span class="text-xs">Trap!</span>
-                        </button>
-                        <button onclick="playTone('boss')" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-gray-900 flex flex-col items-center justify-center">
-                            <span class="text-2xl mb-1">💀</span><span class="text-xs">Boss</span>
-                        </button>
+                        <button onclick="playTone('success')" class="sound-btn bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">✨</span><span class="text-xs">Success</span></button>
+                        <button onclick="playTone('critical')" class="sound-btn bg-green-700 hover:bg-green-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-900 flex flex-col items-center justify-center"><span class="text-2xl mb-1">🎉</span><span class="text-xs">Crit Success</span></button>
+                        <button onclick="playTone('fail')" class="sound-btn bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-red-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">❌</span><span class="text-xs">Fail</span></button>
+                        <button onclick="playTone('combat_start')" class="sound-btn bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-orange-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">⚔️</span><span class="text-xs">Combat!</span></button>
+                        <button onclick="playTone('spell')" class="sound-btn bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-purple-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">🔮</span><span class="text-xs">Spell</span></button>
+                        <button onclick="playTone('mystery')" class="sound-btn bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-indigo-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">👻</span><span class="text-xs">Mystery</span></button>
+                        <button onclick="playTone('rest')" class="sound-btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-blue-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">💤</span><span class="text-xs">Rest</span></button>
+                        <button onclick="playTone('trap')" class="sound-btn bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-yellow-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">⚠️</span><span class="text-xs">Trap!</span></button>
+                        <button onclick="playTone('boss')" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-gray-900 flex flex-col items-center justify-center"><span class="text-2xl mb-1">💀</span><span class="text-xs">Boss</span></button>
                     </div>
 
                     <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider border-t border-gray-700 pt-4">Generative Ambience Loops (Click to Toggle)</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <button onclick="toggleAmbience('village')" id="ambience-village" class="sound-btn bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow-md border border-teal-600 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🏘️</span><span class="text-xs">Village Market</span>
-                        </button>
-                        <button onclick="toggleAmbience('city')" id="ambience-city" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-lg shadow-md border border-gray-500 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🏰</span><span class="text-xs">City Life</span>
-                        </button>
-                        <button onclick="toggleAmbience('tavern')" id="ambience-tavern" class="sound-btn bg-yellow-900 hover:bg-yellow-800 text-white font-bold py-3 rounded-lg shadow-md border border-yellow-700 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🍺</span><span class="text-xs">Tavern</span>
-                        </button>
-                        <button onclick="toggleAmbience('ocean')" id="ambience-ocean" class="sound-btn bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow-md border border-blue-700 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">⚓</span><span class="text-xs">Sea Shanty</span>
-                        </button>
-                        <button onclick="toggleAmbience('dungeon')" id="ambience-dungeon" class="sound-btn bg-purple-900 hover:bg-purple-800 text-white font-bold py-3 rounded-lg shadow-md border border-purple-700 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">⛓️</span><span class="text-xs">Dungeon</span>
-                        </button>
-                        <button onclick="toggleAmbience('battle_minor')" id="ambience-battle_minor" class="sound-btn bg-red-900 hover:bg-red-800 text-white font-bold py-3 rounded-lg shadow-md border border-red-700 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🛡️</span><span class="text-xs">Battle (Minor)</span>
-                        </button>
-                        <button onclick="toggleAmbience('battle_major')" id="ambience-battle_major" class="sound-btn bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-md border border-gray-600 flex flex-col items-center justify-center">
-                            <span class="text-xl mb-1">🔥</span><span class="text-xs">Battle (Major)</span>
-                        </button>
-                        <button onclick="toggleAmbience('sleep')" id="ambience-sleep" class="sound-btn bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-3 rounded-lg shadow-md border border-indigo-700 flex flex-col items-center justify-center col-span-1 sm:col-span-1">
-                            <span class="text-xl mb-1">⛺💤</span><span class="text-xs">Campfire Rest</span>
-                        </button>
+                        <button onclick="toggleAmbience('village')" id="ambience-village" class="sound-btn bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow-md border border-teal-600 flex flex-col items-center justify-center"><span class="text-xl mb-1">🏘️</span><span class="text-xs">Village Market</span></button>
+                        <button onclick="toggleAmbience('city')" id="ambience-city" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-lg shadow-md border border-gray-500 flex flex-col items-center justify-center"><span class="text-xl mb-1">🏰</span><span class="text-xs">City Life</span></button>
+                        <button onclick="toggleAmbience('tavern')" id="ambience-tavern" class="sound-btn bg-yellow-900 hover:bg-yellow-800 text-white font-bold py-3 rounded-lg shadow-md border border-yellow-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">🍺</span><span class="text-xs">Tavern</span></button>
+                        <button onclick="toggleAmbience('ocean')" id="ambience-ocean" class="sound-btn bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg shadow-md border border-blue-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">⚓</span><span class="text-xs">Sea Shanty</span></button>
+                        <button onclick="toggleAmbience('dungeon')" id="ambience-dungeon" class="sound-btn bg-purple-900 hover:bg-purple-800 text-white font-bold py-3 rounded-lg shadow-md border border-purple-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">⛓️</span><span class="text-xs">Dungeon</span></button>
+                        <button onclick="toggleAmbience('battle_minor')" id="ambience-battle_minor" class="sound-btn bg-red-900 hover:bg-red-800 text-white font-bold py-3 rounded-lg shadow-md border border-red-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">🛡️</span><span class="text-xs">Battle (Minor)</span></button>
+                        <button onclick="toggleAmbience('battle_major')" id="ambience-battle_major" class="sound-btn bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-lg shadow-md border border-gray-600 flex flex-col items-center justify-center"><span class="text-xl mb-1">🔥</span><span class="text-xs">Battle (Major)</span></button>
+                        <button onclick="toggleAmbience('sleep')" id="ambience-sleep" class="sound-btn bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-3 rounded-lg shadow-md border border-indigo-700 flex flex-col items-center justify-center"><span class="text-xl mb-1">⛺💤</span><span class="text-xs">Campfire Rest</span></button>
                     </div>
                     <div id="ambience-status" class="mt-2 text-center text-xs text-green-400 h-4"></div>
                 </div>
@@ -476,15 +433,9 @@
                         <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="enemyNotes" onclick="switchSubTab('enemyNotes')">💀 Enemies</button>
                         <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="switchSubTab('npcNotes')">👥 NPCs</button>
                     </div>
-                    <div id="prepNotes-sub-content" class="sub-tab-content">
-                        <div id="prepNotes-list" class="scrollable-content space-y-3"></div>
-                    </div>
-                    <div id="enemyNotes-sub-content" class="sub-tab-content hidden">
-                        <div id="enemyNotes-list" class="scrollable-content space-y-3"></div>
-                    </div>
-                    <div id="npcNotes-sub-content" class="sub-tab-content hidden">
-                        <div id="npcNotes-list" class="scrollable-content space-y-3"></div>
-                    </div>
+                    <div id="prepNotes-sub-content" class="sub-tab-content"><div id="prepNotes-list" class="scrollable-content space-y-3"></div></div>
+                    <div id="enemyNotes-sub-content" class="sub-tab-content hidden"><div id="enemyNotes-list" class="scrollable-content space-y-3"></div></div>
+                    <div id="npcNotes-sub-content" class="sub-tab-content hidden"><div id="npcNotes-list" class="scrollable-content space-y-3"></div></div>
                     <button onclick="addNewNote(currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">+ Add Manual Note</button>
                     <p id="notes-status" class="mt-2 text-sm text-center text-gray-400"></p>
                 </div>
@@ -495,16 +446,10 @@
     <div id="edit-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
             <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Note</h3>
-            <input type="hidden" id="modal-note-id">
-            <input type="hidden" id="modal-tab-name">
-            <label for="modal-title" class="block text-sm font-medium text-gray-400 mb-1">Title</label>
-            <input type="text" id="modal-title" class="w-full p-3 rounded-lg input-style mb-4">
-            <label for="modal-content" class="block text-sm font-medium text-gray-400 mb-1">Content</label>
-            <textarea id="modal-content" rows="6" class="w-full p-3 rounded-lg input-style mb-6 resize-none"></textarea>
-            <div class="flex justify-end space-x-3">
-                <button onclick="closeEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
-                <button onclick="saveEditedNote()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Changes</button>
-            </div>
+            <input type="hidden" id="modal-note-id"><input type="hidden" id="modal-tab-name">
+            <label for="modal-title" class="block text-sm font-medium text-gray-400 mb-1">Title</label><input type="text" id="modal-title" class="w-full p-3 rounded-lg input-style mb-4">
+            <label for="modal-content" class="block text-sm font-medium text-gray-400 mb-1">Content</label><textarea id="modal-content" rows="6" class="w-full p-3 rounded-lg input-style mb-6 resize-none"></textarea>
+            <div class="flex justify-end space-x-3"><button onclick="closeEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button><button onclick="saveEditedNote()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Changes</button></div>
         </div>
     </div>
     
@@ -512,94 +457,38 @@
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
             <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Statblock</h3>
             <input type="hidden" id="modal-statblock-id">
-            <label for="modal-stat-name" class="block text-sm font-medium text-gray-400 mb-1">Name</label>
-            <input type="text" id="modal-stat-name" placeholder="Name" class="w-full p-3 rounded-lg input-style mb-4">
-            <div class="grid grid-cols-2 gap-4">
-                <div><label for="modal-stat-hp" class="block text-sm font-medium text-gray-400 mb-1">HP</label><input type="number" id="modal-stat-hp" placeholder="HP" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div>
-                <div><label for="modal-stat-ac" class="block text-sm font-medium text-gray-400 mb-1">AC</label><input type="number" id="modal-stat-ac" placeholder="AC" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div>
-                <div><label for="modal-stat-tohit" class="block text-sm font-medium text-gray-400 mb-1">To Hit Mod</label><input type="number" id="modal-stat-tohit" placeholder="To Hit Mod" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div>
-                <div><label for="modal-stat-init-mod" class="block text-sm font-medium text-gray-400 mb-1">Init Mod</label><input type="number" id="modal-stat-init-mod" placeholder="Init Mod" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div>
-            </div>
-            <label for="modal-stat-dmg" class="block text-sm font-medium text-gray-400 mb-1">Attack DMG (e.g., 1d8+2)</label>
-            <input type="text" id="modal-stat-dmg" placeholder="Attack DMG" class="w-full p-3 rounded-lg input-style mb-6">
-            <div class="flex justify-end space-x-3">
-                <button onclick="closeStatblockEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
-                <button onclick="saveEditedStatblock()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Changes</button>
-            </div>
+            <label for="modal-stat-name" class="block text-sm font-medium text-gray-400 mb-1">Name</label><input type="text" id="modal-stat-name" placeholder="Name" class="w-full p-3 rounded-lg input-style mb-4">
+            <div class="grid grid-cols-2 gap-4"><div><label for="modal-stat-hp" class="block text-sm font-medium text-gray-400 mb-1">HP</label><input type="number" id="modal-stat-hp" placeholder="HP" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div><div><label for="modal-stat-ac" class="block text-sm font-medium text-gray-400 mb-1">AC</label><input type="number" id="modal-stat-ac" placeholder="AC" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div><div><label for="modal-stat-tohit" class="block text-sm font-medium text-gray-400 mb-1">To Hit Mod</label><input type="number" id="modal-stat-tohit" placeholder="To Hit Mod" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div><div><label for="modal-stat-init-mod" class="block text-sm font-medium text-gray-400 mb-1">Init Mod</label><input type="number" id="modal-stat-init-mod" placeholder="Init Mod" class="w-full p-3 rounded-lg input-style text-center text-sm mb-4"></div></div>
+            <label for="modal-stat-dmg" class="block text-sm font-medium text-gray-400 mb-1">Attack DMG (e.g., 1d8+2)</label><input type="text" id="modal-stat-dmg" placeholder="Attack DMG" class="w-full p-3 rounded-lg input-style mb-6">
+            <div class="flex justify-end space-x-3"><button onclick="closeStatblockEditModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button><button onclick="saveEditedStatblock()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save Changes</button></div>
         </div>
     </div>
     
     <script>
-        let currentTab = 'improv'; 
-        let currentSubTab = 'prepNotes';
-        let savedStatblocks = []; 
-        let lastGeneratedNpc = null;
-        let lastGeneratedMonster = null;
-        let structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [] };
-        let userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
-
+        let currentTab = 'improv'; let currentSubTab = 'prepNotes'; let savedStatblocks = []; let lastGeneratedNpc = null; let lastGeneratedMonster = null; let structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [] }; let userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
         function getUserDocRef() { const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; return window.doc(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_data', 'shared_notes'); }
         function getCombatDocRef() { const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; return window.doc(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_data', 'shared_combat'); }
         function getCombatantsCollectionRef() { const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; return window.collection(window.db, 'artifacts', appId, 'public', 'data', 'shared_combatants'); }
         function getCombatStateDocRef() { const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; return window.doc(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_data', 'shared_combat_state'); }
         function getStatblocksCollectionRef() { const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; return window.collection(window.db, 'artifacts', appId, 'public', 'data', 'dm_toolkit_statblocks'); }
         function getFirestoreKey(tabName) { return `structured${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`; }
-
-        window.saveStructuredNotes = async function(tabName, notesArray) {
-            if (!window.isAuthReady || !window.db) { document.getElementById('notes-status').textContent = 'Database not ready. Please wait for authentication.'; return; }
-            const statusElement = document.getElementById('notes-status'); statusElement.textContent = `Saving ${tabName}...`;
-            const firestoreKey = getFirestoreKey(tabName); const dataToSave = {}; dataToSave[firestoreKey] = notesArray; dataToSave.lastSaved = new Date().toISOString();
-            try { await window.setDoc(getUserDocRef(), dataToSave, { merge: true }); statusElement.textContent = `${tabName} saved successfully!`; } catch (error) { console.error("Error saving structured notes: ", error); statusElement.textContent = 'Error saving notes. Check console for details.'; }
-        }
-        window.setupNotesListener = function() {
-            if (!window.isAuthReady || !window.db) return;
-            window.onSnapshot(getUserDocRef(), (doc) => {
-                if (doc.exists()) { const data = doc.data(); structuredNotes.prepNotes = data[getFirestoreKey('prepNotes')] || []; structuredNotes.enemyNotes = data[getFirestoreKey('enemyNotes')] || []; structuredNotes.npcNotes = data[getFirestoreKey('npcNotes')] || []; if (currentTab === 'notes') { renderStructuredNotes('prepNotes'); renderStructuredNotes('enemyNotes'); renderStructuredNotes('npcNotes'); } } else { console.log("Notes document does not exist yet. Will be created on first save."); }
-            }, (error) => { console.error("Error setting up notes listener: ", error); });
-        }
-        function renderStructuredNotes(tabName) {
-            const notesArray = structuredNotes[tabName]; const listContainer = document.getElementById(`${tabName}-list`);
-            if (!listContainer) { console.error(`Container not found for ${tabName}-list`); return; }
-            listContainer.innerHTML = '';
-            if (!notesArray || notesArray.length === 0) { listContainer.innerHTML = `<p class="text-center text-gray-500 pt-8">No notes in this category yet. Add one manually or save from the Improv tab!</p>`; return; }
-            notesArray.forEach(note => {
-                const noteElement = document.createElement('div'); noteElement.className = 'note-item card p-0 rounded-lg shadow-md'; noteElement.id = `note-${note.id}`;
-                const header = document.createElement('div'); header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150'; header.onclick = () => toggleCollapse(note.id);
-                header.innerHTML = `<span class="font-semibold text-lg text-indigo-300 truncate">${note.title}</span><svg class="arrow-icon w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>`;
-                const content = document.createElement('div'); content.className = 'collapsible-content'; content.id = `content-${note.id}`;
-                const isHtml = /<[a-z][\s\S]*>/i.test(note.content);
-                if (isHtml) {
-                    content.innerHTML = `<div class="p-2">${note.content}</div><div class="flex justify-end space-x-2 pt-2 pb-1"><button onclick="editNote('${note.id}', '${tabName}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Edit</button><button onclick="deleteNote('${note.id}', '${tabName}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Delete</button></div>`;
-                } else {
-                    content.innerHTML = `<div class="whitespace-pre-wrap text-sm text-gray-300 p-2 border-l-4 border-indigo-400 bg-gray-700/50">${note.content}</div><div class="flex justify-end space-x-2 pt-2 pb-1"><button onclick="editNote('${note.id}', '${tabName}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Edit</button><button onclick="deleteNote('${note.id}', '${tabName}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Delete</button></div>`;
-                }
-                noteElement.appendChild(header); noteElement.appendChild(content); listContainer.appendChild(noteElement);
-            });
-        }
+        window.saveStructuredNotes = async function(tabName, notesArray) { if (!window.isAuthReady || !window.db) { document.getElementById('notes-status').textContent = 'Database not ready. Please wait for authentication.'; return; } const statusElement = document.getElementById('notes-status'); statusElement.textContent = `Saving ${tabName}...`; const firestoreKey = getFirestoreKey(tabName); const dataToSave = {}; dataToSave[firestoreKey] = notesArray; dataToSave.lastSaved = new Date().toISOString(); try { await window.setDoc(getUserDocRef(), dataToSave, { merge: true }); statusElement.textContent = `${tabName} saved successfully!`; } catch (error) { console.error("Error saving structured notes: ", error); statusElement.textContent = 'Error saving notes. Check console for details.'; } }
+        window.setupNotesListener = function() { if (!window.isAuthReady || !window.db) return; window.onSnapshot(getUserDocRef(), (doc) => { if (doc.exists()) { const data = doc.data(); structuredNotes.prepNotes = data[getFirestoreKey('prepNotes')] || []; structuredNotes.enemyNotes = data[getFirestoreKey('enemyNotes')] || []; structuredNotes.npcNotes = data[getFirestoreKey('npcNotes')] || []; if (currentTab === 'notes') { renderStructuredNotes('prepNotes'); renderStructuredNotes('enemyNotes'); renderStructuredNotes('npcNotes'); } } else { console.log("Notes document does not exist yet. Will be created on first save."); } }, (error) => { console.error("Error setting up notes listener: ", error); }); }
+        function renderStructuredNotes(tabName) { const notesArray = structuredNotes[tabName]; const listContainer = document.getElementById(`${tabName}-list`); if (!listContainer) { console.error(`Container not found for ${tabName}-list`); return; } listContainer.innerHTML = ''; if (!notesArray || notesArray.length === 0) { listContainer.innerHTML = `<p class="text-center text-gray-500 pt-8">No notes in this category yet. Add one manually or save from the Improv tab!</p>`; return; } notesArray.forEach(note => { const noteElement = document.createElement('div'); noteElement.className = 'note-item card p-0 rounded-lg shadow-md'; noteElement.id = `note-${note.id}`; const header = document.createElement('div'); header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150'; header.onclick = () => toggleCollapse(note.id); header.innerHTML = `<span class="font-semibold text-lg text-indigo-300 truncate">${note.title}</span><svg class="arrow-icon w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>`; const content = document.createElement('div'); content.className = 'collapsible-content'; content.id = `content-${note.id}`; const isHtml = /<[a-z][\s\S]*>/i.test(note.content); if (isHtml) { content.innerHTML = `<div class="p-2">${note.content}</div><div class="flex justify-end space-x-2 pt-2 pb-1"><button onclick="editNote('${note.id}', '${tabName}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Edit</button><button onclick="deleteNote('${note.id}', '${tabName}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Delete</button></div>`; } else { content.innerHTML = `<div class="whitespace-pre-wrap text-sm text-gray-300 p-2 border-l-4 border-indigo-400 bg-gray-700/50">${note.content}</div><div class="flex justify-end space-x-2 pt-2 pb-1"><button onclick="editNote('${note.id}', '${tabName}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Edit</button><button onclick="deleteNote('${note.id}', '${tabName}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded transition duration-300">Delete</button></div>`; } noteElement.appendChild(header); noteElement.appendChild(content); listContainer.appendChild(noteElement); }); }
         window.toggleCollapse = function(noteId) { const content = document.getElementById(`content-${noteId}`); if (!content) { console.error(`Failed to find content element with ID: content-${noteId}`); return; } const isExpanded = content.classList.contains('expanded'); if (isExpanded) { content.classList.remove('expanded'); content.style.maxHeight = null; } else { content.classList.add('expanded'); content.style.maxHeight = content.scrollHeight + "px"; } }
         window.addNewNote = function(tabName) { const newNote = { id: crypto.randomUUID(), title: 'New Manual Note (Click Edit to change)', content: 'Start typing your detailed note content here.', timestamp: new Date().toISOString() }; structuredNotes[tabName].unshift(newNote); saveStructuredNotes(tabName, structuredNotes[tabName]); }
         window.deleteNote = function(noteId, tabName) { const newArray = structuredNotes[tabName].filter(note => note.id !== noteId); structuredNotes[tabName] = newArray; saveStructuredNotes(tabName, newArray); }
         window.editNote = function(noteId, tabName) { const note = structuredNotes[tabName].find(n => n.id === noteId); if (!note) { document.getElementById('notes-status').textContent = 'Error: Note not found.'; return; } document.getElementById('modal-note-id').value = note.id; document.getElementById('modal-tab-name').value = tabName; document.getElementById('modal-title').value = note.title; document.getElementById('modal-content').value = note.content; document.getElementById('edit-modal').classList.remove('hidden'); document.getElementById('notes-status').textContent = ''; }
         window.closeEditModal = function() { document.getElementById('edit-modal').classList.add('hidden'); document.getElementById('notes-status').textContent = 'Edit cancelled.'; }
-        window.saveEditedNote = function() {
-            const statusElement = document.getElementById('notes-status'); const noteId = document.getElementById('modal-note-id').value; const tabName = document.getElementById('modal-tab-name').value; const newTitle = document.getElementById('modal-title').value.trim(); const newContent = document.getElementById('modal-content').value.trim();
-            const noteIndex = structuredNotes[tabName].findIndex(note => note.id === noteId); if (noteIndex === -1) { statusElement.textContent = 'Error: Note not found during save.'; document.getElementById('edit-modal').classList.add('hidden'); return; }
-            const oldNote = structuredNotes[tabName][noteIndex]; const finalTitle = newTitle || 'Untitled Note'; const finalContent = newContent;
-            if (finalTitle !== oldNote.title || finalContent !== oldNote.content) { structuredNotes[tabName][noteIndex].title = finalTitle; structuredNotes[tabName][noteIndex].content = finalContent; saveStructuredNotes(tabName, structuredNotes[tabName]); statusElement.textContent = `Note "${finalTitle}" updated and saved!`; const contentDiv = document.getElementById(`content-${noteId}`); if(contentDiv && contentDiv.classList.contains('expanded')) { contentDiv.classList.remove('expanded'); contentDiv.style.maxHeight = null; } } else { statusElement.textContent = 'No changes detected. Note was not saved.'; } document.getElementById('edit-modal').classList.add('hidden');
-        }
-
+        window.saveEditedNote = function() { const statusElement = document.getElementById('notes-status'); const noteId = document.getElementById('modal-note-id').value; const tabName = document.getElementById('modal-tab-name').value; const newTitle = document.getElementById('modal-title').value.trim(); const newContent = document.getElementById('modal-content').value.trim(); const noteIndex = structuredNotes[tabName].findIndex(note => note.id === noteId); if (noteIndex === -1) { statusElement.textContent = 'Error: Note not found during save.'; document.getElementById('edit-modal').classList.add('hidden'); return; } const oldNote = structuredNotes[tabName][noteIndex]; const finalTitle = newTitle || 'Untitled Note'; const finalContent = newContent; if (finalTitle !== oldNote.title || finalContent !== oldNote.content) { structuredNotes[tabName][noteIndex].title = finalTitle; structuredNotes[tabName][noteIndex].content = finalContent; saveStructuredNotes(tabName, structuredNotes[tabName]); statusElement.textContent = `Note "${finalTitle}" updated and saved!`; const contentDiv = document.getElementById(`content-${noteId}`); if(contentDiv && contentDiv.classList.contains('expanded')) { contentDiv.classList.remove('expanded'); contentDiv.style.maxHeight = null; } } else { statusElement.textContent = 'No changes detected. Note was not saved.'; } document.getElementById('edit-modal').classList.add('hidden'); }
+        
         let combatants = []; let currentTurnIndex = -1; let lastRoll = 0;
         async function saveCombatStateToFirestore() { if (!window.isAuthReady || !window.db) { console.warn("Firestore not ready. Cannot save combat state."); return; } try { await window.setDoc(getCombatStateDocRef(), { currentTurnIndex: currentTurnIndex }); } catch (error) { console.error("Error saving combat state:", error); } }
         window.setupCombatDataListeners = function() {
             if (!window.isAuthReady || !window.db) return;
             const dbStatus = document.getElementById('db-status'); if(dbStatus) dbStatus.textContent = "Connecting...";
             const combatantsQuery = window.query(getCombatantsCollectionRef());
-            window.onSnapshot(combatantsQuery, (snapshot) => {
-                const loadedCombatants = []; snapshot.forEach(doc => { loadedCombatants.push({ id: doc.id, ...doc.data() }); });
-                loadedCombatants.sort((a, b) => (b.init || 0) - (a.init || 0));
-                combatants = loadedCombatants; renderCombatants(); console.log("Combatants list updated from Firestore and sorted in-memory.");
-                if(dbStatus) { dbStatus.textContent = "Connected"; dbStatus.classList.remove('text-red-400', 'text-gray-400'); dbStatus.classList.add('text-green-400'); }
-            }, (error) => { console.error("Error setting up combatants listener: ", error); if(dbStatus) { dbStatus.textContent = "Disconnected"; dbStatus.classList.remove('text-green-400', 'text-gray-400'); dbStatus.classList.add('text-red-400'); } const list = document.getElementById('initiative-list'); if(list) list.innerHTML = `<p class="text-center text-red-400 pt-8">Error loading data: ${error.message}</p>`; });
+            window.onSnapshot(combatantsQuery, (snapshot) => { const loadedCombatants = []; snapshot.forEach(doc => { loadedCombatants.push({ id: doc.id, ...doc.data() }); }); loadedCombatants.sort((a, b) => (b.init || 0) - (a.init || 0)); combatants = loadedCombatants; renderCombatants(); console.log("Combatants list updated from Firestore and sorted in-memory."); if(dbStatus) { dbStatus.textContent = "Connected"; dbStatus.classList.remove('text-red-400', 'text-gray-400'); dbStatus.classList.add('text-green-400'); } }, (error) => { console.error("Error setting up combatants listener: ", error); if(dbStatus) { dbStatus.textContent = "Disconnected"; dbStatus.classList.remove('text-green-400', 'text-gray-400'); dbStatus.classList.add('text-red-400'); } const list = document.getElementById('initiative-list'); if(list) list.innerHTML = `<p class="text-center text-red-400 pt-8">Error loading data: ${error.message}</p>`; });
             window.onSnapshot(getCombatStateDocRef(), (doc) => { if (doc.exists()) { const data = doc.data(); currentTurnIndex = data.currentTurnIndex !== undefined ? data.currentTurnIndex : -1; } else { currentTurnIndex = -1; } renderCombatants(); console.log("Combat state (turn) updated from Firestore."); }, (error) => { console.error("Error setting up combat state listener: ", error); });
         }
         window.saveStatblock = async function() {
@@ -617,32 +506,14 @@
             statusElement.textContent = `Saving ${npc.name} to Statblocks...`; statusElement.classList.remove('hidden'); statusElement.classList.remove('text-red-400', 'text-green-400'); statusElement.classList.add('text-yellow-400');
             try { await window.addDoc(getStatblocksCollectionRef(), { name: npc.name, hp: npc.max_hit_points, ac: npc.armor_class_ac, toHit: toHit, initMod: npc.initiative_bonus, dmg: dmg, timestamp: new Date().toISOString() }); statusElement.textContent = `${npc.name} added to Statblocks! (To Hit: ${toHit >= 0 ? '+' : ''}${toHit})`; statusElement.classList.remove('text-yellow-400'); statusElement.classList.add('text-green-400'); } catch (error) { console.error("Error saving generated statblock: ", error); statusElement.textContent = `Error saving statblock: ${error.message}`; statusElement.classList.remove('text-yellow-400'); statusElement.classList.add('text-red-400'); }
         }
-        window.setupStatblocksListener = function() {
-            if (!window.isAuthReady || !window.db) return;
-            window.onSnapshot(window.query(getStatblocksCollectionRef()), (snapshot) => { savedStatblocks = []; snapshot.forEach(doc => { savedStatblocks.push({ id: doc.id, ...doc.data() }); }); savedStatblocks.sort((a, b) => a.name.localeCompare(b.name)); renderStatblocks(); console.log(`Loaded ${savedStatblocks.length} statblocks.`); }, (error) => { console.error("Error setting up statblocks listener: ", error); });
-        }
+        window.setupStatblocksListener = function() { if (!window.isAuthReady || !window.db) return; window.onSnapshot(window.query(getStatblocksCollectionRef()), (snapshot) => { savedStatblocks = []; snapshot.forEach(doc => { savedStatblocks.push({ id: doc.id, ...doc.data() }); }); savedStatblocks.sort((a, b) => a.name.localeCompare(b.name)); renderStatblocks(); console.log(`Loaded ${savedStatblocks.length} statblocks.`); }, (error) => { console.error("Error setting up statblocks listener: ", error); }); }
         function renderStatblocks() {
-            const list = document.getElementById('statblocks-list'); list.innerHTML = '';
-            if (savedStatblocks.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 pt-8">Your saved NPCs and monsters will appear here.</p>'; return; }
-            savedStatblocks.forEach(stat => {
-                const hp = stat.hp || 0; const ac = stat.ac || 0; const toHit = stat.toHit || 0; const initMod = stat.initMod || 0;
-                const element = document.createElement('div'); element.className = 'note-item card p-0 rounded-lg shadow-md'; const uniqueId = `statblock-${stat.id}`; element.id = uniqueId;
-                const header = document.createElement('div'); header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150'; header.onclick = () => toggleCollapse(uniqueId);
-                header.innerHTML = `<span class="font-semibold text-lg text-indigo-300 truncate">${stat.name}</span><svg class="arrow-icon w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>`;
-                const content = document.createElement('div'); content.className = 'collapsible-content'; content.id = `content-${uniqueId}`;
-                content.innerHTML = `<div class="p-3"> <div class="flex justify-end space-x-2 mb-2"><button onclick="editStatblock('${stat.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded transition duration-300">Edit</button><button onclick="deleteStatblock('${stat.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded transition duration-300">Delete</button></div><div class="grid grid-cols-2 text-sm gap-y-1 text-gray-300"><span class="font-semibold text-green-400">HP: ${hp}</span><span class="font-semibold text-blue-400">AC: ${ac}</span><span>Init Mod: ${initMod > 0 ? '+' : ''}${initMod}</span><span>To Hit: ${toHit > 0 ? '+' : ''}${toHit}</span><div class="col-span-2 text-yellow-400 text-xs mt-1"><span class="font-semibold text-sm">DMG/Attack:</span>${stat.dmg}</div></div><button onclick="importToCombat('${stat.name}', ${hp}, ${initMod}, ${ac})" class="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 rounded-lg transition duration-300 text-sm">Add to Combat Tracker</button></div>`;
-                element.appendChild(header); element.appendChild(content); list.appendChild(element);
-            });
+            const list = document.getElementById('statblocks-list'); list.innerHTML = ''; if (savedStatblocks.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 pt-8">Your saved NPCs and monsters will appear here.</p>'; return; }
+            savedStatblocks.forEach(stat => { const hp = stat.hp || 0; const ac = stat.ac || 0; const toHit = stat.toHit || 0; const initMod = stat.initMod || 0; const element = document.createElement('div'); element.className = 'note-item card p-0 rounded-lg shadow-md'; const uniqueId = `statblock-${stat.id}`; element.id = uniqueId; const header = document.createElement('div'); header.className = 'collapsible-header hover:bg-gray-600/50 transition duration-150'; header.onclick = () => toggleCollapse(uniqueId); header.innerHTML = `<span class="font-semibold text-lg text-indigo-300 truncate">${stat.name}</span><svg class="arrow-icon w-4 h-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>`; const content = document.createElement('div'); content.className = 'collapsible-content'; content.id = `content-${uniqueId}`; content.innerHTML = `<div class="p-3"> <div class="flex justify-end space-x-2 mb-2"><button onclick="editStatblock('${stat.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2 rounded transition duration-300">Edit</button><button onclick="deleteStatblock('${stat.id}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded transition duration-300">Delete</button></div><div class="grid grid-cols-2 text-sm gap-y-1 text-gray-300"><span class="font-semibold text-green-400">HP: ${hp}</span><span class="font-semibold text-blue-400">AC: ${ac}</span><span>Init Mod: ${initMod > 0 ? '+' : ''}${initMod}</span><span>To Hit: ${toHit > 0 ? '+' : ''}${toHit}</span><div class="col-span-2 text-yellow-400 text-xs mt-1"><span class="font-semibold text-sm">DMG/Attack:</span>${stat.dmg}</div></div><button onclick="importToCombat('${stat.name}', ${hp}, ${initMod}, ${ac})" class="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 rounded-lg transition duration-300 text-sm">Add to Combat Tracker</button></div>`; element.appendChild(header); element.appendChild(content); list.appendChild(element); });
         }
         window.editStatblock = function(statId) { const stat = savedStatblocks.find(s => s.id === statId); if (!stat) return; document.getElementById('modal-statblock-id').value = stat.id; document.getElementById('modal-stat-name').value = stat.name; document.getElementById('modal-stat-hp').value = stat.hp; document.getElementById('modal-stat-ac').value = stat.ac; document.getElementById('modal-stat-tohit').value = stat.toHit; document.getElementById('modal-stat-init-mod').value = stat.initMod; document.getElementById('modal-stat-dmg').value = stat.dmg; document.getElementById('edit-statblock-modal').classList.remove('hidden'); document.getElementById('statblock-status').textContent = ''; }
         window.closeStatblockEditModal = function() { document.getElementById('edit-statblock-modal').classList.add('hidden'); document.getElementById('statblock-status').textContent = 'Edit cancelled.'; }
-        window.saveEditedStatblock = async function() {
-            if (!window.isAuthReady || !window.db) { document.getElementById('statblock-status').textContent = 'Database not ready. Please wait for authentication.'; return; }
-            const statId = document.getElementById('modal-statblock-id').value; const name = document.getElementById('modal-stat-name').value.trim(); const hp = parseInt(document.getElementById('modal-stat-hp').value, 10) || 0; const ac = parseInt(document.getElementById('modal-stat-ac').value, 10) || 0; const toHit = parseInt(document.getElementById('modal-stat-tohit').value, 10) || 0; const initMod = parseInt(document.getElementById('modal-stat-init-mod').value, 10) || 0; const dmg = document.getElementById('modal-stat-dmg').value.trim(); const statusElement = document.getElementById('statblock-status');
-            if (!name || hp <= 0 || ac <= 0 || !dmg) { statusElement.textContent = 'Name, HP, AC, and Damage are required.'; return; }
-            const docRef = window.doc(getStatblocksCollectionRef(), statId);
-            try { await window.setDoc(docRef, { name, hp, ac, toHit, initMod, dmg }, { merge: true }); statusElement.textContent = `Statblock "${name}" updated successfully!`; closeStatblockEditModal(); } catch (error) { console.error("Error updating statblock: ", error); statusElement.textContent = `Error updating statblock: ${error.message}`; }
-        }
+        window.saveEditedStatblock = async function() { if (!window.isAuthReady || !window.db) { document.getElementById('statblock-status').textContent = 'Database not ready. Please wait for authentication.'; return; } const statId = document.getElementById('modal-statblock-id').value; const name = document.getElementById('modal-stat-name').value.trim(); const hp = parseInt(document.getElementById('modal-stat-hp').value, 10) || 0; const ac = parseInt(document.getElementById('modal-stat-ac').value, 10) || 0; const toHit = parseInt(document.getElementById('modal-stat-tohit').value, 10) || 0; const initMod = parseInt(document.getElementById('modal-stat-init-mod').value, 10) || 0; const dmg = document.getElementById('modal-stat-dmg').value.trim(); const statusElement = document.getElementById('statblock-status'); if (!name || hp <= 0 || ac <= 0 || !dmg) { statusElement.textContent = 'Name, HP, AC, and Damage are required.'; return; } const docRef = window.doc(getStatblocksCollectionRef(), statId); try { await window.setDoc(docRef, { name, hp, ac, toHit, initMod, dmg }, { merge: true }); statusElement.textContent = `Statblock "${name}" updated successfully!`; closeStatblockEditModal(); } catch (error) { console.error("Error updating statblock: ", error); statusElement.textContent = `Error updating statblock: ${error.message}`; } }
         window.deleteStatblock = async function(docId) { if (!window.isAuthReady || !window.db) return; try { const docRef = window.doc(getStatblocksCollectionRef(), docId); await window.deleteDoc(docRef); } catch (error) { console.error("Error deleting statblock: ", error); } }
         window.importToCombat = function(name, hp, initMod, ac) { document.getElementById('combatant-name').value = name; document.getElementById('combatant-hp').value = hp; document.getElementById('combatant-init').value = initMod; document.getElementById('combatant-ac').value = ac; switchTab('combat'); }
         window.switchTab = function(tabId) { currentTab = tabId; document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden')); document.getElementById(tabId).classList.remove('hidden'); document.querySelectorAll('.tab-button').forEach(btn => { btn.classList.remove('active'); btn.classList.add('text-gray-400'); if (btn.textContent.includes( tabId === 'improv' ? 'Prep & Improv' : tabId === 'combat' ? 'Combat' : tabId === 'statblocks' ? 'Stats' : tabId === 'monsters' ? 'Monsters' : tabId === 'loot' ? 'Loot' : tabId === 'soundboard' ? 'Sound' : 'Notes')) { btn.classList.add('active'); btn.classList.remove('text-gray-400'); } }); if (tabId === 'notes') { switchSubTab(currentSubTab); } }
@@ -652,6 +523,54 @@
         const apiKey = "PASTE_YOUR_NEW_KEY_HERE"; 
         const combatSchema = { type: "OBJECT", properties: { name: { "type": "STRING", "description": "A creative and appropriate name for the NPC." }, level_or_cr: { "type": "STRING", "description": "The requested level or challenge rating." }, armor_class_ac: { "type": "INTEGER", "description": "The NPC's calculated Armor Class (AC)." }, max_hit_points: { "type": "INTEGER", "description": "The NPC's maximum Hit Points (HP)." }, initiative_bonus: { "type": "INTEGER", "description": "The modifier (DEX bonus) added to the d20 roll for initiative." }, main_attack: { "type": "STRING", "description": "The NPC's primary attack description including attack roll modifier and damage (e.g., '+5 to hit, 1d12+3 slashing damage')." } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
         const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING", description: "The monster's name." }, size: { type: "STRING", description: "Size (e.g., Medium, Large)." }, type: { type: "STRING", description: "Type (e.g., humanoid, beast, monstrosity)." }, alignment: { type: "STRING", description: "Alignment (e.g., chaotic evil, unaligned)." }, armor_class: { type: "INTEGER", description: "Armor Class (AC)." }, ac_type: { type: "STRING", description: "Type of AC (e.g., 'natural armor', 'plate mail')." }, hit_points: { type: "INTEGER", description: "Average Hit Points." }, hit_dice: { type: "STRING", description: "Hit Dice formula (e.g., '10d8 + 40')." }, speed: { type: "STRING", description: "All movement speeds (e.g., '30 ft., fly 60 ft.')." }, ability_scores: { type: "OBJECT", properties: { STR: { type: "INTEGER" }, DEX: { type: "INTEGER" }, CON: { type: "INTEGER" }, INT: { type: "INTEGER" }, WIS: { type: "INTEGER" }, CHA: { type: "INTEGER" } }, required: ["STR", "DEX", "CON", "INT", "WIS", "CHA"] }, saving_throws: { type: "ARRAY", items: { type: "STRING" }, description: "List of saving throw proficiencies (e.g., 'DEX +5', 'CON +8')." }, skills: { type: "ARRAY", items: { type: "STRING" }, description: "List of skill proficiencies (e.g., 'Perception +4', 'Stealth +5')." }, damage_vulnerabilities: { type: "ARRAY", items: { type: "STRING" } }, damage_resistances: { type: "ARRAY", items: { type: "STRING" } }, damage_immunities: { type: "ARRAY", items: { type: "STRING" } }, condition_immunities: { type: "ARRAY", items: { type: "STRING" } }, senses: { type: "STRING", description: "Senses (e.g., 'darkvision 60 ft., passive Perception 14')." }, languages: { type: "STRING", description: "Languages known (e.g., 'Common, Giant')." }, challenge_rating: { type: "STRING", description: "Challenge Rating (CR) (e.g., '5')." }, xp: { type: "INTEGER", description: "Experience Points (XP) for the CR." }, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } }, required: ["name", "description"] }, description: "Special abilities (e.g., 'Pack Tactics', 'Magic Resistance')." }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } }, required: ["name", "description"] }, description: "Actions the monster can take (e.g., 'Multiattack', 'Greataxe')." }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } }, required: ["name", "description"] }, description: "Legendary actions, if any." } }, required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"] };
+        
+        // NEW: Function to check key validity and fetch
+        async function fetchWithExponentialBackoff(apiUrl, payload) {
+            const maxAttempts = 5;
+            
+            // Get key from local storage or fallback
+            let activeKey = userApiKey;
+            if (!activeKey || activeKey === "") {
+                activeKey = apiKey; // Fallback to hardcoded
+            }
+
+            // VALIDATION: Check if the key is actually valid-looking
+            if (!activeKey || activeKey === "PASTE_YOUR_NEW_KEY_HERE" || activeKey.includes("PASTE_YOUR")) {
+                throw new Error("Missing API Key. Please go to the 'Prep' tab and paste your Google Gemini API Key in the configuration box.");
+            }
+
+            const urlWithKey = apiUrl.endsWith('?key=') ? apiUrl + activeKey : apiUrl;
+
+            for (let attempts = 0; attempts < maxAttempts; attempts++) {
+                try {
+                    const response = await fetch(urlWithKey, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429) {
+                        const delay = Math.pow(2, attempts) * 1000;
+                        console.warn(`API rate limit hit. Retrying in ${delay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        console.error("API Error Body:", errorBody);
+                        throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+                    }
+                    return response;
+                } catch (error) {
+                    console.error(`Attempt ${attempts + 1} failed:`, error);
+                    if (attempts === maxAttempts - 1) throw error;
+                    const delay = Math.pow(2, attempts) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
         window.generateCombatNpc = async function() {
             const level = document.getElementById('npc-level').value.trim(); const type = document.getElementById('npc-type').value.trim();
             if (!level || !type) { document.getElementById('combat-status-message').textContent = "Please provide both a level/CR and an NPC type."; document.getElementById('combat-status-message').classList.remove('hidden'); return; }
@@ -731,14 +650,6 @@
             structuredNotes[destinationTab].unshift(newNote); await saveStructuredNotes(destinationTab, structuredNotes[destinationTab]);
             switchTab('notes'); switchSubTab(destinationTab); statusElement.textContent = `New note saved and placed in the collapsible list for '${destinationTab}'!`;
         }
-        async function fetchWithExponentialBackoff(apiUrl, payload) {
-            const maxAttempts = 5; 
-            const activeKey = userApiKey || apiKey;
-            const urlWithKey = apiUrl.endsWith('?key=') ? apiUrl + activeKey : apiUrl;
-            for (let attempts = 0; attempts < maxAttempts; attempts++) {
-                try { const response = await fetch(urlWithKey, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (response.status === 429) { const delay = Math.pow(2, attempts) * 1000; console.warn(`API rate limit hit. Retrying in ${delay}ms...`); await new Promise(resolve => setTimeout(resolve, delay)); continue; } if (!response.ok) { const errorBody = await response.text(); console.error("API Error Body:", errorBody); throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`); } return response; } catch (error) { console.error(`Attempt ${attempts + 1} failed:`, error); if (attempts === maxAttempts - 1) throw error; const delay = Math.pow(2, attempts) * 1000; await new Promise(resolve => setTimeout(resolve, delay)); }
-            }
-        }
         window.generateLoot = async function() {
             const level = document.getElementById('loot-level').value.trim(); const type = document.getElementById('loot-type').value; const outputDiv = document.getElementById('loot-output'); const spinner = document.getElementById('loot-loading-spinner'); const button = document.getElementById('generate-loot-button'); const buttonText = document.getElementById('generate-loot-text');
             if (!level) { outputDiv.innerHTML = '<span class="text-red-400">Please enter a level or CR.</span>'; return; }
@@ -811,6 +722,10 @@
                 const crackleInterval = setInterval(() => { if (Math.random() > 0.7) { const n = audioCtx.createBufferSource(); n.buffer = noiseBuffer; const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2000; const g = audioCtx.createGain(); g.gain.value = 0.1 + Math.random() * 0.1; g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05); n.connect(f); f.connect(g); g.connect(audioCtx.destination); n.start(); n.stop(audioCtx.currentTime + 0.05); } }, 200); activeNodes.push({ stop: () => clearInterval(crackleInterval) });
                 const scale = [196.00, 220.00, 246.94, 293.66, 329.63]; const sleepMusicInterval = setInterval(() => { if (Math.random() > 0.4) { const t = audioCtx.currentTime; const noteIdx = Math.floor(Math.random() * scale.length); playNote(scale[noteIdx], t, 4, 'sine', 0.1); if (Math.random() > 0.5) { playNote(scale[(noteIdx + 2) % scale.length], t + 0.5, 4, 'sine', 0.08); } } }, 5000); activeNodes.push({ stop: () => clearInterval(sleepMusicInterval) });
             }
+        }
+        window.saveApiKey = function() {
+            const input = document.getElementById('user-api-key'); const status = document.getElementById('api-key-status'); const key = input.value.trim();
+            if (key) { localStorage.setItem('dm_toolkit_api_key', key); userApiKey = key; status.textContent = "Status: Key saved!"; status.className = "mt-2 text-xs text-green-400"; input.value = ""; } else { status.textContent = "Status: Please enter a valid key."; status.className = "mt-2 text-xs text-red-400"; }
         }
     </script>
 </body>
