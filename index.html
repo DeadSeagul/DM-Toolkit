@@ -84,6 +84,8 @@
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&display=swap');
+
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
         .tab-button.active { border-bottom: 3px solid #6366f1; color: #c7d2fe; }
         .sub-tab-button.active { border-bottom: 2px solid #34d399; color: #34d399; }
@@ -109,6 +111,62 @@
         input[type=range] { -webkit-appearance: none; background: transparent; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #34d399; cursor: pointer; margin-top: -6px; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #475569; border-radius: 2px; }
+        
+        /* D&D Statblock Styles */
+        .dnd-statblock {
+            background-color: #fdf1dc;
+            color: #58180d;
+            font-family: 'Libre Baskerville', serif;
+            padding: 15px;
+            border: 1px solid #d4b57e;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .dnd-statblock::before, .dnd-statblock::after {
+            content: "";
+            display: block;
+            height: 4px;
+            background: #e69a28;
+            margin: 4px 0;
+            border-radius: 2px;
+        }
+        .dnd-header {
+            font-family: 'Libre Baskerville', serif;
+            font-variant: small-caps;
+            font-weight: 700;
+            color: #58180d;
+            font-size: 1.5em;
+            line-height: 1.1;
+        }
+        .tapered-rule {
+            display: block;
+            height: 2px;
+            background: #58180d;
+            margin: 10px 0;
+            border: none;
+            background: linear-gradient(to right, transparent, #58180d, transparent);
+        }
+        .dnd-property-line {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 2px;
+        }
+        .dnd-property-line strong {
+            color: #58180d;
+        }
+        .dnd-section-title {
+            font-variant: small-caps;
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #58180d;
+            border-bottom: 1px solid #7a200d;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+        .dnd-action-name {
+            font-weight: bold;
+            font-style: italic;
+        }
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -183,7 +241,7 @@
                     <p id="npc-save-status" class="mt-2 text-sm text-center hidden"></p>
                     <div id="save-options-creative" class="mt-4 hidden">
                         <p class="text-sm text-center text-gray-400 mb-2">Save to:</p>
-                        <div class="grid grid-cols-3 gap-2"><button onclick="saveCombatNpcToNotes('prepNotes')" class="save-notes-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg text-xs">Notes</button><button onclick="saveCombatNpcToNotes('enemyNotes')" class="save-notes-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-xs">Enemies</button><button onclick="saveCombatNpcToNotes('npcNotes')" class="save-notes-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs">NPCs</button></div>
+                        <div class="grid grid-cols-3 gap-2"><button onclick="saveGeneratedContent('prepNotes')" class="save-notes-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg text-xs">Notes</button><button onclick="saveGeneratedContent('enemyNotes')" class="save-notes-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-xs">Enemies</button><button onclick="saveGeneratedContent('npcNotes')" class="save-notes-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs">NPCs</button></div>
                     </div>
                 </div>
             </div>
@@ -637,16 +695,51 @@
                 languages: { type: "STRING", description: "Languages known (e.g., 'Common, Giant')." },
                 challenge_rating: { type: "STRING", description: "Challenge Rating (CR) (e.g., '5')." },
                 xp: { type: "INTEGER", description: "Experience Points (XP) for the CR." },
-                abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } },
-                actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } },
+                abilities: { 
+                    type: "ARRAY", 
+                    items: { 
+                        type: "OBJECT", 
+                        properties: { 
+                            name: { type: "STRING" }, 
+                            description: { type: "STRING" } 
+                        },
+                        required: ["name", "description"]
+                    },
+                    description: "Special abilities (e.g., 'Pack Tactics', 'Magic Resistance'). Keep descriptions extremely concise and mechanical. Do not include flavor text." 
+                },
+                actions: { 
+                    type: "ARRAY", 
+                    items: { 
+                        type: "OBJECT", 
+                        properties: { name: { type: "STRING" }, description: { type: "STRING" } },
+                        required: ["name", "description"]
+                    },
+                    description: "Actions the monster can take. Keep descriptions extremely concise and mechanical (e.g. 'Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) slashing damage.'). Do not include flavor text." 
+                },
                 legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } }
             },
             required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"]
         };
 
         async function callAI(url, payload) {
-            const key = userApiKey || "PASTE_KEY";
-            if(!key || key.includes("PASTE")) { alert("Please paste your API Key in the Prep tab!"); throw new Error("No Key"); }
+            // Fallback: Check the input field directly if the variable seems empty
+            let key = userApiKey;
+            if (!key || key === "") {
+                const inputEl = document.getElementById('user-api-key');
+                if (inputEl && inputEl.value) {
+                    key = inputEl.value.trim();
+                    // Update global state while we're at it
+                    userApiKey = key;
+                    localStorage.setItem('dm_toolkit_api_key', key);
+                }
+            }
+
+            const checkKey = key || "PASTE_KEY";
+            if(!checkKey || checkKey.includes("PASTE")) { 
+                alert("Please paste your API Key in the Prep tab!"); 
+                throw new Error("No Key"); 
+            }
+            
             const res = await fetch(`${url}?key=${key}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             if(!res.ok) throw new Error((await res.text()));
             return await res.json();
@@ -742,6 +835,82 @@
                 alert("Error saving: " + error.message);
             }
         }
+
+        // --- NEW: ADD MONSTER TO STATBLOCKS ---
+        window.addMonsterToStatblocks = async function() {
+            if (!window.isAuthReady) { alert('Database not ready.'); return; }
+            if (!lastGeneratedMonster) { alert('No Monster generated yet.'); return; }
+
+            const m = lastGeneratedMonster;
+            
+            // Calculate Init Mod from DEX
+            const dexScore = m.ability_scores?.DEX || 10;
+            const initMod = Math.floor((dexScore - 10) / 2);
+
+            // Attempt to find a primary attack action to populate the simple tracker fields
+            let primaryAttack = "Slam";
+            let toHit = 0;
+
+            if (m.actions && m.actions.length > 0) {
+                // Find the first action that looks like an attack
+                const attackAction = m.actions.find(a => a.description.toLowerCase().includes("to hit")) || m.actions[0];
+                
+                primaryAttack = attackAction.name;
+                
+                // Extract "+X to hit"
+                const hitMatch = attackAction.description.match(/\+(\d+)\s+to\s+hit/);
+                if (hitMatch) {
+                    toHit = parseInt(hitMatch[1], 10);
+                }
+                
+                // Try to extract damage for the label
+                const dmgMatch = attackAction.description.match(/Hit:.*?(\d+\s*\(.*?\).*?damage)/i);
+                if (dmgMatch) {
+                    primaryAttack += `: ${dmgMatch[1]}`; 
+                } else {
+                    // Fallback
+                    primaryAttack += " (See Notes)";
+                }
+            }
+
+            try {
+                await window.addDoc(getCol('dm_toolkit_statblocks'), {
+                    name: m.name,
+                    hp: m.hit_points,
+                    ac: m.armor_class,
+                    toHit: toHit,
+                    initMod: initMod,
+                    dmg: primaryAttack,
+                    timestamp: new Date().toISOString()
+                });
+                alert(`${m.name} added to Statblocks!`);
+            } catch (error) {
+                console.error("Error saving Monster:", error);
+                alert("Error saving: " + error.message);
+            }
+        }
+
+        // --- NEW: SAVE MONSTER TO NOTES (With Formatting) ---
+        window.saveMonsterToNotes = async function() {
+            if (!window.isAuthReady) { alert("Database not ready."); return; }
+            if (!lastGeneratedMonster) { alert("No Monster to save."); return; }
+            
+            const content = document.getElementById('monster-output').innerHTML;
+            
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: `${lastGeneratedMonster.name} (CR ${lastGeneratedMonster.challenge_rating})`,
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes['enemyNotes'].unshift(newNote);
+            await window.saveStructuredNotes('enemyNotes', structuredNotes['enemyNotes']);
+            alert("Saved to Enemy Notes!");
+            
+            window.switchTab('notes');
+            window.switchSubTab('enemyNotes');
+        }
         
         // --- NEW: Save Rich HTML Combat NPC to Notes ---
         window.saveCombatNpcToNotes = async function(tab) {
@@ -801,21 +970,170 @@
         };
 
         window.generateMonsterStatblock = async () => {
-             const btn = document.getElementById('generate-monster-button'); btn.disabled = true;
+             const btn = document.getElementById('generate-monster-button');
+             const spinner = document.getElementById('monster-loading-spinner');
+             const output = document.getElementById('monster-output');
+             
+             btn.disabled = true;
+             spinner.classList.remove('hidden');
+             output.textContent = "Generating monster stats..."; // Visual feedback
+             
              try {
                  const name = document.getElementById('monster-name').value;
-                 const prompt = `Generate D&D 5e statblock for ${name} as JSON schema.`;
-                 const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } };
+                 const cr = document.getElementById('monster-cr').value; // Get CR
+                 const prompt = `You are an expert D&D 5e Monster Designer. Your task is to generate a complete and balanced monster stat block based on the user's provided name and Challenge Rating (CR). You MUST return the data exactly according to the JSON schema provided. 
+    
+                 CRITICAL INSTRUCTION FOR ACTIONS & ABILITIES: Keep descriptions extremely concise and mechanical. 
+                 - For Abilities: "Magic Resistance. The monster has advantage on saving throws against spells and other magical effects." (Keep it that short).
+                 - For Multiattack: "Makes [number] attacks: [number] with [attack name] and [number] with [attack name]."
+                 - For Attacks: "Melee Weapon Attack: +[X] to hit, reach [X] ft., one target. Hit: [X] ([dice]) [type] damage." 
+                 - Do not include flavor text or lengthy descriptions of how the attack looks. Only the mechanics.`;
+                 
+                 const payload = { 
+                    contents: [{ parts: [{ text: prompt + ` Generate a full monster stat block for a "${name}" with CR "${cr}"` }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: monsterSchema
+                    }
+                };
+                 
                  const data = await callAI(API_URL, payload);
                  let json = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
                  const stats = JSON.parse(json);
                  lastGeneratedMonster = stats;
-                 document.getElementById('monster-output').innerHTML = `<div class="text-green-400 font-bold text-xl">${stats.name}</div><div class="text-sm text-gray-400">CR ${stats.challenge_rating} - ${stats.type}</div><div class="my-2 h-px bg-gray-600"></div><div><strong>HP:</strong> ${stats.hit_points} <strong>AC:</strong> ${stats.armor_class}</div>`;
+                 
+                 const getMod = (score) => Math.floor((score - 10) / 2);
+                 const formatMod = (score) => { const m = getMod(score); return m >= 0 ? `+${m}` : m; };
+                 
+                 // Render Monster Block with D&D Styling
+                 output.innerHTML = `
+                    <div class="dnd-statblock text-left">
+                        <div class="dnd-header">${stats.name}</div>
+                        <div class="italic text-black text-sm">${stats.size} ${stats.type}, ${stats.alignment}</div>
+                        <div class="tapered-rule"></div>
+                        <div class="text-sm text-red-900">
+                            <p class="dnd-property-line"><strong>Armor Class</strong> ${stats.armor_class} (${stats.ac_type || ''})</p>
+                            <p class="dnd-property-line"><strong>Hit Points</strong> ${stats.hit_points} (${stats.hit_dice})</p>
+                            <p class="dnd-property-line"><strong>Speed</strong> ${stats.speed}</p>
+                        </div>
+                        <div class="tapered-rule"></div>
+                        <div class="grid grid-cols-6 gap-1 text-center text-red-900 text-xs sm:text-sm">
+                             <div><div class="font-bold">STR</div><div>${stats.ability_scores.STR} (${formatMod(stats.ability_scores.STR)})</div></div>
+                             <div><div class="font-bold">DEX</div><div>${stats.ability_scores.DEX} (${formatMod(stats.ability_scores.DEX)})</div></div>
+                             <div><div class="font-bold">CON</div><div>${stats.ability_scores.CON} (${formatMod(stats.ability_scores.CON)})</div></div>
+                             <div><div class="font-bold">INT</div><div>${stats.ability_scores.INT} (${formatMod(stats.ability_scores.INT)})</div></div>
+                             <div><div class="font-bold">WIS</div><div>${stats.ability_scores.WIS} (${formatMod(stats.ability_scores.WIS)})</div></div>
+                             <div><div class="font-bold">CHA</div><div>${stats.ability_scores.CHA} (${formatMod(stats.ability_scores.CHA)})</div></div>
+                        </div>
+                        <div class="tapered-rule"></div>
+                        <div class="text-sm text-red-900 space-y-1">
+                            ${stats.saving_throws && stats.saving_throws.length ? `<p class="dnd-property-line"><strong>Saving Throws</strong> ${stats.saving_throws.join(', ')}</p>` : ''}
+                            ${stats.skills && stats.skills.length ? `<p class="dnd-property-line"><strong>Skills</strong> ${stats.skills.join(', ')}</p>` : ''}
+                            ${stats.damage_vulnerabilities && stats.damage_vulnerabilities.length ? `<p class="dnd-property-line"><strong>Damage Vulnerabilities</strong> ${stats.damage_vulnerabilities.join(', ')}</p>` : ''}
+                            ${stats.damage_resistances && stats.damage_resistances.length ? `<p class="dnd-property-line"><strong>Damage Resistances</strong> ${stats.damage_resistances.join(', ')}</p>` : ''}
+                            ${stats.damage_immunities && stats.damage_immunities.length ? `<p class="dnd-property-line"><strong>Damage Immunities</strong> ${stats.damage_immunities.join(', ')}</p>` : ''}
+                            ${stats.condition_immunities && stats.condition_immunities.length ? `<p class="dnd-property-line"><strong>Condition Immunities</strong> ${stats.condition_immunities.join(', ')}</p>` : ''}
+                            <p class="dnd-property-line"><strong>Senses</strong> ${stats.senses}</p>
+                            <p class="dnd-property-line"><strong>Languages</strong> ${stats.languages}</p>
+                            <p class="dnd-property-line"><strong>Challenge</strong> ${stats.challenge_rating} (${stats.xp} XP)</p>
+                        </div>
+                        <div class="tapered-rule"></div>
+                        
+                        <div class="text-sm text-black space-y-2 mt-2">
+                            ${stats.abilities ? stats.abilities.map(a => `<div class="leading-snug"><strong class="italic text-red-900">${a.name}.</strong> ${a.description}</div>`).join('') : ''}
+                        </div>
+
+                        ${stats.actions && stats.actions.length ? `
+                            <div class="dnd-section-title">Actions</div>
+                            <div class="text-sm text-black space-y-2">
+                                ${stats.actions.map(a => `<div class="leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> ${a.description}</div>`).join('')}
+                            </div>
+                        ` : ''}
+
+                        ${stats.legendary_actions && stats.legendary_actions.length ? `
+                            <div class="dnd-section-title">Legendary Actions</div>
+                            <div class="text-sm text-black space-y-2">
+                                <p class="italic">The monster can take 3 legendary actions, choosing from the options below. Only one legendary action option can be used at a time and only at the end of another creature's turn. The monster regains spent legendary actions at the start of its turn.</p>
+                                ${stats.legendary_actions.map(a => `<div class="leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> ${a.description}</div>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                 `;
+                 
                  document.getElementById('save-options-monster').classList.remove('hidden');
-             } catch(e) { document.getElementById('monster-output').innerText = "Error generating."; console.error(e); }
-             btn.disabled = false;
+             } catch(e) { 
+                 output.innerText = "Error generating: " + e.message; 
+                 console.error(e); 
+             } finally {
+                 btn.disabled = false;
+                 spinner.classList.add('hidden');
+             }
         };
         
+        // --- Helper Function for Title Generation ---
+        function generateTitleFromContent(content) {
+            // Try to find a bolded name first
+            const nameMatch = content.match(/\*\*Name:\*\*\s*(.*?)\n/);
+            if (nameMatch) {
+                return nameMatch[1].trim();
+            }
+            // Try to find the first H1/H2 equivalent in markdown (e.g. ## Title)
+            const headerMatch = content.match(/^#+\s*(.*?)$/m);
+            if (headerMatch) {
+                return headerMatch[1].trim();
+            }
+            // Fallback: Use the first 50 characters
+            const shortTitle = content.substring(0, 50).trim().replace(/[\n\r]/g, ' ');
+            return (shortTitle + (content.length > 50 ? '...' : '')) || 'Untitled Generated Note';
+        }
+        
+        // --- NEW: Save Generated Content Logic (Restored) ---
+        window.saveGeneratedContent = async function(destinationTab) {
+            const outputDiv = document.getElementById('ai-output');
+            let idea = outputDiv.textContent.trim();
+            
+            // If we are in the Loot tab, check the loot output instead
+            if (currentTab === 'loot') {
+                const lootDiv = document.getElementById('loot-output');
+                if (lootDiv) {
+                    idea = lootDiv.textContent.trim();
+                }
+            }
+
+            const statusElement = document.getElementById('notes-status');
+
+            // Basic validation to avoid saving empty/placeholder text
+            if (!idea || idea === 'Results will appear here.' || idea === 'Loot appears here.' || idea.startsWith('Error:')) {
+                alert('Nothing valid to save.');
+                return;
+            }
+
+            if (!window.isAuthReady || !window.db) {
+                alert('Database not ready. Please wait for authentication.');
+                return;
+            }
+
+            const title = generateTitleFromContent(idea);
+
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: title,
+                content: idea,
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes[destinationTab].unshift(newNote); // Add to beginning
+            
+            // Save the updated array
+            await window.saveStructuredNotes(destinationTab, structuredNotes[destinationTab]);
+
+            // Switch and display feedback
+            window.switchTab('notes');
+            window.switchSubTab(destinationTab);
+             alert(`New note saved to ${destinationTab}!`);
+        }
+
+
         // --- Soundboard ---
         const ac = new (window.AudioContext||window.webkitAudioContext)();
         const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
@@ -1137,7 +1455,7 @@
                 return;
             }
 
-            if (!window.isAuthReady) {
+            if (!window.isAuthReady || !window.db) {
                 alert('Database not ready. Please wait for authentication.');
                 return;
             }
