@@ -8,7 +8,7 @@
     <!-- Load Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, setLogLevel, addDoc, updateDoc, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Expose necessary Firestore functions globally
@@ -31,40 +31,81 @@
         window.isAuthReady = false;
 
         // --- FIREBASE CONFIGURATION ---
+        // ⚠️ IMPORTANT: Replace this with YOUR OWN Firebase Config for Google Sign-In to work!
         const manualFirebaseConfig = {
-            apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
-            authDomain: "aegisdmtoolkit.firebaseapp.com",
-            projectId: "aegisdmtoolkit",
-            storageBucket: "aegisdmtoolkit.firebasestorage.app",
-            messagingSenderId: "654767294266",
-            appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
+            apiKey: "PASTE_YOUR_FIREBASE_API_KEY_HERE",
+            authDomain: "your-project-id.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project-id.firebasestorage.app",
+            messagingSenderId: "000000000000",
+            appId: "1:000000000000:web:000000000000"
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const envFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        const firebaseConfig = (manualFirebaseConfig.apiKey && manualFirebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE") 
-            ? manualFirebaseConfig 
-            : envFirebaseConfig;
+        // Use environment config if available (Editor), otherwise use manual config (Hosted)
+        const firebaseConfig = (envFirebaseConfig && Object.keys(envFirebaseConfig).length > 0) 
+            ? envFirebaseConfig 
+            : manualFirebaseConfig;
 
-        if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
+        if (firebaseConfig && firebaseConfig.apiKey !== "PASTE_YOUR_FIREBASE_API_KEY_HERE") {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
             window.auth = getAuth(app);
             
+            // --- AUTHENTICATION LOGIC ---
+            
+            window.loginGoogle = async () => {
+                const provider = new GoogleAuthProvider();
+                try {
+                    await signInWithPopup(window.auth, provider);
+                } catch (error) {
+                    console.error("Login failed:", error);
+                    alert("Login failed: " + error.message + "\n(Did you add this domain to Firebase Auth settings?)");
+                }
+            };
+
+            window.loginGuest = async () => {
+                try {
+                    await signInAnonymously(window.auth);
+                } catch (error) {
+                    console.error("Guest login failed:", error);
+                }
+            };
+
+            window.logout = async () => {
+                try {
+                    await signOut(window.auth);
+                    // Reload to reset state and show login buttons
+                    window.location.reload();
+                } catch (error) {
+                    console.error("Logout failed:", error);
+                }
+            };
+
+            // Initialize Auth State Listener
             onAuthStateChanged(window.auth, async (user) => {
+                const userBar = document.getElementById('user-bar');
+                const authButtons = document.getElementById('auth-buttons');
+                const userInfo = document.getElementById('user-info');
+                
                 if (!user) {
-                    try {
-                        if (initialAuthToken) {
+                    // NOT LOGGED IN
+                    if (initialAuthToken) {
+                         try {
                             await signInWithCustomToken(window.auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(window.auth);
+                        } catch (error) {
+                            console.error("Immersive Auth Error:", error);
                         }
-                    } catch (error) {
-                        console.error("Firebase Auth Error:", error);
+                    } else {
+                        if(userBar) userBar.classList.remove('hidden');
+                        if(authButtons) authButtons.classList.remove('hidden');
+                        if(userInfo) userInfo.classList.add('hidden');
                     }
                 } else {
+                    // LOGGED IN
                     try {
                         await user.getIdToken(true);
                     } catch (tokenError) {
@@ -74,14 +115,24 @@
                     window.userId = user.uid;
                     window.isAuthReady = true;
                     console.log("User authenticated:", window.userId);
+
+                    if(userBar) userBar.classList.remove('hidden');
+                    if(authButtons) authButtons.classList.add('hidden');
+                    if(userInfo) {
+                        userInfo.classList.remove('hidden');
+                        // Updated Label Logic for clarity
+                        const emailDisplay = user.isAnonymous ? "👤 Guest Mode (Sign Out to Switch)" : (user.email || "User");
+                        document.getElementById('user-email').textContent = emailDisplay;
+                    }
                     
+                    // Setup Listeners
                     if (window.setupNotesListener) window.setupNotesListener();
                     if (window.setupCombatDataListeners) window.setupCombatDataListeners();
                     if (window.setupStatblocksListener) window.setupStatblocksListener();
                 }
             });
         } else {
-            console.error("Firebase configuration not found.");
+            console.log("Waiting for Firebase Configuration...");
         }
     </script>
     <style>
@@ -111,7 +162,29 @@
 </head>
 <body class="p-4 sm:p-8">
     <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-bold text-center text-indigo-400 mb-2">🛡️ Aegis DM Toolkit (Shared) 🛡️</h1>
+        <!-- User Login Bar -->
+        <div id="user-bar" class="flex justify-between items-center bg-slate-800 p-3 rounded-lg mb-4 border border-slate-600 hidden shadow-lg">
+            <div class="flex items-center">
+                <span class="text-xl mr-2">🛡️</span>
+                <span class="font-bold text-indigo-400">Aegis Toolkit</span>
+            </div>
+            
+            <!-- Login Buttons -->
+            <div id="auth-buttons" class="flex gap-2">
+                <button onclick="loginGuest()" class="text-xs bg-slate-600 hover:bg-slate-500 text-white py-1.5 px-3 rounded transition">Guest Mode</button>
+                <button onclick="loginGoogle()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded flex items-center transition">
+                    <svg class="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+                    Sign In
+                </button>
+            </div>
+
+            <!-- Logged In Info -->
+            <div id="user-info" class="flex gap-3 items-center hidden">
+                <span id="user-email" class="text-xs text-gray-300 truncate max-w-[200px]"></span>
+                <button onclick="logout()" class="text-xs bg-red-700 hover:bg-red-600 text-white py-1.5 px-3 rounded border border-red-600 transition font-bold">Sign Out</button>
+            </div>
+        </div>
+
         
         <!-- Tab Navigation -->
         <div class="flex border-b border-gray-600 mb-6 overflow-x-auto">
@@ -2515,122 +2588,6 @@ Format the response strictly with markdown for readability. You MUST include all
         // --- NEW FUNCTION: Soundboard Synthesizer (Web Audio API) ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Helper for chords/sequences
-        function playNote(freq, startTime, duration, type = 'sine', vol = 0.3) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, startTime);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            gain.gain.setValueAtTime(vol, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-            osc.start(startTime);
-            osc.stop(startTime + duration);
-        }
-
-        // --- NEW HELPER: Drum Synthesizer ---
-        function playDrum(type, time) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            if (type === 'kick') {
-                osc.frequency.setValueAtTime(150, time);
-                osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
-                gain.gain.setValueAtTime(0.5, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
-                osc.start(time);
-                osc.stop(time + 0.5);
-            } else if (type === 'snare') {
-                // Filtered noise for snare/clash
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = noiseBuffer;
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = 'highpass';
-                filter.frequency.value = 1000;
-                noise.connect(filter);
-                filter.connect(gain);
-                gain.gain.setValueAtTime(0.4, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-                noise.start(time);
-                noise.stop(time + 0.2);
-            } else if (type === 'hihat') {
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = noiseBuffer;
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = 'highpass';
-                filter.frequency.value = 5000;
-                noise.connect(filter);
-                filter.connect(gain);
-                gain.gain.setValueAtTime(0.3, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
-                noise.start(time);
-                noise.stop(time + 0.05);
-            } else if (type === 'tom') {
-                osc.frequency.setValueAtTime(100, time);
-                osc.frequency.exponentialRampToValueAtTime(50, time + 0.3);
-                gain.gain.setValueAtTime(0.4, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
-                osc.start(time);
-                osc.stop(time + 0.3);
-            }
-        }
-
-        // --- NEW HELPER: Lute Synthesizer (for Tavern Music) ---
-        function playLute(freq, startTime, duration) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter(); // Lowpass for warm string sound
-
-            osc.type = 'sawtooth'; // Sawtooth gives a string-like buzzing quality
-            osc.frequency.setValueAtTime(freq, startTime);
-            
-            // Filter down the harshness
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(1000, startTime);
-
-            // Envelope: Pluck attack, long decay
-            gain.gain.setValueAtTime(0.1, startTime); // Keep volume background-level
-            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start(startTime);
-            osc.stop(startTime + duration);
-        }
-
-        // --- NEW HELPER: Accordion Synthesizer (for Sea Shanty) ---
-        function playAccordion(freq, startTime, duration, vol = 0.15) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter();
-
-            // Reedy sound: Sawtooth
-            osc.type = 'sawtooth'; 
-            osc.frequency.setValueAtTime(freq, startTime);
-
-            // Filter to take off the harsh digital edge but keep it bright
-            filter.type = 'lowpass';
-            filter.frequency.value = 2500;
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            // Envelope: Swell in and out (simulating bellows)
-            gain.gain.setValueAtTime(0, startTime);
-            gain.gain.linearRampToValueAtTime(vol, startTime + 0.1); // Attack
-            gain.gain.setValueAtTime(vol, startTime + duration - 0.1); // Sustain
-            gain.gain.linearRampToValueAtTime(0, startTime + duration); // Release
-
-            osc.start(startTime);
-            osc.stop(startTime + duration);
-        }
-
         window.playTone = function(type) {
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
@@ -2747,6 +2704,122 @@ Format the response strictly with markdown for readability. You MUST include all
                     osc.stop(now + 2);
                     break;
             }
+        }
+
+        // Helper for chords/sequences
+        function playNote(freq, startTime, duration, type = 'sine', vol = 0.3) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, startTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(vol, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        // --- NEW HELPER: Drum Synthesizer ---
+        function playDrum(type, time) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'kick') {
+                osc.frequency.setValueAtTime(150, time);
+                osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+                gain.gain.setValueAtTime(0.5, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+                osc.start(time);
+                osc.stop(time + 0.5);
+            } else if (type === 'snare') {
+                // Filtered noise for snare/clash
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 1000;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.gain.setValueAtTime(0.4, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+                noise.start(time);
+                noise.stop(time + 0.2);
+            } else if (type === 'hihat') {
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 5000;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.gain.setValueAtTime(0.3, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+                noise.start(time);
+                noise.stop(time + 0.05);
+            } else if (type === 'tom') {
+                osc.frequency.setValueAtTime(100, time);
+                osc.frequency.exponentialRampToValueAtTime(50, time + 0.3);
+                gain.gain.setValueAtTime(0.4, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+                osc.start(time);
+                osc.stop(time + 0.3);
+            }
+        }
+
+        // --- NEW HELPER: Lute Synthesizer (for Tavern Music) ---
+        function playLute(freq, startTime, duration) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter(); // Lowpass for warm string sound
+
+            osc.type = 'sawtooth'; // Sawtooth gives a string-like buzzing quality
+            osc.frequency.setValueAtTime(freq, startTime);
+            
+            // Filter down the harshness
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1000, startTime);
+
+            // Envelope: Pluck attack, long decay
+            gain.gain.setValueAtTime(0.1, startTime); // Keep volume background-level
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        // --- NEW HELPER: Accordion Synthesizer (for Sea Shanty) ---
+        function playAccordion(freq, startTime, duration, vol = 0.15) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            // Reedy sound: Sawtooth
+            osc.type = 'sawtooth'; 
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            // Filter to take off the harsh digital edge but keep it bright
+            filter.type = 'lowpass';
+            filter.frequency.value = 2500;
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            // Envelope: Swell in and out (simulating bellows)
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(vol, startTime + 0.1); // Attack
+            gain.gain.setValueAtTime(vol, startTime + duration - 0.1); // Sustain
+            gain.gain.linearRampToValueAtTime(0, startTime + duration); // Release
+
+            osc.start(startTime);
+            osc.stop(startTime + duration);
         }
 
         // --- NEW: Ambience Loop Logic ---
@@ -3256,7 +3329,7 @@ Format the response strictly with markdown for readability. You MUST include all
                     if (Math.random() > 0.4) {
                         const t = audioCtx.currentTime;
                         const noteIdx = Math.floor(Math.random() * scale.length);
-                        // Long attack/decay for "ghostly" pad sound
+                        // Long attack/decay for "pad" effect
                         playNote(scale[noteIdx], t, 4, 'sine', 0.1); 
                         
                         // Occasional gentle harmony
