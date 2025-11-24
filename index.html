@@ -2169,8 +2169,12 @@ Format the response strictly with markdown for readability. You MUST include all
         // --- Shared API Helper ---
         async function fetchWithExponentialBackoff(apiUrl, payload) {
             const maxAttempts = 5;
-            // Use apiKey from the global scope, ensuring it's appended correctly.
-            const urlWithKey = apiUrl.endsWith('?key=') ? apiUrl + apiKey : apiUrl;
+            
+            // --- FIX: Use user's saved key if available, otherwise fallback to hardcoded ---
+            const activeKey = userApiKey || apiKey;
+            
+            // Use the key, ensuring it's appended correctly.
+            const urlWithKey = apiUrl.endsWith('?key=') ? apiUrl + activeKey : apiUrl;
 
             for (let attempts = 0; attempts < maxAttempts; attempts++) {
                 try {
@@ -2306,12 +2310,12 @@ Format the response strictly with markdown for readability. You MUST include all
 
             const name = nameInput.value.trim();
             const initValue = parseInt(initInput.value, 10) || 0; 
-            const ac = parseInt(acInput.value, 10); // NEW: Get AC value
-            const hp = parseInt(hpInput.value, 10);
+            const ac = parseInt(acInput.value, 10) || 0; // Default to 0 if empty
+            const hp = parseInt(hpInput.value, 10) || 0; // Default to 0 if empty
 
-            // UPDATED validation
-            if (!name || isNaN(hp) || hp <= 0 || isNaN(ac) || ac <= 0) {
-                console.error("Invalid combatant input: Name, positive HP, and positive AC are required.");
+            // Updated validation: Only name is strictly required.
+            if (!name) {
+                alert("Please enter a name for the combatant.");
                 return;
             }
 
@@ -2325,17 +2329,16 @@ Format the response strictly with markdown for readability. You MUST include all
                     initModifier: initValue,
                     ac: ac // NEW: Store AC
                 });
+
+                // ONLY clear inputs on success
+                nameInput.value = '';
+                initInput.value = '';
+                acInput.value = ''; 
+                hpInput.value = '';
             } catch (error) {
                 console.error("Error adding combatant:", error);
+                alert("Failed to add combatant. Check your connection or login status.");
             }
-
-            nameInput.value = '';
-            initInput.value = '';
-            acInput.value = ''; // NEW: Clear AC input
-            hpInput.value = '';
-
-            // No longer need to call renderCombatants() or saveCombatantsToFirestore()
-            // The onSnapshot listener will detect the change and re-render.
         }
 
         /**
