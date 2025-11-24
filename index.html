@@ -8,6 +8,7 @@
     <!-- Load Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // ADDED: GoogleAuthProvider, signInWithPopup, signOut
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, setLogLevel, addDoc, updateDoc, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
@@ -20,119 +21,102 @@
         window.onSnapshot = onSnapshot;
         window.addDoc = addDoc;
         window.getDoc = getDoc; 
-        window.updateDoc = updateDoc;
-        window.orderBy = orderBy;
-        window.writeBatch = writeBatch;
+        window.updateDoc = updateDoc; 
+        window.orderBy = orderBy; 
+        window.writeBatch = writeBatch; 
 
-        // Global Firebase variables
+        // Expose Auth functions
+        window.GoogleAuthProvider = GoogleAuthProvider;
+        window.signInWithPopup = signInWithPopup;
+        window.signOut = signOut;
+
+        // Global Firebase variables for the app to use
         window.db = null;
         window.auth = null;
         window.userId = null;
         window.isAuthReady = false;
 
-        // --- FIREBASE CONFIGURATION ---
-        // ⚠️ IMPORTANT: Replace this with YOUR OWN Firebase Config for Google Sign-In to work!
+        // --- NETLIFY / PUBLIC DEPLOYMENT CONFIGURATION ---
         const manualFirebaseConfig = {
-            apiKey: "PASTE_YOUR_FIREBASE_API_KEY_HERE",
-            authDomain: "your-project-id.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project-id.firebasestorage.app",
-            messagingSenderId: "000000000000",
-            appId: "1:000000000000:web:000000000000"
+            apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
+            authDomain: "aegisdmtoolkit.firebaseapp.com",
+            projectId: "aegisdmtoolkit",
+            storageBucket: "aegisdmtoolkit.firebasestorage.app",
+            messagingSenderId: "654767294266",
+            appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
         };
+        // --------------------------------------------------
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const envFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Use environment config if available (Editor), otherwise use manual config (Hosted)
-        const firebaseConfig = (envFirebaseConfig && Object.keys(envFirebaseConfig).length > 0) 
-            ? envFirebaseConfig 
-            : manualFirebaseConfig;
+        const firebaseConfig = (manualFirebaseConfig.apiKey && manualFirebaseConfig.apiKey !== "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg") 
+            ? manualFirebaseConfig 
+            : envFirebaseConfig;
 
-        if (firebaseConfig && firebaseConfig.apiKey !== "PASTE_YOUR_FIREBASE_API_KEY_HERE") {
+        if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
+            setLogLevel('debug'); 
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
             window.auth = getAuth(app);
             
-            // --- AUTHENTICATION LOGIC ---
-            
-            window.loginGoogle = async () => {
-                const provider = new GoogleAuthProvider();
-                try {
-                    await signInWithPopup(window.auth, provider);
-                } catch (error) {
-                    console.error("Login failed:", error);
-                    alert("Login failed: " + error.message + "\n(Did you add this domain to Firebase Auth settings?)");
-                }
-            };
-
-            window.loginGuest = async () => {
-                try {
-                    await signInAnonymously(window.auth);
-                } catch (error) {
-                    console.error("Guest login failed:", error);
-                }
-            };
-
-            window.logout = async () => {
-                try {
-                    await signOut(window.auth);
-                    // Reload to reset state and show login buttons
-                    window.location.reload();
-                } catch (error) {
-                    console.error("Logout failed:", error);
-                }
-            };
-
-            // Initialize Auth State Listener
+            // Authenticate
             onAuthStateChanged(window.auth, async (user) => {
-                const userBar = document.getElementById('user-bar');
-                const authButtons = document.getElementById('auth-buttons');
-                const userInfo = document.getElementById('user-info');
-                
                 if (!user) {
-                    // NOT LOGGED IN
-                    if (initialAuthToken) {
-                         try {
+                    // If no user, try anonymous (or custom token)
+                    try {
+                        if (initialAuthToken) {
                             await signInWithCustomToken(window.auth, initialAuthToken);
-                        } catch (error) {
-                            console.error("Immersive Auth Error:", error);
+                        } else {
+                            // Only auto-sign in anonymously if we aren't waiting for a user action
+                            // For this app, we default to anonymous, but user can upgrade to Google
+                            await signInAnonymously(window.auth);
                         }
-                    } else {
-                        if(userBar) userBar.classList.remove('hidden');
-                        if(authButtons) authButtons.classList.remove('hidden');
-                        if(userInfo) userInfo.classList.add('hidden');
+                    } catch (error) {
+                        console.error("Firebase Auth Error:", error);
                     }
                 } else {
-                    // LOGGED IN
+                    // Force token refresh
                     try {
-                        await user.getIdToken(true);
+                        await user.getIdToken(true); 
                     } catch (tokenError) {
                         console.error("Error refreshing ID token:", tokenError);
                     }
 
                     window.userId = user.uid;
                     window.isAuthReady = true;
-                    console.log("User authenticated:", window.userId);
-
-                    if(userBar) userBar.classList.remove('hidden');
-                    if(authButtons) authButtons.classList.add('hidden');
-                    if(userInfo) {
-                        userInfo.classList.remove('hidden');
-                        // Updated Label Logic for clarity
-                        const emailDisplay = user.isAnonymous ? "👤 Guest Mode (Sign Out to Switch)" : (user.email || "User");
-                        document.getElementById('user-email').textContent = emailDisplay;
-                    }
                     
-                    // Setup Listeners
+                    // --- UPDATE UI FOR LOGIN STATE ---
+                    updateLoginUI(user);
+
+                    console.log("Auth ready, setting up listeners...");
                     if (window.setupNotesListener) window.setupNotesListener();
                     if (window.setupCombatDataListeners) window.setupCombatDataListeners();
                     if (window.setupStatblocksListener) window.setupStatblocksListener();
                 }
             });
         } else {
-            console.log("Waiting for Firebase Configuration...");
+            console.error("Firebase configuration not found.");
+        }
+
+        function updateLoginUI(user) {
+            const loginBtn = document.getElementById('login-btn');
+            const userProfile = document.getElementById('user-profile');
+            const userAvatar = document.getElementById('user-avatar');
+            const userName = document.getElementById('user-name');
+
+            if (user.isAnonymous) {
+                // Show Login Button
+                if(loginBtn) loginBtn.classList.remove('hidden');
+                if(userProfile) userProfile.classList.add('hidden');
+            } else {
+                // Show User Profile
+                if(loginBtn) loginBtn.classList.add('hidden');
+                if(userProfile) userProfile.classList.remove('hidden');
+                if(userAvatar) userAvatar.src = user.photoURL || 'https://via.placeholder.com/32';
+                if(userName) userName.textContent = user.displayName || 'Adventurer';
+            }
         }
     </script>
     <style>
@@ -144,47 +128,56 @@
         .input-style { background-color: #334155; border: 1px solid #475569; color: #f8fafc; }
         .glow-shadow { box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); }
         .scrollable-content { max-height: 60vh; overflow-y: auto; }
+        /* Scrollbar styles for dark mode aesthetics */
         .scrollable-content::-webkit-scrollbar { width: 8px; }
         .scrollable-content::-webkit-scrollbar-track { background: #1e293b; }
         .scrollable-content::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 20px; border: 2px solid #1e293b; }
         .loading-spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Collapsible Styles */
         .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #334155; border-radius: 8px; }
         .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 10px; }
         .collapsible-content.expanded { max-height: 1000px; padding: 10px; }
         .arrow-icon { transition: transform 0.3s ease; }
         .expanded .arrow-icon { transform: rotate(90deg); }
+        /* Soundboard Button Styles */
         .sound-btn { transition: all 0.1s ease; }
         .sound-btn:active { transform: scale(0.95); }
+        /* Active state for Ambience Toggle */
         .sound-btn.active-loop { border-color: #34d399; background-color: #059669; box-shadow: 0 0 15px #34d399; animation: pulse-green 2s infinite; }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
     </style>
 </head>
 <body class="p-4 sm:p-8">
     <div class="max-w-4xl mx-auto">
-        <!-- User Login Bar -->
-        <div id="user-bar" class="flex justify-between items-center bg-slate-800 p-3 rounded-lg mb-4 border border-slate-600 hidden shadow-lg">
-            <div class="flex items-center">
-                <span class="text-xl mr-2">🛡️</span>
-                <span class="font-bold text-indigo-400">Aegis Toolkit</span>
-            </div>
+        
+        <!-- NEW: Top Header with Login -->
+        <div class="flex justify-between items-center mb-6 bg-gray-800 p-3 rounded-lg border border-gray-700 shadow-lg">
+            <h1 class="text-2xl font-bold text-indigo-400 flex items-center gap-2">
+                <span>🛡️</span> Aegis DM Toolkit
+            </h1>
             
-            <!-- Login Buttons -->
-            <div id="auth-buttons" class="flex gap-2">
-                <button onclick="loginGuest()" class="text-xs bg-slate-600 hover:bg-slate-500 text-white py-1.5 px-3 rounded transition">Guest Mode</button>
-                <button onclick="loginGoogle()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded flex items-center transition">
-                    <svg class="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
-                    Sign In
+            <!-- Login / User Section -->
+            <div>
+                <!-- Login Button (Hidden by default, shown via JS if anonymous) -->
+                <button id="login-btn" onclick="loginWithGoogle()" class="hidden bg-white text-gray-900 hover:bg-gray-200 font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-2 transition duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+                    Sign in with Google
                 </button>
-            </div>
 
-            <!-- Logged In Info -->
-            <div id="user-info" class="flex gap-3 items-center hidden">
-                <span id="user-email" class="text-xs text-gray-300 truncate max-w-[200px]"></span>
-                <button onclick="logout()" class="text-xs bg-red-700 hover:bg-red-600 text-white py-1.5 px-3 rounded border border-red-600 transition font-bold">Sign Out</button>
+                <!-- User Profile (Hidden by default, shown via JS if logged in) -->
+                <div id="user-profile" class="hidden flex items-center gap-3">
+                    <div class="text-right hidden sm:block">
+                        <div id="user-name" class="text-sm font-semibold text-white">Adventurer</div>
+                        <div class="text-xs text-green-400">Online & Saving</div>
+                    </div>
+                    <img id="user-avatar" src="" alt="User" class="w-9 h-9 rounded-full border-2 border-indigo-500">
+                    <button onclick="logoutUser()" class="bg-red-900/50 hover:bg-red-800 text-red-200 p-2 rounded-lg text-xs border border-red-800 transition duration-200" title="Sign Out">
+                        Sign Out
+                    </button>
+                </div>
             </div>
         </div>
-
         
         <!-- Tab Navigation -->
         <div class="flex border-b border-gray-600 mb-6 overflow-x-auto">
@@ -197,12 +190,15 @@
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('statblocks')">
                 👹 Stats
             </button>
+            <!-- NEW MONSTERS TAB BUTTON -->
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('monsters')">
                 🐲 Monsters
             </button>
+            <!-- NEW LOOT TAB BUTTON -->
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('loot')">
                 💰 Loot
             </button>
+            <!-- NEW SOUNDBOARD TAB BUTTON -->
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('soundboard')">
                 🔊 Sound
             </button>
@@ -215,26 +211,12 @@
         <div id="content-area">
             <!-- 1. Prep & Improv Engine (Gemini API) -->
             <div id="improv" class="tab-content">
-                
-                <!-- API Key Configuration Card -->
-                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
-                    <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
-                    <p class="text-sm text-gray-400 mb-3">
-                        To use the AI generators (NPCs, Settlements, Loot), you need a Google Gemini API Key.
-                        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-400 hover:text-blue-300 underline">Get one here for free.</a>
-                    </p>
-                    <div class="flex gap-2">
-                        <input type="password" id="user-api-key" placeholder="Paste your API Key here (starts with AIza...)" 
-                            class="flex-1 p-2 rounded-lg input-style text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                            onchange="updateApiKey(this.value)">
-                    </div>
-                    <p id="api-key-status" class="mt-2 text-xs text-gray-500">Key status: Not set</p>
-                </div>
 
                 <!-- Structured Combat NPC Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Structured Combat NPC Stats</h2>
                     <p class="text-sm text-gray-400 mb-4">Generate immediate, initiative-ready stats based on a target level/CR.</p>
+                    
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="npc-level" class="block text-xs font-medium text-gray-400 mb-1">Level or CR (e.g., 5 or 1/2)</label>
@@ -247,6 +229,7 @@
                                 class="w-full p-2 rounded-lg input-style transition text-sm">
                         </div>
                     </div>
+
                     <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
                         <span id="generate-combat-text">Generate Combat Stats</span>
                         <div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div>
@@ -254,7 +237,8 @@
                     <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
 
-                <!-- Free-Form Creative Generator -->
+
+                <!-- Free-Form Creative Generator (Original) -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore & Backstory</h2>
                     <p class="text-sm text-gray-400 mb-4">Need an NPC's backstory, a quick location, or lore?</p>
@@ -265,10 +249,11 @@
                     </button>
                 </div>
 
-                <!-- Settlement Generator -->
+                <!-- NEW: Settlement Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
                     <p class="text-sm text-gray-400 mb-4">Quickly generate a city, town, or village with key locations, NPCs, and quest hooks.</p>
+                    
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="settlement-type" class="block text-xs font-medium text-gray-400 mb-1">Settlement Type</label>
@@ -284,23 +269,31 @@
                                 class="w-full p-2 rounded-lg input-style transition text-sm">
                         </div>
                     </div>
+
                     <button onclick="generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
                         <span id="generate-settlement-text">Generate Settlement</span>
                         <div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div>
                     </button>
                 </div>
 
+
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Generated Idea</h2>
+                    
+                    <!-- NEW: Image Output Area -->
                     <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden shadow-lg">
                         <img id="generated-image" src="" alt="Generated Settlement Image" class="w-full h-auto object-cover bg-gray-700/30 min-h-[150px]">
                         <p id="image-loading-status" class="text-center text-gray-400 p-3 bg-gray-800"></p>
                     </div>
+
+                    <!-- Single output div for both modes -->
                     <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
                         Results will appear here.
                     </div>
+                    <!-- Status message for saving generated NPC combat stats -->
                     <p id="npc-save-status" class="mt-2 text-sm text-center hidden"></p>
                     
+                    <!-- NEW: Save Options for Creative Content -->
                     <div id="save-options-creative" class="mt-4 hidden">
                         <p class="text-sm text-center text-gray-400 mb-2">Save generated content to the Rulings & Notes tab:</p>
                         <div class="grid grid-cols-3 gap-2">
@@ -318,14 +311,18 @@
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Initiative & Monster Tracker</h2>
                     <p class="text-sm text-gray-400 mb-4">Keeps combat flowing smoothly and **now saves your data!**</p>
 
+                    <!-- Responsive Input Group -->
                     <div class="flex flex-wrap gap-2 mb-4">
                         <input id="combatant-name" type="text" placeholder="Name" class="flex-1 min-w-[100px] p-2 rounded-lg input-style" />
+                        <!-- Initiative can be a fixed score or a modifier -->
                         <input id="combatant-init" type="number" placeholder="Init Score/Mod" class="w-24 p-2 rounded-lg input-style text-center text-sm" />
+                        <!-- AC Input -->
                         <input id="combatant-ac" type="number" placeholder="AC" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
                         <input id="combatant-hp" type="number" placeholder="HP" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
                         <button onclick="addCombatant()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-lg transition duration-300 text-sm">Add</button>
                     </div>
 
+                    <!-- Dice Roller Section -->
                     <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50">
                         <h3 class="text-md font-semibold mb-2 text-indigo-400">Initiative Dice Roller (D20)</h3>
                         <div class="flex items-center space-x-2">
@@ -355,6 +352,7 @@
                     </div>
                     
                     <div id="initiative-list" class="scrollable-content space-y-2">
+                        <!-- Combatant list will be dynamically inserted here -->
                         <p class="text-center text-gray-500 pt-8">Add your players and monsters to start tracking combat!</p>
                     </div>
                 </div>
@@ -407,6 +405,7 @@
                     </div>
                     <p id="dice-roll-details" class="mt-2 text-center text-sm text-gray-400"></p>
                 </div>
+                <!-- END NEW DICE ROLLER CARD -->
 
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Saved Statblocks</h2>
@@ -1377,7 +1376,7 @@
                 btn.classList.add('text-gray-400');
                 // UPDATED to include 'monsters', 'loot', and 'soundboard'
                 if (btn.textContent.includes(
-                    tabId === 'improv' ? 'Prep' :
+                    tabId === 'improv' ? 'Prep & Improv' :
                     tabId === 'combat' ? 'Combat' :
                     tabId === 'statblocks' ? 'Stats' :
                     tabId === 'monsters' ? 'Monsters' :
@@ -1417,37 +1416,8 @@
 
         // --- Gemini API Logic (Core) ---
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
-        const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=`; 
-        
-        // MODIFIED: API Key is now a let variable managed by user input
-        let apiKey = ""; 
-
-        function updateApiKey(value) {
-            apiKey = value.trim();
-            const statusEl = document.getElementById('api-key-status');
-            if (apiKey.length > 10) {
-                statusEl.textContent = "Key status: Set (Ready to use)";
-                statusEl.classList.remove('text-gray-500', 'text-red-400');
-                statusEl.classList.add('text-green-400');
-            } else {
-                statusEl.textContent = "Key status: Invalid or empty";
-                statusEl.classList.remove('text-green-400');
-                statusEl.classList.add('text-red-400');
-            }
-        }
-
-        // Helper to check API key before calls
-        function checkApiKey(outputElementId) {
-            if (!apiKey) {
-                const el = document.getElementById(outputElementId);
-                if (el) {
-                    el.innerHTML = '<span class="text-red-400">⚠️ Missing API Key. Please enter your Gemini API Key in the "Prep" tab.</span>';
-                    el.classList.remove('hidden');
-                }
-                return false;
-            }
-            return true;
-        }
+        const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=`; // NEW
+        const apiKey = ""; 
 
         // Define the required structured output format for combat stats
         const combatSchema = {
@@ -1549,9 +1519,6 @@
 
         // --- MODE 1: Structured Combat Generation ---
         window.generateCombatNpc = async function() {
-            // Check Key
-            if (!checkApiKey('ai-output')) return;
-
             const level = document.getElementById('npc-level').value.trim();
             const type = document.getElementById('npc-type').value.trim();
 
@@ -1646,9 +1613,6 @@
         // --- START: FIX FOR ReferenceError ---
         // --- MODE 2: Creative Lore Generation (Missing Function) ---
         window.generateCreativeIdea = async function() {
-            // Check Key
-            if (!checkApiKey('ai-output')) return;
-
             const prompt = document.getElementById('improv-prompt').value.trim();
 
             if (!prompt) {
@@ -1711,9 +1675,6 @@
 
         // --- REWRITTEN: MODE 3: Settlement Generation (with Image) ---
         window.generateSettlement = async function() {
-            // Check Key
-            if (!checkApiKey('ai-output')) return;
-
             const type = document.getElementById('settlement-type').value;
             const vibe = document.getElementById('settlement-vibe').value.trim();
             
@@ -1867,9 +1828,6 @@ Format the response strictly with markdown for readability. You MUST include all
 
         // --- RENAMED: MODE 4: Monster Stat Block Generation ---
         window.generateMonsterStatblock = async function() {
-            // Check Key
-            if (!checkApiKey('monster-output')) return;
-
             const name = document.getElementById('monster-name').value.trim();
             const cr = document.getElementById('monster-cr').value.trim();
 
@@ -2523,9 +2481,6 @@ Format the response strictly with markdown for readability. You MUST include all
 
         // --- NEW FUNCTION: Generate Loot ---
         window.generateLoot = async function() {
-            // Check Key
-            if (!checkApiKey('loot-output')) return;
-
             const level = document.getElementById('loot-level').value.trim();
             const type = document.getElementById('loot-type').value;
             const outputDiv = document.getElementById('loot-output');
@@ -2587,6 +2542,122 @@ Format the response strictly with markdown for readability. You MUST include all
 
         // --- NEW FUNCTION: Soundboard Synthesizer (Web Audio API) ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Helper for chords/sequences
+        function playNote(freq, startTime, duration, type = 'sine', vol = 0.3) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, startTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(vol, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        // --- NEW HELPER: Drum Synthesizer ---
+        function playDrum(type, time) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'kick') {
+                osc.frequency.setValueAtTime(150, time);
+                osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+                gain.gain.setValueAtTime(0.5, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+                osc.start(time);
+                osc.stop(time + 0.5);
+            } else if (type === 'snare') {
+                // Filtered noise for snare/clash
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 1000;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.gain.setValueAtTime(0.4, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+                noise.start(time);
+                noise.stop(time + 0.2);
+            } else if (type === 'hihat') {
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 5000;
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.gain.setValueAtTime(0.3, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+                noise.start(time);
+                noise.stop(time + 0.05);
+            } else if (type === 'tom') {
+                osc.frequency.setValueAtTime(100, time);
+                osc.frequency.exponentialRampToValueAtTime(50, time + 0.3);
+                gain.gain.setValueAtTime(0.4, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+                osc.start(time);
+                osc.stop(time + 0.3);
+            }
+        }
+
+        // --- NEW HELPER: Lute Synthesizer (for Tavern Music) ---
+        function playLute(freq, startTime, duration) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter(); // Lowpass for warm string sound
+
+            osc.type = 'sawtooth'; // Sawtooth gives a string-like buzzing quality
+            osc.frequency.setValueAtTime(freq, startTime);
+            
+            // Filter down the harshness
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1000, startTime);
+
+            // Envelope: Pluck attack, long decay
+            gain.gain.setValueAtTime(0.1, startTime); // Keep volume background-level
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        // --- NEW HELPER: Accordion Synthesizer (for Sea Shanty) ---
+        function playAccordion(freq, startTime, duration, vol = 0.15) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            // Reedy sound: Sawtooth
+            osc.type = 'sawtooth'; 
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            // Filter to take off the harsh digital edge but keep it bright
+            filter.type = 'lowpass';
+            filter.frequency.value = 2500;
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            // Envelope: Swell in and out (simulating bellows)
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(vol, startTime + 0.1); // Attack
+            gain.gain.setValueAtTime(vol, startTime + duration - 0.1); // Sustain
+            gain.gain.linearRampToValueAtTime(0, startTime + duration); // Release
+
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
 
         window.playTone = function(type) {
             if (audioCtx.state === 'suspended') {
@@ -2704,122 +2775,6 @@ Format the response strictly with markdown for readability. You MUST include all
                     osc.stop(now + 2);
                     break;
             }
-        }
-
-        // Helper for chords/sequences
-        function playNote(freq, startTime, duration, type = 'sine', vol = 0.3) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, startTime);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            gain.gain.setValueAtTime(vol, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-            osc.start(startTime);
-            osc.stop(startTime + duration);
-        }
-
-        // --- NEW HELPER: Drum Synthesizer ---
-        function playDrum(type, time) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            if (type === 'kick') {
-                osc.frequency.setValueAtTime(150, time);
-                osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
-                gain.gain.setValueAtTime(0.5, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
-                osc.start(time);
-                osc.stop(time + 0.5);
-            } else if (type === 'snare') {
-                // Filtered noise for snare/clash
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = noiseBuffer;
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = 'highpass';
-                filter.frequency.value = 1000;
-                noise.connect(filter);
-                filter.connect(gain);
-                gain.gain.setValueAtTime(0.4, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-                noise.start(time);
-                noise.stop(time + 0.2);
-            } else if (type === 'hihat') {
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = noiseBuffer;
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = 'highpass';
-                filter.frequency.value = 5000;
-                noise.connect(filter);
-                filter.connect(gain);
-                gain.gain.setValueAtTime(0.3, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
-                noise.start(time);
-                noise.stop(time + 0.05);
-            } else if (type === 'tom') {
-                osc.frequency.setValueAtTime(100, time);
-                osc.frequency.exponentialRampToValueAtTime(50, time + 0.3);
-                gain.gain.setValueAtTime(0.4, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
-                osc.start(time);
-                osc.stop(time + 0.3);
-            }
-        }
-
-        // --- NEW HELPER: Lute Synthesizer (for Tavern Music) ---
-        function playLute(freq, startTime, duration) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter(); // Lowpass for warm string sound
-
-            osc.type = 'sawtooth'; // Sawtooth gives a string-like buzzing quality
-            osc.frequency.setValueAtTime(freq, startTime);
-            
-            // Filter down the harshness
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(1000, startTime);
-
-            // Envelope: Pluck attack, long decay
-            gain.gain.setValueAtTime(0.1, startTime); // Keep volume background-level
-            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start(startTime);
-            osc.stop(startTime + duration);
-        }
-
-        // --- NEW HELPER: Accordion Synthesizer (for Sea Shanty) ---
-        function playAccordion(freq, startTime, duration, vol = 0.15) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter();
-
-            // Reedy sound: Sawtooth
-            osc.type = 'sawtooth'; 
-            osc.frequency.setValueAtTime(freq, startTime);
-
-            // Filter to take off the harsh digital edge but keep it bright
-            filter.type = 'lowpass';
-            filter.frequency.value = 2500;
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            // Envelope: Swell in and out (simulating bellows)
-            gain.gain.setValueAtTime(0, startTime);
-            gain.gain.linearRampToValueAtTime(vol, startTime + 0.1); // Attack
-            gain.gain.setValueAtTime(vol, startTime + duration - 0.1); // Sustain
-            gain.gain.linearRampToValueAtTime(0, startTime + duration); // Release
-
-            osc.start(startTime);
-            osc.stop(startTime + duration);
         }
 
         // --- NEW: Ambience Loop Logic ---
@@ -3329,7 +3284,7 @@ Format the response strictly with markdown for readability. You MUST include all
                     if (Math.random() > 0.4) {
                         const t = audioCtx.currentTime;
                         const noteIdx = Math.floor(Math.random() * scale.length);
-                        // Long attack/decay for "pad" effect
+                        // Long attack/decay for "ghostly" pad sound
                         playNote(scale[noteIdx], t, 4, 'sine', 0.1); 
                         
                         // Occasional gentle harmony
@@ -3340,6 +3295,26 @@ Format the response strictly with markdown for readability. You MUST include all
                 }, 5000); // Very slow, every 5 seconds
                 
                 activeNodes.push({ stop: () => clearInterval(sleepMusicInterval) });
+            }
+        }
+
+        // Login/Logout Functions (Requires Firebase Console Setup)
+        window.loginWithGoogle = async function() {
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(window.auth, provider);
+            } catch (error) {
+                console.error("Login failed:", error);
+                alert("Login failed. Check console for details. (Did you enable Google Auth in Firebase Console?)");
+            }
+        }
+
+        window.logoutUser = async function() {
+            try {
+                await signOut(window.auth);
+                window.location.reload(); // Reload to clear state
+            } catch (error) {
+                console.error("Logout failed:", error);
             }
         }
 
