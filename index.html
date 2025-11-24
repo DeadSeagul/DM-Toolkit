@@ -600,6 +600,70 @@
              await window.setDoc(getSharedDoc('shared_combat_state'), { currentTurnIndex: 0 });
         };
         
+        // --- Dice Roller ---
+        window.rollD20 = function() {
+            lastRoll = Math.floor(Math.random() * 20) + 1;
+            document.getElementById('last-roll-display').textContent = lastRoll;
+            const btn = document.getElementById('assign-roll-button');
+            if(btn) btn.disabled = combatants.length === 0;
+        }
+        
+        window.assignInitiativeRoll = async function() {
+            const selector = document.getElementById('combatant-selector');
+            const selectedIndex = parseInt(selector.value, 10);
+            if (isNaN(selectedIndex) || selectedIndex < 0 || lastRoll === 0) return;
+            
+            const c = combatants[selectedIndex];
+            const modifier = c.initModifier || 0; 
+            const newInitiative = lastRoll + modifier;
+            
+            try { 
+                await window.updateDoc(getDocRef('shared_combatants', c.id), { init: newInitiative }); 
+            } catch (error) { console.error(error); }
+            
+            lastRoll = 0;
+            document.getElementById('last-roll-display').textContent = '?';
+            selector.value = '';
+            document.getElementById('assign-roll-button').disabled = true;
+        }
+        
+        window.rollCustomDice = function() {
+            const numDiceInput = document.getElementById('dice-num');
+            const diceTypeInput = document.getElementById('dice-type');
+            const modInput = document.getElementById('dice-mod');
+            const resultDisplay = document.getElementById('dice-roll-result');
+            const detailsDisplay = document.getElementById('dice-roll-details');
+
+            const numDice = parseInt(numDiceInput.value, 10) || 1;
+            const diceType = parseInt(diceTypeInput.value, 10) || 20;
+            const modifier = parseInt(modInput.value, 10) || 0;
+
+            if (numDice <= 0) {
+                resultDisplay.textContent = 'Error';
+                detailsDisplay.textContent = 'Number of dice must be 1 or more.';
+                return;
+            }
+
+            let totalRoll = 0;
+            const rolls = [];
+            for (let i = 0; i < numDice; i++) {
+                const roll = Math.floor(Math.random() * diceType) + 1;
+                rolls.push(roll);
+                totalRoll += roll;
+            }
+
+            const finalTotal = totalRoll + modifier;
+            const modString = modifier > 0 ? `+${modifier}` : (modifier < 0 ? `${modifier}` : '');
+
+            resultDisplay.textContent = `Total: ${finalTotal}`;
+            
+            if (modifier !== 0) {
+                detailsDisplay.textContent = `Rolls: [${rolls.join(', ')}] (Mod: ${modString})`;
+            } else {
+                detailsDisplay.textContent = `Rolls: [${rolls.join(', ')}]`;
+            }
+        }
+
         // --- Statblocks ---
         window.setupStatblocksListener = () => {
             if(!window.isAuthReady) return;
@@ -895,6 +959,7 @@
             if (!window.isAuthReady) { alert("Database not ready."); return; }
             if (!lastGeneratedMonster) { alert("No Monster to save."); return; }
             
+            // Grab the inner HTML of the output div to preserve the D&D styling
             const content = document.getElementById('monster-output').innerHTML;
             
             const newNote = {
@@ -1416,70 +1481,6 @@
                 const scale = [196.00, 220.00, 246.94, 293.66, 329.63]; const sleepMusicInterval = setInterval(() => { if (Math.random() > 0.4) { const t = ac.currentTime; const noteIdx = Math.floor(Math.random() * scale.length); playNote(scale[noteIdx], t, 4, 'sine', 0.1); if (Math.random() > 0.5) { playNote(scale[(noteIdx + 2) % scale.length], t + 0.5, 4, 'sine', 0.08); } } }, 5000); ambNodes.push({ stop: () => clearInterval(sleepMusicInterval) });
             }
         };
-        
-        // --- Helper Function for Title Generation ---
-        function generateTitleFromContent(content) {
-            // Try to find a bolded name first
-            const nameMatch = content.match(/\*\*Name:\*\*\s*(.*?)\n/);
-            if (nameMatch) {
-                return nameMatch[1].trim();
-            }
-            // Try to find the first H1/H2 equivalent in markdown (e.g. ## Title)
-            const headerMatch = content.match(/^#+\s*(.*?)$/m);
-            if (headerMatch) {
-                return headerMatch[1].trim();
-            }
-            // Fallback: Use the first 50 characters
-            const shortTitle = content.substring(0, 50).trim().replace(/[\n\r]/g, ' ');
-            return (shortTitle + (content.length > 50 ? '...' : '')) || 'Untitled Generated Note';
-        }
-        
-        // --- NEW: Save Generated Content Logic (Restored) ---
-        window.saveGeneratedContent = async function(destinationTab) {
-            const outputDiv = document.getElementById('ai-output');
-            let idea = outputDiv.textContent.trim();
-            
-            // If we are in the Loot tab, check the loot output instead
-            if (currentTab === 'loot') {
-                const lootDiv = document.getElementById('loot-output');
-                if (lootDiv) {
-                    idea = lootDiv.textContent.trim();
-                }
-            }
-
-            const statusElement = document.getElementById('notes-status');
-
-            // Basic validation to avoid saving empty/placeholder text
-            if (!idea || idea === 'Results will appear here.' || idea === 'Loot appears here.' || idea.startsWith('Error:')) {
-                alert('Nothing valid to save.');
-                return;
-            }
-
-            if (!window.isAuthReady || !window.db) {
-                alert('Database not ready. Please wait for authentication.');
-                return;
-            }
-
-            const title = generateTitleFromContent(idea);
-
-            const newNote = {
-                id: crypto.randomUUID(),
-                title: title,
-                content: idea,
-                timestamp: new Date().toISOString()
-            };
-            
-            structuredNotes[destinationTab].unshift(newNote); // Add to beginning
-            
-            // Save the updated array
-            await window.saveStructuredNotes(destinationTab, structuredNotes[destinationTab]);
-
-            // Switch and display feedback
-            window.switchTab('notes');
-            window.switchSubTab(destinationTab);
-             alert(`New note saved to ${destinationTab}!`);
-        }
-
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
