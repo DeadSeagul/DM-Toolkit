@@ -19,20 +19,18 @@
         window.query = query;
         window.onSnapshot = onSnapshot;
         window.addDoc = addDoc;
-        window.getDoc = getDoc; // Added for reading individual docs
-        window.updateDoc = updateDoc; // NEW: Needed for live updates
-        window.orderBy = orderBy; // NEW: Needed for sorting
-        window.writeBatch = writeBatch; // NEW: Needed for Clear All
+        window.getDoc = getDoc; 
+        window.updateDoc = updateDoc;
+        window.orderBy = orderBy;
+        window.writeBatch = writeBatch;
 
-        // Global Firebase variables for the app to use
+        // Global Firebase variables
         window.db = null;
         window.auth = null;
         window.userId = null;
         window.isAuthReady = false;
 
-        // --- NETLIFY / PUBLIC DEPLOYMENT CONFIGURATION ---
-        // Paste your Firebase project configuration here.
-        // You can find this in Firebase Console -> Project Settings -> General -> Your Apps -> Config
+        // --- FIREBASE CONFIGURATION ---
         const manualFirebaseConfig = {
             apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
             authDomain: "aegisdmtoolkit.firebaseapp.com",
@@ -41,25 +39,20 @@
             messagingSenderId: "654767294266",
             appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
         };
-        // --------------------------------------------------
 
-        // Global variables from the environment (Used when previewing in the editor)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const envFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Logic: Use Manual Config (for Netlify) if filled out, otherwise fallback to Environment Config (for Editor)
         const firebaseConfig = (manualFirebaseConfig.apiKey && manualFirebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE") 
             ? manualFirebaseConfig 
             : envFirebaseConfig;
 
         if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
-            setLogLevel('debug'); // Enable Firestore logging
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
             window.auth = getAuth(app);
             
-            // 1. Authenticate using the custom token or anonymously
             onAuthStateChanged(window.auth, async (user) => {
                 if (!user) {
                     try {
@@ -68,35 +61,23 @@
                         } else {
                             await signInAnonymously(window.auth);
                         }
-                        // User is now authenticated, the onAuthStateChanged listener will fire again
                     } catch (error) {
                         console.error("Firebase Auth Error:", error);
                     }
                 } else {
-                    // --- FIX: Force token refresh to prevent permission-denied race condition ---
                     try {
-                        // Requesting a fresh ID token ensures the auth state is fully propagated
-                        // to the backend *before* we attempt to set up Firestore listeners.
-                        await user.getIdToken(true); // true = force refresh
-                        console.log("ID token refreshed, auth state is now fully ready.");
+                        await user.getIdToken(true);
                     } catch (tokenError) {
                         console.error("Error refreshing ID token:", tokenError);
-                        // Proceed anyway, but log the error.
                     }
-                    // --- END FIX ---
 
                     window.userId = user.uid;
                     window.isAuthReady = true;
                     console.log("User authenticated:", window.userId);
                     
-                    // --- FIX FOR PERMISSION-DENIED ---
-                    // Call setup functions directly AFTER auth is confirmed ready.
-                    // This removes the event listener and potential race condition.
-                    console.log("Auth ready, setting up listeners...");
                     if (window.setupNotesListener) window.setupNotesListener();
                     if (window.setupCombatDataListeners) window.setupCombatDataListeners();
                     if (window.setupStatblocksListener) window.setupStatblocksListener();
-                    // --- END FIX ---
                 }
             });
         } else {
@@ -112,22 +93,18 @@
         .input-style { background-color: #334155; border: 1px solid #475569; color: #f8fafc; }
         .glow-shadow { box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); }
         .scrollable-content { max-height: 60vh; overflow-y: auto; }
-        /* Scrollbar styles for dark mode aesthetics */
         .scrollable-content::-webkit-scrollbar { width: 8px; }
         .scrollable-content::-webkit-scrollbar-track { background: #1e293b; }
         .scrollable-content::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 20px; border: 2px solid #1e293b; }
         .loading-spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Collapsible Styles */
         .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #334155; border-radius: 8px; }
         .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 10px; }
         .collapsible-content.expanded { max-height: 1000px; padding: 10px; }
         .arrow-icon { transition: transform 0.3s ease; }
         .expanded .arrow-icon { transform: rotate(90deg); }
-        /* Soundboard Button Styles */
         .sound-btn { transition: all 0.1s ease; }
         .sound-btn:active { transform: scale(0.95); }
-        /* Active state for Ambience Toggle */
         .sound-btn.active-loop { border-color: #34d399; background-color: #059669; box-shadow: 0 0 15px #34d399; animation: pulse-green 2s infinite; }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
     </style>
@@ -147,15 +124,12 @@
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('statblocks')">
                 👹 Stats
             </button>
-            <!-- NEW MONSTERS TAB BUTTON -->
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('monsters')">
                 🐲 Monsters
             </button>
-            <!-- NEW LOOT TAB BUTTON -->
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('loot')">
                 💰 Loot
             </button>
-            <!-- NEW SOUNDBOARD TAB BUTTON -->
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('soundboard')">
                 🔊 Sound
             </button>
@@ -169,7 +143,7 @@
             <!-- 1. Prep & Improv Engine (Gemini API) -->
             <div id="improv" class="tab-content">
                 
-                <!-- NEW: API Key Configuration Card -->
+                <!-- API Key Configuration Card -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
                     <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
                     <p class="text-sm text-gray-400 mb-3">
@@ -188,7 +162,6 @@
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Structured Combat NPC Stats</h2>
                     <p class="text-sm text-gray-400 mb-4">Generate immediate, initiative-ready stats based on a target level/CR.</p>
-                    
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="npc-level" class="block text-xs font-medium text-gray-400 mb-1">Level or CR (e.g., 5 or 1/2)</label>
@@ -201,7 +174,6 @@
                                 class="w-full p-2 rounded-lg input-style transition text-sm">
                         </div>
                     </div>
-
                     <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
                         <span id="generate-combat-text">Generate Combat Stats</span>
                         <div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div>
@@ -209,8 +181,7 @@
                     <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
 
-
-                <!-- Free-Form Creative Generator (Original) -->
+                <!-- Free-Form Creative Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore & Backstory</h2>
                     <p class="text-sm text-gray-400 mb-4">Need an NPC's backstory, a quick location, or lore?</p>
@@ -221,11 +192,10 @@
                     </button>
                 </div>
 
-                <!-- NEW: Settlement Generator -->
+                <!-- Settlement Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
                     <p class="text-sm text-gray-400 mb-4">Quickly generate a city, town, or village with key locations, NPCs, and quest hooks.</p>
-                    
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label for="settlement-type" class="block text-xs font-medium text-gray-400 mb-1">Settlement Type</label>
@@ -241,31 +211,23 @@
                                 class="w-full p-2 rounded-lg input-style transition text-sm">
                         </div>
                     </div>
-
                     <button onclick="generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg transition duration-300 flex items-center justify-center">
                         <span id="generate-settlement-text">Generate Settlement</span>
                         <div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div>
                     </button>
                 </div>
 
-
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Generated Idea</h2>
-                    
-                    <!-- NEW: Image Output Area -->
                     <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden shadow-lg">
                         <img id="generated-image" src="" alt="Generated Settlement Image" class="w-full h-auto object-cover bg-gray-700/30 min-h-[150px]">
                         <p id="image-loading-status" class="text-center text-gray-400 p-3 bg-gray-800"></p>
                     </div>
-
-                    <!-- Single output div for both modes -->
                     <div id="ai-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">
                         Results will appear here.
                     </div>
-                    <!-- Status message for saving generated NPC combat stats -->
                     <p id="npc-save-status" class="mt-2 text-sm text-center hidden"></p>
                     
-                    <!-- NEW: Save Options for Creative Content -->
                     <div id="save-options-creative" class="mt-4 hidden">
                         <p class="text-sm text-center text-gray-400 mb-2">Save generated content to the Rulings & Notes tab:</p>
                         <div class="grid grid-cols-3 gap-2">
@@ -283,18 +245,14 @@
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Initiative & Monster Tracker</h2>
                     <p class="text-sm text-gray-400 mb-4">Keeps combat flowing smoothly and **now saves your data!**</p>
 
-                    <!-- Responsive Input Group -->
                     <div class="flex flex-wrap gap-2 mb-4">
                         <input id="combatant-name" type="text" placeholder="Name" class="flex-1 min-w-[100px] p-2 rounded-lg input-style" />
-                        <!-- Initiative can be a fixed score or a modifier -->
                         <input id="combatant-init" type="number" placeholder="Init Score/Mod" class="w-24 p-2 rounded-lg input-style text-center text-sm" />
-                        <!-- AC Input -->
                         <input id="combatant-ac" type="number" placeholder="AC" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
                         <input id="combatant-hp" type="number" placeholder="HP" class="w-16 p-2 rounded-lg input-style text-center text-sm" />
                         <button onclick="addCombatant()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-lg transition duration-300 text-sm">Add</button>
                     </div>
 
-                    <!-- Dice Roller Section -->
                     <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50">
                         <h3 class="text-md font-semibold mb-2 text-indigo-400">Initiative Dice Roller (D20)</h3>
                         <div class="flex items-center space-x-2">
@@ -324,7 +282,6 @@
                     </div>
                     
                     <div id="initiative-list" class="scrollable-content space-y-2">
-                        <!-- Combatant list will be dynamically inserted here -->
                         <p class="text-center text-gray-500 pt-8">Add your players and monsters to start tracking combat!</p>
                     </div>
                 </div>
@@ -377,7 +334,6 @@
                     </div>
                     <p id="dice-roll-details" class="mt-2 text-center text-sm text-gray-400"></p>
                 </div>
-                <!-- END NEW DICE ROLLER CARD -->
 
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Saved Statblocks</h2>
@@ -1348,7 +1304,7 @@
                 btn.classList.add('text-gray-400');
                 // UPDATED to include 'monsters', 'loot', and 'soundboard'
                 if (btn.textContent.includes(
-                    tabId === 'improv' ? 'Prep & Improv' :
+                    tabId === 'improv' ? 'Prep' :
                     tabId === 'combat' ? 'Combat' :
                     tabId === 'statblocks' ? 'Stats' :
                     tabId === 'monsters' ? 'Monsters' :
@@ -1412,7 +1368,7 @@
             if (!apiKey) {
                 const el = document.getElementById(outputElementId);
                 if (el) {
-                    el.innerHTML = '<span class="text-red-400">⚠️ Missing API Key. Please enter your Gemini API Key in the "Prep & Improv" tab.</span>';
+                    el.innerHTML = '<span class="text-red-400">⚠️ Missing API Key. Please enter your Gemini API Key in the "Prep" tab.</span>';
                     el.classList.remove('hidden');
                 }
                 return false;
@@ -3333,4 +3289,3 @@ Format the response strictly with markdown for readability. You MUST include all
     </script>
 </body>
 </html>
-
