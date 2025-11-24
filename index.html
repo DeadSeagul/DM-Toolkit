@@ -71,7 +71,10 @@
             const userProfile = document.getElementById('user-profile');
             const userAvatar = document.getElementById('user-avatar');
             const userName = document.getElementById('user-name');
-            if (user.isAnonymous) {
+            
+            const isAnon = user.isAnonymous || (user.providerData && user.providerData.length === 0);
+
+            if (isAnon) {
                 if(loginBtn) loginBtn.classList.remove('hidden');
                 if(userProfile) userProfile.classList.add('hidden');
             } else {
@@ -105,7 +108,7 @@
         .expanded .arrow-icon { transform: rotate(90deg); }
         .sound-btn { transition: all 0.1s ease; }
         .sound-btn:active { transform: scale(0.95); }
-        .sound-btn.active-loop { border-color: #34d399; background-color: #059669; box-shadow: 0 0 15px #34d399; animation: pulse-green 2s infinite; }
+        .sound-btn.active-loop { border-color: #34d399; background-color: #059669; box-shadow: 0 0 15px rgba(52, 211, 153, 0.7); animation: pulse-green 2s infinite; }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
         /* Range Slider Style */
         input[type=range] { -webkit-appearance: none; background: transparent; }
@@ -464,6 +467,32 @@
             const val = document.getElementById('user-api-key').value;
             window.updateApiKey(val);
             alert("API Key Saved!");
+        };
+        
+        // --- AUTHENTICATION FUNCTIONS (ATTACHED TO WINDOW) ---
+        window.loginWithGoogle = async () => {
+            if (!window.auth) {
+                console.error("Auth not initialized yet.");
+                return;
+            }
+            try {
+                const provider = new window.GoogleAuthProvider();
+                await window.signInWithPopup(window.auth, provider);
+            } catch (error) {
+                console.error("Login failed:", error);
+                alert("Login failed: " + error.message);
+            }
+        };
+
+        window.logoutUser = async () => {
+            if (!window.auth) return;
+            try {
+                await window.signOut(window.auth);
+                // Optional: Reload page to clear state
+                // window.location.reload(); 
+            } catch (error) {
+                console.error("Logout failed:", error);
+            }
         };
 
         // --- Firebase Helpers ---
