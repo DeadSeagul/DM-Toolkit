@@ -586,19 +586,77 @@
             });
         };
 
+        // Helper for Conditions
+        const dndConditions = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious', 'Exhaustion', 'Concentrating'];
+
+        window.addCondition = async (id, cond) => {
+            if (!cond) return;
+            const c = combatants.find(x => x.id === id);
+            if (!c) return;
+            const current = c.conditions || [];
+            if (current.includes(cond)) return; // No duplicates
+            
+            // We read local, modify, then push to DB (simpler without needing new imports)
+            const updated = [...current, cond];
+            await window.updateDoc(getDocRef('shared_combatants', id), { conditions: updated });
+        };
+
+        window.removeCondition = async (id, cond) => {
+            const c = combatants.find(x => x.id === id);
+            if (!c) return;
+            const current = c.conditions || [];
+            const updated = current.filter(x => x !== cond);
+            await window.updateDoc(getDocRef('shared_combatants', id), { conditions: updated });
+        };
+
         function renderCombatants() {
             const list = document.getElementById('initiative-list');
             if(!list) return;
             list.innerHTML = combatants.length ? '' : '<p class="text-center text-gray-500 pt-8">No combatants.</p>';
+            
             combatants.forEach((c, idx) => {
                 const active = idx === currentTurnIndex ? 'bg-indigo-700 glow-shadow' : 'bg-gray-700';
-                const div = document.createElement('div'); div.className = `flex items-center space-x-1 p-3 rounded-lg transition ${active}`;
-                div.innerHTML = `<div class="text-lg font-bold w-6 text-center text-white">${c.init}</div>
-                <div class="flex-1"><div class="font-semibold text-sm text-white">${c.name}</div><div class="text-xs text-gray-300">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</div></div>
-                <div class="flex items-center gap-1"><input type="number" id="dmg-${idx}" class="w-10 p-1 text-xs rounded text-black"><button onclick="modHp('${c.id}', ${idx}, 1)" class="bg-green-600 px-2 py-1 rounded text-xs">Heal</button><button onclick="modHp('${c.id}', ${idx}, -1)" class="bg-red-600 px-2 py-1 rounded text-xs">Dmg</button></div>
-                <button onclick="delCombatant('${c.id}')" class="bg-gray-500 px-2 py-1 rounded text-xs">X</button>`;
+                
+                // Generate Condition Badges
+                const activeConditions = c.conditions || [];
+                const conditionBadges = activeConditions.map(cond => 
+                    `<span onclick="removeCondition('${c.id}', '${cond}')" class="inline-block cursor-pointer bg-red-900/80 hover:bg-red-800 text-red-100 text-[10px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 select-none" title="Remove ${cond}">${cond} &times;</span>`
+                ).join('');
+
+                // Generate Condition Options
+                const conditionOptions = dndConditions.map(cond => `<option value="${cond}">${cond}</option>`).join('');
+
+                const div = document.createElement('div'); 
+                div.className = `flex items-start space-x-2 p-3 rounded-lg transition ${active}`;
+                
+                div.innerHTML = `
+                    <div class="text-lg font-bold w-6 text-center text-white pt-1">${c.init}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-sm text-white truncate">${c.name}</div>
+                        <div class="text-xs text-gray-300">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</div>
+                        
+                        <!-- Conditions Section -->
+                        <div class="mt-2">
+                            <div class="flex flex-wrap gap-1 mb-1">${conditionBadges}</div>
+                            <select onchange="addCondition('${c.id}', this.value); this.value='';" class="bg-gray-800 text-[10px] text-gray-400 border border-gray-600 rounded px-1 py-0.5 focus:outline-none focus:border-indigo-500">
+                                <option value="">+ Condition</option>
+                                ${conditionOptions}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col items-end gap-2">
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="dmg-${idx}" class="w-10 p-1 text-xs rounded text-black" placeholder="Amt">
+                            <button onclick="modHp('${c.id}', ${idx}, 1)" class="bg-green-600 hover:bg-green-500 px-2 py-1 rounded text-xs font-bold">Heal</button>
+                            <button onclick="modHp('${c.id}', ${idx}, -1)" class="bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-xs font-bold">Dmg</button>
+                        </div>
+                        <button onclick="delCombatant('${c.id}')" class="text-gray-400 hover:text-red-400 text-xs underline">Remove</button>
+                    </div>
+                `;
                 list.appendChild(div);
             });
+            
             // Update Roller
             const sel = document.getElementById('combatant-selector');
             if(sel) { sel.innerHTML = '<option value="" disabled selected>Target</option>'; combatants.forEach((c,i) => sel.innerHTML += `<option value="${i}">${c.name}</option>`); }
