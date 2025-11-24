@@ -8,7 +8,6 @@
     <!-- Load Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // ADDED: GoogleAuthProvider, signInWithPopup, signOut
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, setLogLevel, addDoc, updateDoc, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
@@ -64,27 +63,18 @@
             // Authenticate
             onAuthStateChanged(window.auth, async (user) => {
                 if (!user) {
-                    // Logic Fix: 
-                    // If we are using a manual config (e.g. your own Firebase project), 
-                    // the 'initialAuthToken' provided by the Canvas environment will NOT match.
-                    // So we should only try custom token auth if we are NOT using manual config.
-                    if (initialAuthToken && !isManualConfig) {
-                        try {
+                    // If no user, try anonymous (or custom token)
+                    try {
+                        if (initialAuthToken && !isManualConfig) {
                             await signInWithCustomToken(window.auth, initialAuthToken);
-                        } catch (error) {
-                            console.warn("Custom token auth failed (likely mismatch), falling back to anonymous:", error);
+                        } else {
                             await signInAnonymously(window.auth);
                         }
-                    } else {
-                        // Default to anonymous for manual configs or if no token exists
-                        try {
-                            await signInAnonymously(window.auth);
-                        } catch (error) {
-                            console.error("Anonymous login failed:", error);
-                        }
+                    } catch (error) {
+                        console.error("Firebase Auth Error:", error);
                     }
                 } else {
-                    // Force token refresh to prevent stale connection issues
+                    // Force token refresh
                     try {
                         await user.getIdToken(true); 
                     } catch (tokenError) {
