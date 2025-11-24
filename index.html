@@ -1260,16 +1260,28 @@
                 return htmlTitleMatch[1].trim();
             }
 
-            // Try to find markdown header (# or ##)
-            const headerMatch = content.match(/^#+\s*(.*?)$/m);
+            // Create a temporary element to parse HTML structure safely
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // Replace <br> tags with actual newlines so regex works
+            tempDiv.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+            tempDiv.querySelectorAll('div, p').forEach(block => block.after('\n')); // Ensure block elements break lines
+            
+            const textContent = tempDiv.textContent || "";
+
+            // Try to find markdown header (# or ##) in the clean text
+            const headerMatch = textContent.match(/^#+\s*(.*?)$/m);
             if (headerMatch) {
                 return headerMatch[1].trim();
             }
 
-            // Fallback: Use the first 50 characters
-            const textContent = (new DOMParser().parseFromString(content, 'text/html')).documentElement.textContent || content;
-            const shortTitle = textContent.substring(0, 50).trim().replace(/[\n\r]/g, ' ');
-            return (shortTitle + (textContent.length > 50 ? '...' : '')) || 'Untitled Generated Note';
+            // Fallback: Use the first non-empty line
+            const firstLine = textContent.split('\n').find(line => line.trim().length > 0) || "";
+            const cleanLine = firstLine.replace(/^[#*>\s]+/, '').trim(); // Remove markdown chars
+            
+            const shortTitle = cleanLine.substring(0, 50);
+            return (shortTitle + (cleanLine.length > 50 ? '...' : '')) || 'Untitled Generated Note';
         }
         
         window.saveGeneratedContent = async function(destinationTab) {
