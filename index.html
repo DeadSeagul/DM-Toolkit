@@ -71,10 +71,7 @@
             const userProfile = document.getElementById('user-profile');
             const userAvatar = document.getElementById('user-avatar');
             const userName = document.getElementById('user-name');
-            
-            const isAnon = user.isAnonymous || (user.providerData && user.providerData.length === 0);
-
-            if (isAnon) {
+            if (user.isAnonymous) {
                 if(loginBtn) loginBtn.classList.remove('hidden');
                 if(userProfile) userProfile.classList.add('hidden');
             } else {
@@ -108,7 +105,7 @@
         .expanded .arrow-icon { transform: rotate(90deg); }
         .sound-btn { transition: all 0.1s ease; }
         .sound-btn:active { transform: scale(0.95); }
-        .sound-btn.active-loop { border-color: #34d399; background-color: #059669; box-shadow: 0 0 15px rgba(52, 211, 153, 0.7); animation: pulse-green 2s infinite; }
+        .sound-btn.active-loop { border-color: #34d399; background-color: #059669; box-shadow: 0 0 15px #34d399; animation: pulse-green 2s infinite; }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
         /* Range Slider Style */
         input[type=range] { -webkit-appearance: none; background: transparent; }
@@ -342,7 +339,7 @@
                     <!-- Volume Slider -->
                     <div class="mb-6 flex items-center gap-4 bg-gray-800 p-3 rounded-lg border border-gray-700">
                         <label for="master-volume" class="text-sm font-bold text-indigo-400">Master Volume:</label>
-                        <input type="range" id="master-volume" min="0" max="1" step="0.01" value="0.5" oninput="masterGain.gain.setTargetAtTime(parseFloat(this.value), ac.currentTime, 0.01)" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-400">
+                        <input type="range" id="master-volume" min="0" max="1" step="0.01" value="0.5" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-400">
                     </div>
 
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
@@ -467,32 +464,6 @@
             const val = document.getElementById('user-api-key').value;
             window.updateApiKey(val);
             alert("API Key Saved!");
-        };
-        
-        // --- AUTHENTICATION FUNCTIONS (ATTACHED TO WINDOW) ---
-        window.loginWithGoogle = async () => {
-            if (!window.auth) {
-                console.error("Auth not initialized yet.");
-                return;
-            }
-            try {
-                const provider = new window.GoogleAuthProvider();
-                await window.signInWithPopup(window.auth, provider);
-            } catch (error) {
-                console.error("Login failed:", error);
-                alert("Login failed: " + error.message);
-            }
-        };
-
-        window.logoutUser = async () => {
-            if (!window.auth) return;
-            try {
-                await window.signOut(window.auth);
-                // Optional: Reload page to clear state
-                // window.location.reload(); 
-            } catch (error) {
-                console.error("Logout failed:", error);
-            }
         };
 
         // --- Firebase Helpers ---
@@ -821,6 +792,7 @@
                 const inputEl = document.getElementById('user-api-key');
                 if (inputEl && inputEl.value) {
                     key = inputEl.value.trim();
+                    // Update global state while we're at it
                     userApiKey = key;
                     localStorage.setItem('dm_toolkit_api_key', key);
                 }
@@ -1164,6 +1136,353 @@
                  btn.disabled = false;
                  spinner.classList.add('hidden');
              }
+        };
+        
+        // --- Helper Function for Title Generation ---
+        function generateTitleFromContent(content) {
+            // Try to find a bolded name first
+            const nameMatch = content.match(/\*\*Name:\*\*\s*(.*?)\n/);
+            if (nameMatch) {
+                return nameMatch[1].trim();
+            }
+            // Try to find the first H1/H2 equivalent in markdown (e.g. ## Title)
+            const headerMatch = content.match(/^#+\s*(.*?)$/m);
+            if (headerMatch) {
+                return headerMatch[1].trim();
+            }
+            // Fallback: Use the first 50 characters
+            const shortTitle = content.substring(0, 50).trim().replace(/[\n\r]/g, ' ');
+            return (shortTitle + (content.length > 50 ? '...' : '')) || 'Untitled Generated Note';
+        }
+        
+        // --- NEW: Save Generated Content Logic (Restored) ---
+        window.saveGeneratedContent = async function(destinationTab) {
+            const outputDiv = document.getElementById('ai-output');
+            let idea = outputDiv.textContent.trim();
+            
+            // If we are in the Loot tab, check the loot output instead
+            if (currentTab === 'loot') {
+                const lootDiv = document.getElementById('loot-output');
+                if (lootDiv) {
+                    idea = lootDiv.textContent.trim();
+                }
+            }
+
+            const statusElement = document.getElementById('notes-status');
+
+            // Basic validation to avoid saving empty/placeholder text
+            if (!idea || idea === 'Results will appear here.' || idea === 'Loot appears here.' || idea.startsWith('Error:')) {
+                alert('Nothing valid to save.');
+                return;
+            }
+
+            if (!window.isAuthReady || !window.db) {
+                alert('Database not ready. Please wait for authentication.');
+                return;
+            }
+
+            const title = generateTitleFromContent(idea);
+
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: title,
+                content: idea,
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes[destinationTab].unshift(newNote); // Add to beginning
+            
+            // Save the updated array
+            await window.saveStructuredNotes(destinationTab, structuredNotes[destinationTab]);
+
+            // Switch and display feedback
+            window.switchTab('notes');
+            window.switchSubTab(destinationTab);
+             alert(`New note saved to ${destinationTab}!`);
+        }
+
+
+        // --- Soundboard ---
+        const ac = new (window.AudioContext||window.webkitAudioContext)();
+        const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
+        let ambNodes = []; let ambType = null;
+        const noiseBuf = ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate);
+        for(let i=0; i<noiseBuf.length; i++) noiseBuf.getChannelData(0)[i] = Math.random()*2-1;
+        
+        document.getElementById('master-volume').addEventListener('input', (e) => {
+            masterGain.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.01);
+        });
+
+        window.playTone = function(type) {
+            if (ac.state === 'suspended') { ac.resume(); }
+            const now = ac.currentTime;
+            const osc = ac.createOscillator();
+            const gain = ac.createGain();
+            // ALL SOUNDS MUST CONNECT TO MASTERGAIN
+            
+            switch (type) {
+                case 'success':
+                    // Bright Major Triad Arpeggio
+                    [523.25, 659.25, 783.99].forEach((freq, i) => {
+                        const o = ac.createOscillator(); const g = ac.createGain();
+                        o.type = 'triangle'; o.frequency.value = freq;
+                        o.connect(g); g.connect(masterGain);
+                        g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + i*0.1 + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+                        o.start(now + i*0.1); o.stop(now + 1.0);
+                    });
+                    break;
+                case 'critical':
+                    // Victory Fanfare
+                    [523.25, 1046.50, 1318.51].forEach((freq, i) => {
+                         const o = ac.createOscillator(); const g = ac.createGain();
+                         o.type = 'square'; o.frequency.value = freq;
+                         o.connect(g); g.connect(masterGain);
+                         g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+                         o.start(now); o.stop(now + 1.5);
+                    });
+                    break;
+                case 'fail':
+                    // Sad "Womp Womp"
+                    const o1 = ac.createOscillator(); const g1 = ac.createGain();
+                    o1.type = 'sawtooth'; o1.frequency.setValueAtTime(196.00, now); o1.frequency.linearRampToValueAtTime(185.00, now + 0.4);
+                    o1.connect(g1); g1.connect(masterGain); g1.gain.setValueAtTime(0.2, now); g1.gain.linearRampToValueAtTime(0, now + 0.4);
+                    o1.start(now); o1.stop(now+0.4);
+                    
+                    const o2 = ac.createOscillator(); const g2 = ac.createGain();
+                    o2.type = 'sawtooth'; o2.frequency.setValueAtTime(174.61, now + 0.45); o2.frequency.linearRampToValueAtTime(155.56, now + 1.0);
+                    o2.connect(g2); g2.connect(masterGain);
+                    g2.gain.setValueAtTime(0, now + 0.45); g2.gain.linearRampToValueAtTime(0.2, now + 0.5); g2.gain.linearRampToValueAtTime(0, now + 1.0);
+                    o2.start(now + 0.45); o2.stop(now + 1.0);
+                    break;
+                case 'combat_start':
+                    // War Horn
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = 60;
+                    const filter = ac.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(200, now);
+                    filter.frequency.linearRampToValueAtTime(1500, now + 0.1); 
+                    filter.frequency.exponentialRampToValueAtTime(200, now + 2);
+                    
+                    osc.connect(filter); filter.connect(gain); gain.connect(ac.destination);
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.4, now + 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 2);
+                    osc.start(now); osc.stop(now + 2);
+                    break;
+                case 'spell':
+                    // Magic Glissando
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(2000, now + 1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 1);
+                    osc.connect(gain); gain.connect(ac.destination);
+                    osc.start(now); osc.stop(now + 1);
+                    break;
+                case 'mystery':
+                    // Eerie Dissonance
+                    const mo1 = ac.createOscillator(); const mg1 = ac.createGain();
+                    mo1.type = 'sine'; mo1.frequency.value = 440;
+                    mo1.connect(mg1); mg1.connect(ac.destination);
+                    mg1.gain.setValueAtTime(0, now); mg1.gain.linearRampToValueAtTime(0.2, now + 1); mg1.gain.linearRampToValueAtTime(0, now + 3);
+                    mo1.start(now); mo1.stop(now + 3);
+                    
+                    const mo2 = ac.createOscillator(); const mg2 = ac.createGain();
+                    mo2.type = 'sine'; mo2.frequency.value = 455; 
+                    mo2.connect(mg2); mg2.connect(ac.destination);
+                    mg2.gain.setValueAtTime(0, now); mg2.gain.linearRampToValueAtTime(0.2, now + 1.5); mg2.gain.linearRampToValueAtTime(0, now + 3);
+                    mo2.start(now); mo2.stop(now + 3);
+                    break;
+                case 'rest':
+                    // Peaceful Chord
+                    [261.63, 329.63, 392.00, 523.25].forEach(f => {
+                        const o = ac.createOscillator(); const g = ac.createGain();
+                        o.type = 'sine'; o.frequency.value = f;
+                        o.connect(g); g.connect(ac.destination);
+                        g.gain.setValueAtTime(0, now);
+                        g.gain.linearRampToValueAtTime(0.05, now + 1);
+                        g.gain.linearRampToValueAtTime(0, now + 4);
+                        o.start(now); o.stop(now + 4);
+                    });
+                    break;
+                case 'trap':
+                    // Sharp Snap
+                    const n = ac.createBufferSource();
+                    n.buffer = noiseBuf;
+                    const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000;
+                    const ng = ac.createGain();
+                    n.connect(f); f.connect(ng); ng.connect(ac.destination);
+                    ng.gain.setValueAtTime(0.6, now);
+                    ng.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    n.start(now); n.stop(now + 0.1);
+                    
+                    // Low thud
+                    osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+                    osc.connect(gain); gain.connect(ac.destination);
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now); osc.stop(now + 0.2);
+                    break;
+                case 'boss':
+                    // Doom Drone
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(55, now);
+                    const bf = ac.createBiquadFilter(); bf.type='lowpass'; bf.frequency.value=150;
+                    osc.connect(bf); bf.connect(gain); gain.connect(ac.destination);
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.5, now + 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 3);
+                    osc.start(now); osc.stop(now + 3);
+                    break;
+            }
+        };
+
+        // --- Helper Functions for Soundboard ---
+        function playNote(freq, t, dur, type = 'sine', vol = 0.3) {
+            const o = ac.createOscillator(); const g = ac.createGain(); o.type = type; o.frequency.value = freq; 
+            o.connect(g); g.connect(masterGain); 
+            g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.01, t + dur); o.start(t); o.stop(t + dur);
+        }
+        function playDrum(type, time) {
+            const osc = ac.createOscillator(); const gain = ac.createGain(); osc.connect(gain); gain.connect(masterGain);
+            if (type === 'kick') { osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(0.01, time+0.5); gain.gain.setValueAtTime(0.5, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.5); osc.start(time); osc.stop(time+0.5); }
+            else if (type === 'snare') { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.2); n.start(time); n.stop(time+0.2); }
+            else if (type === 'hihat') { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 5000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.3, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.05); n.start(time); n.stop(time+0.05); }
+            else if (type === 'tom') { osc.frequency.setValueAtTime(100, time); osc.frequency.exponentialRampToValueAtTime(50, time+0.3); gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.3); osc.start(time); osc.stop(time+0.3); }
+        }
+        function playLute(freq, startTime, duration) {
+            const osc = ac.createOscillator(); const gain = ac.createGain(); const filter = ac.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.setValueAtTime(1000, startTime); gain.gain.setValueAtTime(0.1, startTime); gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration); osc.connect(filter); filter.connect(gain); gain.connect(ac.destination); osc.start(startTime); osc.stop(startTime + duration);
+        }
+        function playAccordion(freq, startTime, duration, vol = 0.15) {
+             const osc = ac.createOscillator(); const gain = ac.createGain(); const filter = ac.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.value = 2500; osc.connect(filter); filter.connect(gain); gain.connect(ac.destination); gain.gain.setValueAtTime(0, startTime); gain.gain.linearRampToValueAtTime(vol, startTime+0.1); gain.gain.setValueAtTime(vol, startTime + duration - 0.1); gain.gain.linearRampToValueAtTime(0, startTime+duration); osc.start(startTime); osc.stop(startTime + duration);
+        }
+
+        window.toggleAmbience = function(t) {
+             if(ac.state==='suspended') ac.resume();
+             ambNodes.forEach(n => { try{n.stop()}catch(e){} try{n.disconnect()}catch(e){} }); ambNodes=[];
+             document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active-loop'));
+             if(ambType === t) { ambType = null; return; }
+             ambType = t; document.getElementById(`ambience-${t}`).classList.add('active-loop');
+             const now = ac.currentTime;
+             
+             if (t === 'village') {
+                // 1. Wind (Replaces Crowd Noise)
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(400, now); const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.1; const lfoGain = ac.createGain(); lfoGain.gain.value = 200; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = ac.createGain(); gain.gain.value = 0.05; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); lfo.start(now); ambNodes.push(noise, lfo, gain);
+                const waresInterval = setInterval(() => { if (Math.random() > 0.7) { playNote(1500 + Math.random() * 500, ac.currentTime, 0.05, 'triangle', 0.02); } }, 2000); ambNodes.push({ stop: () => clearInterval(waresInterval) });
+                const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; 
+                const musicInterval = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.3) { const pitch = scale[Math.floor(Math.random() * scale.length)]; playLute(pitch, t, 0.4); } if (Math.random() > 0.8) { playLute(196.00, t, 0.6); } }, 600); ambNodes.push({ stop: () => clearInterval(musicInterval) });
+             }
+             else if (t === 'city') {
+                 const rumble = ac.createBufferSource(); rumble.buffer = noiseBuf; rumble.loop = true; const rumbleFilter = ac.createBiquadFilter(); rumbleFilter.type = 'lowpass'; rumbleFilter.frequency.value = 150; const rumbleGain = ac.createGain(); rumbleGain.gain.value = 0.1; rumble.connect(rumbleFilter); rumbleFilter.connect(rumbleGain); rumbleGain.connect(masterGain); rumble.start(now); ambNodes.push(rumble, rumbleGain);
+                 const industryInterval = setInterval(() => { if (Math.random() > 0.6) { playNote(400 + Math.random() * 100, ac.currentTime, 0.1, 'square', 0.05); } if (Math.random() > 0.8) { playNote(80, ac.currentTime, 0.1, 'sine', 0.2); } }, 2000); ambNodes.push({ stop: () => clearInterval(industryInterval) });
+                 const bellInterval = setInterval(() => { if (Math.random() > 0.85) { const t = ac.currentTime; playNote(220, t, 2.5, 'sine', 0.15); playNote(554, t, 1.5, 'sine', 0.05); } }, 8000); ambNodes.push({ stop: () => clearInterval(bellInterval) });
+                 const cityScale = [293.66, 329.63, 369.99, 440.00, 493.88, 587.33]; let cityBeat = 0; const cityMusicInterval = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.2) { const note = cityScale[Math.floor(Math.random() * cityScale.length)]; playLute(note, t, 0.15); } if (cityBeat % 4 === 0 || cityBeat % 4 === 2) { playLute(146.83, t, 0.4); } cityBeat++; }, 250); ambNodes.push({ stop: () => clearInterval(cityMusicInterval) });
+            }
+            else if (t === 'tavern') {
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 150; const gain = ac.createGain(); gain.gain.value = 0.25; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); ambNodes.push(noise, gain);
+                const clinkInterval = setInterval(() => { if (Math.random() > 0.6) { playNote(1200, ac.currentTime, 0.05, 'triangle', 0.05); } }, 2500); ambNodes.push({ stop: () => clearInterval(clinkInterval) });
+                const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; let beat = 0; const musicInterval = setInterval(() => { const t = ac.currentTime; if (beat % 4 === 0) { playLute(130.81, t, 0.8); } if (Math.random() > 0.2) { const noteIdx = Math.floor(Math.random() * scale.length); playLute(scale[noteIdx], t + 0.05, 0.4); } beat++; }, 300); ambNodes.push({ stop: () => clearInterval(musicInterval) });
+            }
+            else if (t === 'ocean') {
+                 const drone = ac.createOscillator(); drone.type = 'sawtooth'; drone.frequency.value = 73.42; 
+                 const droneFilter = ac.createBiquadFilter(); droneFilter.type = 'lowpass'; droneFilter.frequency.value = 300; 
+                 const droneGain = ac.createGain(); droneGain.gain.value = 0.05; 
+                 drone.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(masterGain); 
+                 drone.start(now); ambNodes.push(drone, droneGain);
+                 
+                 const shantyScale = [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]; let beat = 0; 
+                 const iv = setInterval(() => { const t = ac.currentTime; 
+                    if (beat % 2 === 0) { playDrum('kick', t); playAccordion(146.83, t, 0.4, 0.2); } 
+                    else { playDrum('snare', t); playAccordion(293.66, t, 0.2, 0.05); } 
+                    if (Math.random() > 0.3) { const n = shantyScale[Math.floor(Math.random()*shantyScale.length)]; playAccordion(n, t, 0.4, 0.15); } 
+                    beat++; 
+                 }, 600); 
+                 ambNodes.push({ stop: () => clearInterval(iv) });
+             }
+             else if (t === 'dungeon') {
+                 const drone1 = ac.createOscillator(); drone1.type = 'triangle'; drone1.frequency.value = 55; const drone2 = ac.createOscillator(); drone2.type = 'sine'; drone2.frequency.value = 58; const droneGain = ac.createGain(); droneGain.gain.value = 0.15; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 300; drone1.connect(filter); drone2.connect(filter); filter.connect(droneGain); droneGain.connect(masterGain); drone1.start(now); drone2.start(now); ambNodes.push(drone1, drone2, droneGain);
+                 const dripInterval = setInterval(() => { if (Math.random() > 0.6) { const t = ac.currentTime; const osc = ac.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(2000 + Math.random() * 500, t); const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15); const pan = ac.createStereoPanner(); pan.pan.value = Math.random() * 2 - 1; const delay = ac.createDelay(); delay.delayTime.value = 0.3; const delayGain = ac.createGain(); delayGain.gain.value = 0.3; osc.connect(g); g.connect(pan); pan.connect(masterGain); g.connect(delay); delay.connect(delayGain); delayGain.connect(masterGain); osc.start(t); osc.stop(t + 0.5); } }, 3000); ambNodes.push({ stop: () => clearInterval(dripInterval) });
+                 const scale = [164.81, 174.61, 196.00, 220.00, 246.94, 261.63, 293.66]; const musicInterval = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.4) { const note = scale[Math.floor(Math.random() * scale.length)]; playNote(note, t, 3.5, 'triangle', 0.08); if (Math.random() > 0.7) { playNote(note / 2, t, 4, 'sine', 0.15); } } }, 4500); ambNodes.push({ stop: () => clearInterval(musicInterval) });
+            }
+            else if (t === 'battle_minor') {
+                // Bum Bum Bum Chi (Kick Kick Kick Snare) with Hum
+                const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 50; 
+                const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 200; 
+                const gain = ac.createGain(); gain.gain.value = 0.1; 
+                osc.connect(filter); filter.connect(gain); gain.connect(masterGain); osc.start(now); ambNodes.push(osc, gain);
+
+                let beat = 0; 
+                let drumCycleCount = 0;
+                let isHumming = false;
+                let humOsc = null;
+                let humGain = null;
+
+                const drumInterval = setInterval(() => { 
+                    const t = ac.currentTime; 
+                    
+                    // Drum Logic (Bum Bum Bum Chi)
+                    const step = beat % 4;
+                    if (step === 0 || step === 1 || step === 2) { // Bum Bum Bum
+                        playDrum('kick', t); 
+                    } else { // Chi
+                        playDrum('snare', t); 
+                    }
+                    
+                    // Hum Logic (Wait 4 cycles, Hum 4 sec, Wait 2 cycles)
+                    // 1 cycle = 4 beats. 1 beat = 500ms. 1 cycle = 2 seconds.
+                    if (step === 3) { // End of a cycle
+                        drumCycleCount++;
+                        
+                        // Start Hum after 4 cycles (8 seconds)
+                        if (drumCycleCount === 4 && !isHumming) {
+                            isHumming = true;
+                            humOsc = ac.createOscillator();
+                            humOsc.type = 'sine';
+                            humOsc.frequency.value = 55; // Low A drone
+                            humGain = ac.createGain();
+                            humGain.gain.setValueAtTime(0, t);
+                            humGain.gain.linearRampToValueAtTime(0.3, t + 1); // Fade in
+                            humOsc.connect(humGain);
+                            humGain.connect(masterGain);
+                            humOsc.start(t);
+                            ambNodes.push(humOsc, humGain);
+                            
+                            // Stop Hum after 4 seconds (2 cycles)
+                            setTimeout(() => {
+                                if (humGain) {
+                                    humGain.gain.linearRampToValueAtTime(0, ac.currentTime + 1);
+                                    setTimeout(() => {
+                                        if(humOsc) { 
+                                            try { humOsc.stop(); } catch(e){} 
+                                            // Cleanup form ambNodes array to prevent memory leak if running long
+                                            const idx = ambNodes.indexOf(humOsc);
+                                            if (idx > -1) ambNodes.splice(idx, 2); 
+                                        }
+                                        isHumming = false;
+                                        // Reset logic based on total sequence of 8 cycles
+                                        if (drumCycleCount >= 8) {
+                                            drumCycleCount = 0;
+                                        }
+                                    }, 1000);
+                                }
+                            }, 4000);
+                        }
+                    }
+
+                    beat++; 
+                }, 500); // 120 BPM
+                ambNodes.push({ stop: () => clearInterval(drumInterval) });
+            }
+            else if (t === 'battle_major') {
+                const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 35; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 200; const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.25; const lfoGain = ac.createGain(); lfoGain.gain.value = 150; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = ac.createGain(); gain.gain.value = 0.2; osc.connect(filter); filter.connect(gain); gain.connect(masterGain); osc.start(now); lfo.start(now); ambNodes.push(osc, filter, gain, lfo, lfoGain);
+                let beat = 0; const drumInterval = setInterval(() => { const t = ac.currentTime; if (beat % 4 === 0) { playDrum('kick', t); playDrum('tom', t + 0.1); } if (beat % 4 === 2) { playDrum('snare', t); playDrum('kick', t); } playDrum('hihat', t); playDrum('hihat', t + 0.21); beat++; }, 428); ambNodes.push({ stop: () => clearInterval(drumInterval) });
+            }
+            else if (t === 'sleep') {
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 120; const gain = ac.createGain(); gain.gain.value = 0.3; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); ambNodes.push(noise, gain);
+                const crackleInterval = setInterval(() => { if (Math.random() > 0.7) { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2000; const g = ac.createGain(); g.gain.value = 0.1 + Math.random() * 0.1; g.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.05); n.connect(f); f.connect(g); g.connect(masterGain); n.start(); n.stop(ac.currentTime + 0.05); } }, 200); ambNodes.push({ stop: () => clearInterval(crackleInterval) });
+                const scale = [196.00, 220.00, 246.94, 293.66, 329.63]; const sleepMusicInterval = setInterval(() => { if (Math.random() > 0.4) { const t = ac.currentTime; const noteIdx = Math.floor(Math.random() * scale.length); playNote(scale[noteIdx], t, 4, 'sine', 0.1); if (Math.random() > 0.5) { playNote(scale[(noteIdx + 2) % scale.length], t + 0.5, 4, 'sine', 0.08); } } }, 5000); ambNodes.push({ stop: () => clearInterval(sleepMusicInterval) });
+            }
         };
 
         // Init
