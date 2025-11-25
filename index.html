@@ -1389,6 +1389,27 @@
 
         // --- Soundboard ---
         const ac = new (window.AudioContext||window.webkitAudioContext)();
+        
+        // FIX: Mobile Audio Unlocker
+        // Registers a one-time listener to wake up the audio context on the first touch/click
+        const unlockMobileAudio = () => {
+            if (ac.state === 'suspended') {
+                ac.resume();
+            }
+            // Play a tiny silent buffer to force the audio thread to wake up on iOS/Android
+            const buffer = ac.createBuffer(1, 1, 22050);
+            const source = ac.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ac.destination);
+            source.start(0);
+            
+            // Remove listeners once unlocked
+            document.removeEventListener('touchstart', unlockMobileAudio);
+            document.removeEventListener('click', unlockMobileAudio);
+        };
+        document.addEventListener('touchstart', unlockMobileAudio);
+        document.addEventListener('click', unlockMobileAudio);
+
         const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
         let ambNodes = []; let ambType = null;
         const noiseBuf = ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate);
