@@ -121,7 +121,7 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .collapsible-header { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #334155; border-radius: 8px; }
         .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 10px; }
-        .collapsible-content.expanded { max-height: 1000px; padding: 10px; }
+        .collapsible-content.expanded { max-height: 8000px; padding: 10px; }
         .arrow-icon { transition: transform 0.3s ease; }
         .expanded .arrow-icon { transform: rotate(90deg); }
         .sound-btn { transition: all 0.1s ease; }
@@ -497,6 +497,9 @@
         </div>
     </div>
 
+    <!-- Dice Visuals Canvas -->
+    <canvas id="dice-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
     <script>
         // --- Global State ---
         let currentTab = 'improv', currentSubTab = 'prepNotes', savedStatblocks = [], lastGeneratedNpc = null, lastGeneratedMonster = null, combatants = [], currentTurnIndex = -1, lastRoll = 0;
@@ -590,7 +593,13 @@
                 const div = document.createElement('div'); div.className = 'note-item card p-0 rounded-lg shadow-md'; div.id = `note-${n.id}`;
                 // Use innerHTML content as raw HTML, which is necessary if we save rich HTML blocks (like the statblocks)
                 div.innerHTML = `<div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')"><span class="font-bold text-indigo-300 truncate">${n.title}</span><span class="text-gray-400">▼</span></div>
-                <div class="collapsible-content" id="content-${n.id}"><div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div><div class="flex justify-end p-2 gap-2"><button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 px-2 py-1 rounded">Edit</button><button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 px-2 py-1 rounded">Delete</button></div></div>`;
+                <div class="collapsible-content" id="content-${n.id}">
+                    <div class="flex justify-end p-2 gap-2 border-b border-gray-700 mb-2">
+                        <button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold">Edit</button>
+                        <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold">Delete</button>
+                    </div>
+                    <div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div>
+                </div>`;
                 list.appendChild(div);
             });
         }
@@ -836,7 +845,171 @@
             let detailsText = `[${rolls.join(', ')}]`;
             if (modifier !== 0) detailsText += ` ${modString}`;
             detailsDisplay.textContent = `${numDice}d${diceType}${modString}: ${detailsText}`;
-        }
+
+            // TRIGGER VISUALS
+            if (window.throwDiceVisuals) {
+                window.throwDiceVisuals(rolls, diceType);
+            }
+        }; // <--- Fixed Semicolon
+
+        // --- DICE VISUALS ENGINE ---
+        (function() {
+            const canvas = document.getElementById('dice-canvas');
+            const ctx = canvas.getContext('2d');
+            let dice = [];
+            let animationId = null;
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            class VisualDie {
+                constructor(value, type) {
+                    this.value = value;
+                    this.type = type; // 4, 6, 8, 10, 12, 20, 100
+                    this.radius = 25;
+                    
+                    // Start from bottom center
+                    this.x = canvas.width / 2;
+                    this.y = canvas.height + 50;
+                    
+                    // Random upward and outward velocity
+                    this.vx = (Math.random() - 0.5) * 30; // Spread
+                    this.vy = -(Math.random() * 15 + 25); // Shoot up force
+                    
+                    this.angle = Math.random() * Math.PI * 2;
+                    this.vAngle = (Math.random() - 0.5) * 0.5; // Spin speed
+                    
+                    this.settled = false;
+                    this.color = `hsl(${Math.random()*50 + 250}, 70%, 60%)`; // Purple/Blue hues
+                }
+
+                update() {
+                    if (this.settled) return;
+
+                    // Gravity
+                    this.vy += 1.5; 
+                    
+                    // Move
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.angle += this.vAngle;
+
+                    // Bounce Walls
+                    if (this.x < this.radius) { this.x = this.radius; this.vx *= -0.7; }
+                    if (this.x > canvas.width - this.radius) { this.x = canvas.width - this.radius; this.vx *= -0.7; }
+
+                    // Bounce Floor (Virtual floor slightly above screen bottom)
+                    const floorY = canvas.height - 100;
+                    if (this.y > floorY - this.radius) {
+                        this.y = floorY - this.radius;
+                        this.vy *= -0.6; // Energy loss
+                        this.vx *= 0.9;  // Friction
+                        this.vAngle *= 0.9; // Spin friction
+                        
+                        // Stop if slow enough
+                        if (Math.abs(this.vy) < 2 && Math.abs(this.vx) < 1) {
+                            this.settled = true;
+                        }
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.angle);
+                    
+                    ctx.fillStyle = this.color;
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 10;
+
+                    ctx.beginPath();
+                    this.drawShape();
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Text
+                    ctx.shadowBlur = 0;
+                    ctx.rotate(-this.angle); // Keep text upright-ish? No, spin with it looks better
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 16px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.value, 0, 0);
+                    
+                    ctx.restore();
+                }
+
+                drawShape() {
+                    const r = this.radius;
+                    if (this.type === 6) { // Square
+                        ctx.rect(-r, -r, r*2, r*2);
+                    } else if (this.type === 4) { // Triangle
+                        ctx.moveTo(0, -r);
+                        ctx.lineTo(r, r);
+                        ctx.lineTo(-r, r);
+                        ctx.closePath();
+                    } else if (this.type === 12 || this.type === 20) { // Hexagonish
+                        for (let i = 0; i < 6; i++) {
+                            const a = (Math.PI * 2 * i) / 6;
+                            ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+                        }
+                        ctx.closePath();
+                    } else if (this.type === 8 || this.type === 10) { // Diamond
+                        ctx.moveTo(0, -r);
+                        ctx.lineTo(r, 0);
+                        ctx.lineTo(0, r);
+                        ctx.lineTo(-r, 0);
+                        ctx.closePath();
+                    } else { // Circle default
+                        ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    }
+                }
+            }
+
+            function animate() {
+                if (dice.length === 0) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                let allSettled = true;
+                dice.forEach(d => {
+                    d.update();
+                    d.draw();
+                    if (!d.settled) allSettled = false;
+                });
+
+                // Stop loop if all settled for a while? Or keep drawing static
+                // Let's fade out after settled
+                if (allSettled) {
+                    // setTimeout(() => { dice = []; ctx.clearRect(0,0,canvas.width,canvas.height); }, 3000); // Auto clear
+                }
+                
+                animationId = requestAnimationFrame(animate);
+            }
+
+            window.throwDiceVisuals = (rolls, type) => {
+                dice = []; // Clear old
+                if (animationId) cancelAnimationFrame(animationId);
+                
+                rolls.forEach(val => {
+                    dice.push(new VisualDie(val, type));
+                });
+                
+                animate();
+                
+                // Auto-clear visuals after 4 seconds to keep screen clean
+                setTimeout(() => {
+                    dice = [];
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    cancelAnimationFrame(animationId);
+                }, 4000);
+            };
+        })();
 
         // --- Statblocks ---
         window.setupStatblocksListener = () => {
@@ -1227,41 +1400,11 @@
         }
 
 
-        // New Wiki Loot Table
-        const wikiLootTable = [
-            { name: "Armblade", slug: "armblade", rarity: "Common" },
-            { name: "Bag of Holding", slug: "bag-of-holding", rarity: "Uncommon" },
-            { name: "Boots of Elvenkind", slug: "boots-of-elvenkind", rarity: "Uncommon" },
-            { name: "Cloak of Protection", slug: "cloak-of-protection", rarity: "Uncommon" },
-            { name: "Broom of Flying", slug: "broom-of-flying", rarity: "Uncommon" },
-            { name: "Decanter of Endless Water", slug: "decanter-of-endless-water", rarity: "Uncommon" },
-            { name: "Eversmoking Bottle", slug: "eversmoking-bottle", rarity: "Uncommon" },
-            { name: "Immovable Rod", slug: "immovable-rod", rarity: "Uncommon" },
-            { name: "Lantern of Revealing", slug: "lantern-of-revealing", rarity: "Uncommon" },
-            { name: "Winged Boots", slug: "winged-boots", rarity: "Uncommon" },
-            { name: "Amulet of Health", slug: "amulet-of-health", rarity: "Rare" },
-            { name: "Belt of Hill Giant Strength", slug: "belt-of-hill-giant-strength", rarity: "Rare" },
-            { name: "Cloak of Invisibility", slug: "cloak-of-invisibility", rarity: "Legendary" },
-            { name: "Potion of Healing", slug: "potion-of-healing", rarity: "Common" },
-            { name: "Spell Scroll", slug: "spell-scroll", rarity: "Varies" }
-        ];
-
         window.generateLoot = async () => {
-             const source = document.getElementById('loot-source').value;
              const btn = document.getElementById('generate-loot-button'); 
              const spinner = document.getElementById('loot-loading-spinner');
              const outputDiv = document.getElementById('loot-output');
-             
              btn.disabled = true;
-             
-             // WIKI MODE
-             if (source === 'wiki') {
-                 outputDiv.innerHTML = generateWikiLoot(5);
-                 btn.disabled = false;
-                 return;
-             }
-
-             // AI MODE
              spinner.classList.remove('hidden');
              outputDiv.textContent = "Generating loot list...";
 
@@ -1276,24 +1419,6 @@
                  spinner.classList.add('hidden');
              }
         };
-
-        function generateWikiLoot(count) {
-            let outputHtml = "<h3 class='text-lg font-bold text-yellow-300 mb-2'>Wiki Loot (Random)</h3><ul class='list-disc list-inside space-y-1'>";
-            
-            for (let i = 0; i < count; i++) {
-                // Pick a random item
-                const item = wikiLootTable[Math.floor(Math.random() * wikiLootTable.length)];
-                
-                // Construct the URL
-                const url = `https://dnd5e.wikidot.com/wondrous-items:${item.slug}`;
-                
-                // Add list item with link
-                outputHtml += `<li><a href="${url}" target="_blank" class="text-blue-400 hover:underline font-semibold">${item.name}</a> <span class="text-gray-500 text-xs ml-1">(${item.rarity})</span></li>`;
-            }
-            
-            outputHtml += "</ul>";
-            return outputHtml;
-        }
         
         // Other generators follow same pattern
         window.generateCreativeIdea = async () => {
