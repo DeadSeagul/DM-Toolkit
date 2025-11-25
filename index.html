@@ -230,7 +230,7 @@
             <div id="improv" class="tab-content">
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
                     <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
-                    <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key. Saved locally.</p>
+                    <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key. Saved locally. Get API Key <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline">Here</a>.</p>
                     <div class="flex gap-2">
                         <input type="password" id="user-api-key" placeholder="Paste API Key (AIza...)" class="flex-1 p-2 rounded-lg input-style text-sm">
                         <button onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-200">Save</button>
@@ -956,8 +956,17 @@
                         headers: {'Content-Type': 'application/json'}, 
                         body: JSON.stringify(payload) 
                     });
+                    
                     if (res.ok) return await res.json();
                     
+                    // STOP RETRYING if the error is 400 (Bad Request / Invalid Key)
+                    if (res.status === 400) {
+                        const errText = await res.text();
+                        console.error("API 400 Error:", errText);
+                        alert("Invalid API Key. Please go to the 'Prep' tab and update your Google Gemini API Key.");
+                        throw new Error("Invalid API Key (400). Check Prep tab.");
+                    }
+
                     // If not OK, check if it's a rate limit error (429) or temporary (5xx)
                     if (res.status === 429 || res.status >= 500) {
                         const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
@@ -967,7 +976,7 @@
                     throw new Error(`API returned status ${res.status}: ${await res.text()}`);
 
                 } catch (error) {
-                    if (i === 2) throw error; // Re-throw the error on the final attempt
+                    if (i === 2 || error.message.includes("Invalid API Key")) throw error; // Re-throw immediately if invalid key
                     // If network error, still try to retry with backoff
                     const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
