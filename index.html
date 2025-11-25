@@ -345,6 +345,12 @@
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-yellow-300">Loot Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="col-span-2"><label class="block text-xs font-medium text-gray-400 mb-1">Source</label>
+                            <select id="loot-source" class="w-full p-2 rounded-lg input-style text-sm">
+                                <option value="ai">AI Generator (Creative)</option>
+                                <option value="wiki">Official Wiki (Rules)</option>
+                            </select>
+                        </div>
                         <div><label class="block text-xs font-medium text-gray-400 mb-1">Level/CR</label><input type="text" id="loot-level" value="3" class="w-full p-2 rounded-lg input-style text-sm"></div>
                         <div><label class="block text-xs font-medium text-gray-400 mb-1">Type</label><select id="loot-type" class="w-full p-2 rounded-lg input-style text-sm"><option value="Individual">Individual</option><option value="Hoard">Hoard</option><option value="Shop Inventory">Shop</option></select></div>
                     </div>
@@ -376,9 +382,20 @@
                         <button onclick="playTone('spell')" class="sound-btn bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-purple-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">🔮</span><span class="text-xs">Spell</span></button>
                         <button onclick="playTone('mystery')" class="sound-btn bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-indigo-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">👻</span><span class="text-xs">Mystery</span></button>
                         <button onclick="playTone('rest')" class="sound-btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-blue-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">💤</span><span class="text-xs">Rest</span></button>
-                        <button onclick="playTone('trap')" class="sound-btn bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-yellow-800 flex flex-col items-center justify-对着">⚠️<span class="text-xs">Trap</span></button>
+                        <button onclick="playTone('trap')" class="sound-btn bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-yellow-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">⚠️</span><span class="text-xs">Trap</span></button>
                         <button onclick="playTone('boss')" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-gray-900 flex flex-col items-center justify-center"><span class="text-2xl mb-1">💀</span><span class="text-xs">Boss</span></button>
                     </div>
+
+                    <!-- Animal Sounds Section -->
+                    <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider border-t border-gray-700 pt-4">Creature Sounds</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+                        <button onclick="playTone('wolf')" class="sound-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-md border-b-4 border-gray-800 flex flex-col items-center justify-center"><span class="text-xl mb-1">🐺</span><span class="text-xs">Wolf</span></button>
+                        <button onclick="playTone('bear')" class="sound-btn bg-orange-800 hover:bg-orange-700 text-white font-bold py-3 rounded-lg shadow-md border-b-4 border-orange-950 flex flex-col items-center justify-center"><span class="text-xl mb-1">🐻</span><span class="text-xs">Bear</span></button>
+                        <button onclick="playTone('bird')" class="sound-btn bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 rounded-lg shadow-md border-b-4 border-sky-800 flex flex-col items-center justify-center"><span class="text-xl mb-1">🐦</span><span class="text-xs">Bird</span></button>
+                        <button onclick="playTone('snake')" class="sound-btn bg-green-800 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md border-b-4 border-green-950 flex flex-col items-center justify-center"><span class="text-xl mb-1">🐍</span><span class="text-xs">Snake</span></button>
+                        <button onclick="playTone('insect')" class="sound-btn bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md border-b-4 border-yellow-900 flex flex-col items-center justify-center"><span class="text-xl mb-1">🦗</span><span class="text-xs">Insect</span></button>
+                    </div>
+
                     <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider border-t border-gray-700 pt-4">Ambience Loops</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <button onclick="toggleAmbience('village')" id="ambience-village" class="sound-btn bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow-md border border-teal-600 flex flex-col items-center justify-center"><span class="text-xl mb-1">🏘️</span><span class="text-xs">Village</span></button>
@@ -1159,11 +1176,41 @@
         }
 
 
+        // New Wiki Loot Table
+        const wikiLootTable = [
+            { name: "Armblade", slug: "armblade", rarity: "Common" },
+            { name: "Bag of Holding", slug: "bag-of-holding", rarity: "Uncommon" },
+            { name: "Boots of Elvenkind", slug: "boots-of-elvenkind", rarity: "Uncommon" },
+            { name: "Cloak of Protection", slug: "cloak-of-protection", rarity: "Uncommon" },
+            { name: "Broom of Flying", slug: "broom-of-flying", rarity: "Uncommon" },
+            { name: "Decanter of Endless Water", slug: "decanter-of-endless-water", rarity: "Uncommon" },
+            { name: "Eversmoking Bottle", slug: "eversmoking-bottle", rarity: "Uncommon" },
+            { name: "Immovable Rod", slug: "immovable-rod", rarity: "Uncommon" },
+            { name: "Lantern of Revealing", slug: "lantern-of-revealing", rarity: "Uncommon" },
+            { name: "Winged Boots", slug: "winged-boots", rarity: "Uncommon" },
+            { name: "Amulet of Health", slug: "amulet-of-health", rarity: "Rare" },
+            { name: "Belt of Hill Giant Strength", slug: "belt-of-hill-giant-strength", rarity: "Rare" },
+            { name: "Cloak of Invisibility", slug: "cloak-of-invisibility", rarity: "Legendary" },
+            { name: "Potion of Healing", slug: "potion-of-healing", rarity: "Common" },
+            { name: "Spell Scroll", slug: "spell-scroll", rarity: "Varies" }
+        ];
+
         window.generateLoot = async () => {
+             const source = document.getElementById('loot-source').value;
              const btn = document.getElementById('generate-loot-button'); 
              const spinner = document.getElementById('loot-loading-spinner');
              const outputDiv = document.getElementById('loot-output');
+             
              btn.disabled = true;
+             
+             // WIKI MODE
+             if (source === 'wiki') {
+                 outputDiv.innerHTML = generateWikiLoot(5);
+                 btn.disabled = false;
+                 return;
+             }
+
+             // AI MODE
              spinner.classList.remove('hidden');
              outputDiv.textContent = "Generating loot list...";
 
@@ -1178,6 +1225,24 @@
                  spinner.classList.add('hidden');
              }
         };
+
+        function generateWikiLoot(count) {
+            let outputHtml = "<h3 class='text-lg font-bold text-yellow-300 mb-2'>Wiki Loot (Random)</h3><ul class='list-disc list-inside space-y-1'>";
+            
+            for (let i = 0; i < count; i++) {
+                // Pick a random item
+                const item = wikiLootTable[Math.floor(Math.random() * wikiLootTable.length)];
+                
+                // Construct the URL
+                const url = `https://dnd5e.wikidot.com/wondrous-items:${item.slug}`;
+                
+                // Add list item with link
+                outputHtml += `<li><a href="${url}" target="_blank" class="text-blue-400 hover:underline font-semibold">${item.name}</a> <span class="text-gray-500 text-xs ml-1">(${item.rarity})</span></li>`;
+            }
+            
+            outputHtml += "</ul>";
+            return outputHtml;
+        }
         
         // Other generators follow same pattern
         window.generateCreativeIdea = async () => {
@@ -1549,6 +1614,96 @@
                     gain.gain.linearRampToValueAtTime(0.5, now + 0.1);
                     gain.gain.exponentialRampToValueAtTime(0.001, now + 3);
                     osc.start(now); osc.stop(now + 3);
+                    break;
+                
+                // --- Animal Sounds ---
+                case 'wolf': // Howl
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.linearRampToValueAtTime(600, now + 0.5); // Pitch up
+                    osc.frequency.linearRampToValueAtTime(300, now + 2.5); // Long pitch down
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.2, now + 0.5);
+                    gain.gain.linearRampToValueAtTime(0, now + 2.5);
+                    osc.connect(gain); gain.connect(masterGain);
+                    osc.start(now); osc.stop(now + 2.5);
+                    break;
+                case 'bear': // Roar
+                    osc.type = 'sawtooth'; osc.frequency.value = 50;
+                    const bearF = ac.createBiquadFilter(); bearF.type = 'lowpass';
+                    bearF.frequency.setValueAtTime(100, now);
+                    bearF.frequency.linearRampToValueAtTime(600, now + 0.2); // Filter opens
+                    bearF.frequency.linearRampToValueAtTime(100, now + 1.0); // Filter closes
+                    osc.connect(bearF); bearF.connect(gain); gain.connect(masterGain);
+                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.4, now + 0.1); gain.gain.linearRampToValueAtTime(0, now + 1.0);
+                    osc.start(now); osc.stop(now + 1.0);
+                    break;
+                case 'bird': // Chirp
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(2000, now);
+                    osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
+                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.01); gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                    osc.connect(gain); gain.connect(masterGain);
+                    osc.start(now); osc.stop(now + 0.1);
+                    // Second chirp
+                    setTimeout(() => {
+                        const o2 = ac.createOscillator(); const g2 = ac.createGain();
+                        o2.type = 'sine'; o2.frequency.setValueAtTime(2500, ac.currentTime); o2.frequency.exponentialRampToValueAtTime(1200, ac.currentTime + 0.1);
+                        g2.gain.setValueAtTime(0, ac.currentTime); g2.gain.linearRampToValueAtTime(0.1, ac.currentTime + 0.01); g2.gain.linearRampToValueAtTime(0, ac.currentTime + 0.1);
+                        o2.connect(g2); g2.connect(masterGain);
+                        o2.start(ac.currentTime); o2.stop(ac.currentTime + 0.1);
+                    }, 150);
+                    break;
+                case 'snake': // Hiss
+                    {
+                    const n = ac.createBufferSource(); n.buffer = noiseBuf;
+                    const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 3000;
+                    n.connect(f); f.connect(gain); gain.connect(masterGain);
+                    gain.gain.setValueAtTime(0, now); 
+                    gain.gain.linearRampToValueAtTime(0.15, now + 0.5); 
+                    gain.gain.linearRampToValueAtTime(0, now + 2.0);
+                    n.start(now); n.stop(now + 2.0);
+                    }
+                    break;
+                case 'insect': // Realistic Cricket (Stridulation pulses)
+                    {
+                        // A single "pulse" represents one click of the wing scraper
+                        const playPulse = (t) => {
+                            const osc = ac.createOscillator(); 
+                            osc.type = 'sawtooth'; // Sawtooth + Bandpass = Insect body resonance
+                            osc.frequency.value = 4500; // Typical Field Cricket pitch
+
+                            const filter = ac.createBiquadFilter();
+                            filter.type = 'bandpass';
+                            filter.frequency.value = 4500;
+                            filter.Q.value = 10; // High Q for distinct tone
+
+                            const g = ac.createGain();
+                            
+                            osc.connect(filter); filter.connect(g); g.connect(masterGain);
+
+                            // Instant attack, fast decay (plucked string physics)
+                            g.gain.setValueAtTime(0, t);
+                            g.gain.linearRampToValueAtTime(0.2, t + 0.002); 
+                            g.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+
+                            osc.start(t); osc.stop(t + 0.03);
+                        };
+
+                        // A "chirp" is actually 3-5 rapid pulses creating a trill
+                        const playChirp = (t) => {
+                            const pulseCount = 4;
+                            const pulseGap = 0.018; // 18ms spacing creates the "Trrr" texture
+                            for(let i=0; i<pulseCount; i++) {
+                                playPulse(t + (i * pulseGap));
+                            }
+                        };
+
+                        // Play a standard call pattern: Chirp... Chirp... Chirp
+                        playChirp(now);
+                        playChirp(now + 0.3); // Pause
+                        playChirp(now + 0.6); // Pause
+                    }
                     break;
             }
         };
