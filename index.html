@@ -195,15 +195,20 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-6 bg-gray-800 p-3 rounded-lg border border-gray-700 shadow-lg">
             <h1 class="text-2xl font-bold text-indigo-400 flex items-center gap-2"><span>🛡️</span> Aegis DM Toolkit</h1>
-            <div>
-                <button id="login-btn" onclick="loginWithGoogle()" class="hidden bg-white text-gray-900 hover:bg-gray-200 font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-2 transition duration-200">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
-                    Sign in with Google
-                </button>
-                <div id="user-profile" class="hidden flex items-center gap-3">
-                    <div class="text-right hidden sm:block"><div id="user-name" class="text-sm font-semibold text-white">Adventurer</div><div class="text-xs text-green-400">Online & Saving</div></div>
-                    <img id="user-avatar" src="" alt="User" class="w-9 h-9 rounded-full border-2 border-indigo-500">
-                    <button onclick="logoutUser()" class="bg-red-900/50 hover:bg-red-800 text-red-200 p-2 rounded-lg text-xs border border-red-800 transition duration-200">Sign Out</button>
+            <div class="flex items-center gap-3">
+                <a href="https://ko-fi.com" target="_blank" class="bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-200 border border-yellow-600/50 text-xs font-bold py-2 px-3 rounded-lg transition duration-200 flex items-center gap-2 no-underline">
+                    <span>☕</span> <span class="hidden sm:inline">Donate</span>
+                </a>
+                <div>
+                    <button id="login-btn" onclick="loginWithGoogle()" class="hidden bg-white text-gray-900 hover:bg-gray-200 font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-2 transition duration-200">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+                        Sign in with Google
+                    </button>
+                    <div id="user-profile" class="hidden flex items-center gap-3">
+                        <div class="text-right hidden sm:block"><div id="user-name" class="text-sm font-semibold text-white">Adventurer</div><div class="text-xs text-green-400">Online & Saving</div></div>
+                        <img id="user-avatar" src="" alt="User" class="w-9 h-9 rounded-full border-2 border-indigo-500">
+                        <button onclick="logoutUser()" class="bg-red-900/50 hover:bg-red-800 text-red-200 p-2 rounded-lg text-xs border border-red-800 transition duration-200">Sign Out</button>
+                    </div>
                 </div>
             </div>
         </div>
