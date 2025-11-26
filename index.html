@@ -666,7 +666,35 @@
                     <div id="loot-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Loot appears here.</div>
                     <button onclick="saveGeneratedContent('lootNotes')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg text-sm">Save to Loot Notes</button>
                 </div>
+                
+                <!-- Gold Splitter Card -->
+<div class="card p-4 rounded-lg shadow-xl mt-6 border border-yellow-700/30">
+    <h2 class="text-xl font-semibold mb-4 text-yellow-400">💰 Loot Splitter</h2>
+    <!-- Input Headers -->
+    <div class="grid grid-cols-5 gap-2 mb-1 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+        <div>PP</div><div>GP</div><div>EP</div><div>SP</div><div>CP</div>
+    </div>
+    <!-- Inputs -->
+    <div class="grid grid-cols-5 gap-2 mb-4">
+        <input type="number" id="loot-pp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-gp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-ep" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-sp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-cp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+    </div>
+    <!-- Controls -->
+    <div class="flex gap-3 items-center mb-4 bg-gray-900/30 p-2 rounded">
+        <span class="text-sm text-gray-300 font-bold">Party Size:</span>
+        <input type="number" id="loot-party-size" value="4" class="w-16 p-2 rounded bg-gray-800 text-white text-center border border-gray-600 font-bold">
+        <button onclick="window.splitLoot()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded transition shadow-lg shadow-yellow-900/20">Split Loot</button>
+    </div>
+    <!-- Result Display -->
+    <div id="loot-split-result" class="text-sm text-yellow-100 text-center min-h-[1.5em] font-mono bg-gray-800/50 p-2 rounded border border-gray-700">
+        Enter amounts to split...
+    </div>
+</div>
             </div>
+        
 
             <!-- Soundboard Tab -->
             <div id="soundboard" class="tab-content hidden">
@@ -2370,6 +2398,42 @@
             if (input) input.value = "";
         };
 
+// --- LOOT SPLITTER LOGIC ---
+        window.splitLoot = function() {
+            const pp = parseInt(document.getElementById('loot-pp').value) || 0;
+            const gp = parseInt(document.getElementById('loot-gp').value) || 0;
+            const ep = parseInt(document.getElementById('loot-ep').value) || 0;
+            const sp = parseInt(document.getElementById('loot-sp').value) || 0;
+            const cp = parseInt(document.getElementById('loot-cp').value) || 0;
+            const count = parseInt(document.getElementById('loot-party-size').value) || 1;
+
+            if (count < 1) return;
+
+            // Convert everything to copper to divide evenly
+            const totalCopper = cp + (sp * 10) + (ep * 50) + (gp * 100) + (pp * 1000);
+            const shareCopper = Math.floor(totalCopper / count);
+            const remainder = totalCopper % count;
+
+            // Convert the share back up to highest denominations
+            let rest = shareCopper;
+            const rPP = Math.floor(rest / 1000); rest %= 1000;
+            const rGP = Math.floor(rest / 100); rest %= 100;
+            const rEP = Math.floor(rest / 50); rest %= 50;
+            const rSP = Math.floor(rest / 10); rest %= 10;
+            const rCP = rest;
+
+            let result = [];
+            if(rPP) result.push(`${rPP}pp`);
+            if(rGP) result.push(`${rGP}gp`);
+            if(rEP) result.push(`${rEP}ep`);
+            if(rSP) result.push(`${rSP}sp`);
+            if(rCP) result.push(`${rCP}cp`);
+            
+            const resultText = result.length > 0 ? "Each gets: " + result.join(", ") : "Nothing to split.";
+            const remainderText = remainder > 0 ? ` <span class='text-red-400'>(${remainder}cp left)</span>` : "";
+
+            document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
+        };
  
     </script>
 
