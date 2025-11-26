@@ -550,6 +550,21 @@
         Reset to Default
     </button>
 </div>
+
+<!-- Dice Texture Uploader -->
+<div class="flex items-center justify-between mb-3 bg-gray-900/50 p-2 rounded-lg border border-gray-700">
+    <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-400">Texture:</span>
+        <!-- Added ID 'dice-texture-input' -->
+        <input type="file" id="dice-texture-input" accept="image/*" onchange="window.uploadDiceTexture(this)" 
+               class="text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700">
+    </div>
+    <!-- Updated onclick to call new function -->
+    <button onclick="window.resetDiceTexture()" class="text-[10px] text-red-400 hover:text-red-300 underline">Reset</button>
+</div>
+
+    <button onclick="window.customDiceImage = null" class="text-[10px] text-red-400 hover:text-red-300 underline">Reset</button>
+</div>
                         <!-- Initiative Roller (Existing) -->
                         <div class="flex items-center space-x-2 mb-4 pb-4 border-b border-gray-700">
                             <button onclick="rollD20()" class="w-1/3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg text-sm">Init D20</button>
@@ -1203,12 +1218,28 @@
             }
         }; // <--- Fixed Semicolon
 
-// --- DICE VISUALS (Unified Custom Color) ---
+// --- DICE VISUALS (Colors, Textures & Spin Fix) ---
         (function() {
             const canvas = document.getElementById('dice-canvas');
             if(!canvas) return;
             const ctx = canvas.getContext('2d');
             let dice = [];
+            
+            // Global to hold the uploaded image
+            window.customDiceImage = null;
+
+            // Function to handle file upload
+            window.uploadDiceTexture = function(input) {
+                if (input.files && input.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() { window.customDiceImage = img; };
+                        img.src = e.target.result;
+                    }
+                    reader.readAsDataURL(input.files[0]);
+                }
+            };
 
             function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
             window.addEventListener('resize', resize); resize();
@@ -1217,27 +1248,24 @@
                 constructor(val, type) { 
                     this.val = val; this.type = type;
                     this.x = canvas.width/2; 
-                    this.y = canvas.height + 30; // Start just off screen
+                    this.y = canvas.height + 30; 
                     this.vx = (Math.random()-0.5)*20; 
-                    this.vy = -(Math.random() * 15 + 20); // Shoot up force
+                    this.vy = -(Math.random() * 15 + 20); 
                     this.angle = 0; this.vAngle = 0.2;
                     
-                    // GET COLOR FROM PICKER (Defaults to Indigo if missing)
+                    // Color fallback
                     const picker = document.getElementById('dice-color-picker');
                     this.color = picker ? picker.value : '#6366f1';
                 }
                 
                 update() { 
-                    this.vy += 1; // Gravity
-                    this.x += this.vx; 
-                    this.y += this.vy; 
-                    this.angle += this.vAngle;
+                    this.vy += 1; this.x += this.vx; this.y += this.vy; this.angle += this.vAngle;
                     
                     // Floor Collision
                     if(this.y > canvas.height - 50) { 
                         this.y = canvas.height - 50; 
-                        this.vy *= -0.6; // Bounce
-                        this.vx *= 0.9;  // Friction
+                        this.vy *= -0.6; 
+                        this.vx *= 0.9; 
 
                         // If moving very slowly, stop spinning completely
                         if(Math.abs(this.vx) < 0.5 && Math.abs(this.vy) < 1) {
@@ -1246,32 +1274,48 @@
                     } 
                     
                     // Wall Collision
-                    if(this.x < 20 || this.x > canvas.width - 20) {
-                        this.vx *= -0.8;
-                    }
-                   
+                    if(this.x < 20 || this.x > canvas.width - 20) this.vx *= -0.8;
                 }
                 
                 draw() { 
-                    ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-                    ctx.fillStyle=this.color; 
-                    ctx.strokeStyle='white';
-                    ctx.lineWidth=1;
+                    ctx.save(); 
+                    ctx.translate(this.x, this.y); 
+                    ctx.rotate(this.angle);
                     
                     ctx.beginPath();
-                    // Draw correct shapes
-                    if(this.type === 4) { ctx.moveTo(0,-20); ctx.lineTo(20,15); ctx.lineTo(-20,15); } // Triangle
-                    else if(this.type === 6) { ctx.rect(-15,-15,30,30); } // Square
-                    else if(this.type === 8 || this.type === 10) { ctx.moveTo(0,-25); ctx.lineTo(15,0); ctx.lineTo(0,25); ctx.lineTo(-15,0); } // Diamond
-                    else if(this.type === 12) { for(let i=0;i<5;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/5-Math.PI/2), 22*Math.sin(i*2*Math.PI/5-Math.PI/2)); } // Pentagon
-                    else { for(let i=0;i<6;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/6), 22*Math.sin(i*2*Math.PI/6)); } // Hexagon (d20)
+                    // Draw Shape Path
+                    if(this.type === 4) { ctx.moveTo(0,-20); ctx.lineTo(20,15); ctx.lineTo(-20,15); } 
+                    else if(this.type === 6) { ctx.rect(-15,-15,30,30); } 
+                    else if(this.type === 8 || this.type === 10) { ctx.moveTo(0,-25); ctx.lineTo(15,0); ctx.lineTo(0,25); ctx.lineTo(-15,0); } 
+                    else if(this.type === 12) { for(let i=0;i<5;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/5-Math.PI/2), 22*Math.sin(i*2*Math.PI/5-Math.PI/2)); } 
+                    else { for(let i=0;i<6;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/6), 22*Math.sin(i*2*Math.PI/6)); } 
                     ctx.closePath();
                     
-                    ctx.fill(); 
+                    // FILL LOGIC: Use Image if exists, otherwise Color
+                    if (window.customDiceImage) {
+                        ctx.save();
+                        ctx.clip(); // Clip image to the shape defined above
+                        // Draw image centered and scaled to cover the die
+                        ctx.drawImage(window.customDiceImage, -25, -25, 50, 50);
+                        ctx.restore();
+                    } else {
+                        ctx.fillStyle = this.color;
+                        ctx.fill();
+                    }
+
+                    // Border & Text
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
                     ctx.stroke();
                     
-                    ctx.fillStyle='white'; ctx.font='bold 14px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                    ctx.fillStyle = 'white'; 
+                    ctx.shadowColor = 'black';
+                    ctx.shadowBlur = 4;
+                    ctx.font = 'bold 14px Arial'; 
+                    ctx.textAlign = 'center'; 
+                    ctx.textBaseline = 'middle';
                     ctx.fillText(this.val, 0, 2); 
+                    
                     ctx.restore();
                 }
             }
@@ -1284,14 +1328,11 @@
             animate();
 
             window.throwDiceVisuals = (rolls, type) => {
-                // Create new dice
                 dice = rolls.map(r => new VisualDie(r, type));
-                
-                // Vanish completely after 5 seconds
                 setTimeout(() => {
                     dice = [];
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                }, 5000);
+                }, 3500);
             };
         })();
 
@@ -2327,6 +2368,16 @@
             
             switchTab('improv');
         });
+
+        // --- Fix for Dice Reset ---
+        window.resetDiceTexture = function() {
+            // 1. Remove the image from the dice engine
+            window.customDiceImage = null;
+            
+            // 2. Clear the file input so you can upload the same file again if you want
+            const input = document.getElementById('dice-texture-input');
+            if (input) input.value = "";
+        };
 
  
     </script>
