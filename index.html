@@ -96,6 +96,7 @@
             if (!window.auth) return;
             try {
                 await signOut(window.auth);
+                window.location.reload(); // Refreshes page to clear all data
             } catch (error) {
                 console.error("Logout failed:", error);
             }
