@@ -543,7 +543,7 @@
         <span class="text-xs text-gray-400">Dice Color:</span>
         <input type="color" id="dice-color-picker" value="#6366f1" class="w-8 h-8 bg-transparent border-none cursor-pointer rounded">
     </div>
-    <span class="text-[10px] text-gray-500">Selects color for next roll</span>
+    <span class="text-[10px] text-gray-500">All dice will use this color</span>
 </div>
     <button onclick="window.customDiceColor = null; document.getElementById('dice-color-picker').value='#6366f1'" 
             class="text-[10px] text-indigo-400 hover:text-white underline">
@@ -1203,7 +1203,7 @@
             }
         }; // <--- Fixed Semicolon
 
-// --- DICE VISUALS (Custom Color & Fixed Physics) ---
+// --- DICE VISUALS (Unified Custom Color) ---
         (function() {
             const canvas = document.getElementById('dice-canvas');
             if(!canvas) return;
@@ -1215,76 +1215,62 @@
 
             class VisualDie {
                 constructor(val, type) { 
-                    this.val = val; 
-                    this.type = type;
-                    this.x = canvas.width / 2; 
-                    this.y = canvas.height + 30; // Start off-screen
+                    this.val = val; this.type = type;
+                    this.x = canvas.width/2; 
+                    this.y = canvas.height + 30; // Start just off screen
+                    this.vx = (Math.random()-0.5)*20; 
+                    this.vy = -(Math.random() * 15 + 20); // Shoot up force
+                    this.angle = 0; this.vAngle = 0.2;
                     
-                    // Physics
-                    this.vx = (Math.random() - 0.5) * 20; 
-                    this.vy = -(Math.random() * 15 + 25); // Shoot up
-                    this.angle = Math.random() * Math.PI; 
-                    this.vAngle = (Math.random() - 0.5) * 0.2;
-                    
-                    // COLOR LOGIC: Grab value from the HTML Color Picker
+                    // GET COLOR FROM PICKER (Defaults to Indigo if missing)
                     const picker = document.getElementById('dice-color-picker');
-                    this.color = picker ? picker.value : '#6366f1'; 
-                    
-                    this.settled = false;
+                    this.color = picker ? picker.value : '#6366f1';
                 }
-
+                
                 update() { 
-                    if (this.settled) return;
-
                     this.vy += 1; // Gravity
                     this.x += this.vx; 
                     this.y += this.vy; 
                     this.angle += this.vAngle;
                     
-                    // Floor Collision (Prevents falling through screen)
-                    const floor = canvas.height - 50;
-                    if(this.y > floor) { 
-                        this.y = floor; 
+                    // Floor Collision
+                    if(this.y > canvas.height - 50) { 
+                        this.y = canvas.height - 50; 
                         this.vy *= -0.6; // Bounce
                         this.vx *= 0.9;  // Friction
-                        
-                        // Stop spinning if slow enough
-                        if(Math.abs(this.vy) < 2 && Math.abs(this.vx) < 1) {
-                            this.settled = true;
+
+                        // If moving very slowly, stop spinning completely
+                        if(Math.abs(this.vx) < 0.5 && Math.abs(this.vy) < 1) {
+                            this.vAngle = 0;
                         }
                     } 
                     
                     // Wall Collision
                     if(this.x < 20 || this.x > canvas.width - 20) {
                         this.vx *= -0.8;
-                        this.x = Math.max(20, Math.min(this.x, canvas.width - 20));
                     }
+                   
                 }
-
+                
                 draw() { 
-                    ctx.save(); 
-                    ctx.translate(this.x, this.y); 
-                    ctx.rotate(this.angle);
-                    
-                    ctx.fillStyle = this.color; 
-                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-                    ctx.lineWidth = 2;
+                    ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+                    ctx.fillStyle=this.color; 
+                    ctx.strokeStyle='white';
+                    ctx.lineWidth=1;
                     
                     ctx.beginPath();
-                    // Draw Shapes
-                    if(this.type === 4) { ctx.moveTo(0,-20); ctx.lineTo(20,15); ctx.lineTo(-20,15); ctx.closePath(); } // Triangle
+                    // Draw correct shapes
+                    if(this.type === 4) { ctx.moveTo(0,-20); ctx.lineTo(20,15); ctx.lineTo(-20,15); } // Triangle
                     else if(this.type === 6) { ctx.rect(-15,-15,30,30); } // Square
-                    else if(this.type === 8 || this.type === 10) { ctx.moveTo(0,-22); ctx.lineTo(15,0); ctx.lineTo(0,22); ctx.lineTo(-15,0); ctx.closePath(); } // Diamond
-                    else if(this.type === 12) { for(let i=0;i<5;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/5-Math.PI/2), 22*Math.sin(i*2*Math.PI/5-Math.PI/2)); ctx.closePath(); } // Pentagon
-                    else { for(let i=0;i<6;i++) ctx.lineTo(20*Math.cos(i*2*Math.PI/6), 20*Math.sin(i*2*Math.PI/6)); ctx.closePath(); } // Hexagon (d20)
+                    else if(this.type === 8 || this.type === 10) { ctx.moveTo(0,-25); ctx.lineTo(15,0); ctx.lineTo(0,25); ctx.lineTo(-15,0); } // Diamond
+                    else if(this.type === 12) { for(let i=0;i<5;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/5-Math.PI/2), 22*Math.sin(i*2*Math.PI/5-Math.PI/2)); } // Pentagon
+                    else { for(let i=0;i<6;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/6), 22*Math.sin(i*2*Math.PI/6)); } // Hexagon (d20)
+                    ctx.closePath();
                     
                     ctx.fill(); 
                     ctx.stroke();
                     
-                    ctx.fillStyle = 'white'; 
-                    ctx.font = 'bold 14px Arial'; 
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle='white'; ctx.font='bold 14px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
                     ctx.fillText(this.val, 0, 2); 
                     ctx.restore();
                 }
@@ -1293,17 +1279,19 @@
             function animate() {
                 ctx.clearRect(0,0,canvas.width,canvas.height);
                 dice.forEach(d => { d.update(); d.draw(); });
-                // Remove dice if too many pile up
-                if (dice.length > 15) dice.shift();
                 requestAnimationFrame(animate);
             }
             animate();
 
             window.throwDiceVisuals = (rolls, type) => {
-                dice = []; // Clear board for new roll
-                rolls.forEach((r, i) => {
-                    setTimeout(() => dice.push(new VisualDie(r, type)), i * 50);
-                });
+                // Create new dice
+                dice = rolls.map(r => new VisualDie(r, type));
+                
+                // Vanish completely after 5 seconds
+                setTimeout(() => {
+                    dice = [];
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }, 5000);
             };
         })();
 
