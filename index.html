@@ -565,15 +565,16 @@
                     <button onclick="window.generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-settlement-text">Generate</span><div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
 
-                <!-- Map Generator (NEW) -->
+                <!-- Map Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-purple-500/30">
                     <h2 class="text-xl font-semibold mb-4 text-purple-300">🗺️ Map Generator</h2>
                     <canvas id="gen-map-canvas" width="600" height="400" class="w-full h-64 bg-gray-900 rounded-lg mb-4 border border-gray-600"></canvas>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 mb-2">
                         <button onclick="window.generateMap('cave')" class="flex-1 bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 rounded-lg text-sm">Generate Cave</button>
                         <button onclick="window.generateMap('dungeon')" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 rounded-lg text-sm">Generate Dungeon</button>
                     </div>
-                    <p class="text-[10px] text-gray-500 mt-2 text-center">Green = Floor, Grey = Wall</p>
+                    <!-- New Save Button -->
+                    <button onclick="window.saveMapToNotes()" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold py-1 rounded-lg text-xs border border-gray-500">💾 Save Map to Notes</button>
                 </div>
                 
                 <!-- Result Display Card -->
@@ -821,22 +822,26 @@
             <div id="notes" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Notes</h2>
+                    
+                    <!-- Navigation with New 'Maps' Button -->
                     <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4 overflow-x-auto">
-                        <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="switchSubTab('prepNotes')">📜 General</button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="enemyNotes" onclick="switchSubTab('enemyNotes')">💀 Enemies</button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="switchSubTab('npcNotes')">👥 NPCs</button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="lootNotes" onclick="switchSubTab('lootNotes')">💰 Loot</button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="window.switchSubTab('prepNotes')">📜 General</button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="enemyNotes" onclick="window.switchSubTab('enemyNotes')">💀 Enemies</button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="window.switchSubTab('npcNotes')">👥 NPCs</button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="lootNotes" onclick="window.switchSubTab('lootNotes')">💰 Loot</button>
+                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="mapNotes" onclick="window.switchSubTab('mapNotes')">🗺️ Maps</button>
                     </div>
+                    
+                    <!-- Note Lists -->
                     <div id="prepNotes-sub-content" class="sub-tab-content"><div id="prepNotes-list" class="scrollable-content space-y-3"></div></div>
                     <div id="enemyNotes-sub-content" class="sub-tab-content hidden"><div id="enemyNotes-list" class="scrollable-content space-y-3"></div></div>
                     <div id="npcNotes-sub-content" class="sub-tab-content hidden"><div id="npcNotes-list" class="scrollable-content space-y-3"></div></div>
                     <div id="lootNotes-sub-content" class="sub-tab-content hidden"><div id="lootNotes-list" class="scrollable-content space-y-3"></div></div>
-                    <button onclick="addNewNote(currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">+ Add Manual Note</button>
-                    <p id="notes-status" class="mt-2 text-sm text-center text-gray-400"></p>
+                    <div id="mapNotes-sub-content" class="sub-tab-content hidden"><div id="mapNotes-list" class="scrollable-content space-y-3"></div></div>
+                    
+                    <button onclick="window.addNewNote(window.currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">+ Add Manual Note</button>
                 </div>
             </div>
-        </div>
-    </div>
 
     <!-- Modals -->
     <div id="edit-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
@@ -2588,6 +2593,63 @@
                 }
             }
         };
+
+// --- MAP SAVING LOGIC ---
+        window.saveMapToNotes = async () => {
+            if (!window.checkAuth()) return;
+            
+            const canvas = document.getElementById('gen-map-canvas');
+            if (!canvas) return;
+
+            // Convert canvas to image string
+            const imgData = canvas.toDataURL("image/png");
+            
+            // Create Note Content (Image Tag)
+            const imgTag = `<img src="${imgData}" class="w-full rounded border border-gray-600 mt-2">`;
+            const title = `Map - ${new Date().toLocaleTimeString()}`;
+            
+            const newNote = { 
+                id: crypto.randomUUID(), 
+                title: title, 
+                content: imgTag, 
+                timestamp: new Date().toISOString() 
+            };
+
+            // Ensure mapNotes array exists
+            if (!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
+            
+            // Save
+            window.structuredNotes.mapNotes.unshift(newNote);
+            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
+            
+            // Go to tab
+            alert("Map Saved!");
+            window.switchTab('notes'); 
+            window.switchSubTab('mapNotes');
+        };
+        
+        // Update database listener to handle mapNotes field
+        // (This patches the existing listener logic without deleting it)
+        const oldSetupNotesListener = window.setupNotesListener;
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady) return;
+            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    window.structuredNotes = {
+                        prepNotes: d.prepNotes || [],
+                        enemyNotes: d.enemyNotes || [],
+                        npcNotes: d.npcNotes || [],
+                        lootNotes: d.lootNotes || [],
+                        mapNotes: d.mapNotes || [] // Added this line
+                    };
+                } else {
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                }
+                if(window.currentTab==='notes') window.renderStructuredNotes(window.currentSubTab);
+            });
+        };
+
     </script>
 
     <!-- Login Modal -->
