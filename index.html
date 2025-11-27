@@ -2487,6 +2487,78 @@
 
             document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
         };
+
+// --- SAFEGUARD: AUTHENTICATION CHECKER ---
+        window.checkAuth = () => {
+            if (!window.isAuthReady || !window.userId) {
+                alert("⚠️ Authentication Required ⚠️\n\nYou must be signed into a Session to save data to the cloud.\n\nPlease log in or create a session now.");
+                window.openLoginModal();
+                return false;
+            }
+            return true;
+        };
+
+        // --- UPDATED SAVE FUNCTIONS (With Login Checks) ---
+        
+        // 1. Save Generated Text (Lore, Settlements, Loot) to Notes
+        window.saveGeneratedContent = async function(destinationTab) {
+            if (!window.checkAuth()) return;
+
+            const outputDiv = document.getElementById('ai-output');
+            let contentToSave = outputDiv.innerHTML.trim();
+            
+            // Special case for Loot tab
+            if (window.currentTab === 'loot') {
+                const lootOut = document.getElementById('loot-output');
+                if(lootOut) contentToSave = lootOut.innerText.trim();
+            }
+
+            if (!contentToSave || contentToSave.startsWith('Error') || contentToSave.includes('Results appear here')) {
+                alert('Nothing to save yet! Generate something first.');
+                return;
+            }
+
+            // Generate a title from the first line
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = contentToSave;
+            const title = tempDiv.textContent.split('\n')[0].substring(0, 40) || 'New Note';
+
+            const newNote = { 
+                id: crypto.randomUUID(), 
+                title: title, 
+                content: contentToSave, 
+                timestamp: new Date().toISOString() 
+            };
+            
+            // Initialize array if it doesn't exist
+            if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
+            
+            window.structuredNotes[destinationTab].unshift(newNote); 
+            await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
+            
+            // Switch view to show the new note
+            window.switchTab('notes'); 
+            window.switchSubTab(destinationTab);
+        };
+
+        // 2. Save Generated NPC to Statblocks
+        window.addNpcToStatblocks = async () => {
+            if (!window.checkAuth()) return;
+            if (!window.lastGeneratedNpc) return alert("No NPC generated yet.");
+            
+            const n = window.lastGeneratedNpc;
+            try { 
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: n.name, 
+                    hp: n.max_hit_points, 
+                    ac: n.armor_class_ac, 
+                    toHit: 0, 
+                    initMod: n.initiative_bonus, 
+                    dmg: n.main_attack, 
+                    timestamp: new Date().toISOString() 
+                }); 
+                alert(
+
  
     </script>
 
