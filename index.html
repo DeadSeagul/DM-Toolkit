@@ -2684,6 +2684,36 @@
             }
         };
 
+// --- FIX FOR API KEY SAVING ---
+        window.saveApiKey = function() {
+            const input = document.getElementById('user-api-key');
+            const status = document.getElementById('api-key-status');
+            
+            if (!input) return alert("Error: Could not find the input box.");
+            
+            const val = input.value.trim();
+            
+            // Basic validation
+            if (val.length < 10) {
+                alert("That doesn't look like a valid API Key (too short).");
+                if(status) {
+                    status.textContent = "Invalid Key";
+                    status.className = "mt-2 text-xs text-red-400";
+                }
+                return;
+            }
+
+            // Save to Local Storage & Global Variable
+            localStorage.setItem('dm_toolkit_api_key', val);
+            window.userApiKey = val;
+
+            // Visual Feedback
+            if (status) {
+                status.textContent = "Key Saved Successfully!";
+                status.className = "mt-2 text-xs text-green-400 font-bold";
+            }
+            alert("API Key Saved!");
+        };
 
  
     </script>
