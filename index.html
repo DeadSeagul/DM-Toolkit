@@ -2060,156 +2060,120 @@
 
         window.playTone = function(type) {
             if(ac.state==='suspended') ac.resume();
-            const now = ac.currentTime;
-            const osc = ac.createOscillator();
-            const gain = ac.createGain();
-            osc.connect(gain); gain.connect(masterGain);
+            const now=ac.currentTime;
+            
+            // Helper to create a simple oscillator
+            const mkOsc = (wave, freq) => {
+                const o = ac.createOscillator(); o.type = wave; o.frequency.value = freq;
+                const g = ac.createGain(); o.connect(g); g.connect(masterGain);
+                return {o, g};
+            };
 
-            switch (type) {
-                // --- SYNTH EFFECTS ---
-                case 'combat_start': // War Horn
-                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(60, now);
-                    const hornF = ac.createBiquadFilter(); hornF.type='lowpass'; 
-                    hornF.frequency.setValueAtTime(200, now); hornF.frequency.linearRampToValueAtTime(2000, now+0.2);
-                    osc.disconnect(); osc.connect(hornF); hornF.connect(gain);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.5, now+0.1); gain.gain.exponentialRampToValueAtTime(0.01, now+2.5);
-                    osc.start(now); osc.stop(now+2.5);
-                    break;
-                case 'success': // Major Triad Fanfare
-                    [523.25, 659.25, 783.99].forEach((f, i) => {
-                        const o = ac.createOscillator(); const g = ac.createGain();
-                        o.type = 'square'; o.frequency.value = f; o.connect(g); g.connect(masterGain);
-                        g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + i*0.05 + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
-                        o.start(now + i*0.05); o.stop(now + 1.0);
-                    });
-                    break;
-                case 'fail': // Sad Trombone
-                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(100, now+1);
-                    gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now+1);
-                    osc.start(now); osc.stop(now+1);
-                    break;
-                case 'spell': // Magic Chime
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(2000, now+1);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.2, now+0.1); gain.gain.exponentialRampToValueAtTime(0.001, now+1.5);
-                    osc.start(now); osc.stop(now+1.5);
-                    break;
-                case 'mystery': // Eerie wobble
-                    osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now);
-                    const lfo = ac.createOscillator(); lfo.frequency.value = 5; 
-                    const lfoG = ac.createGain(); lfoG.gain.value = 20;
-                    lfo.connect(lfoG); lfoG.connect(osc.frequency); lfo.start(now);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.2, now+1); gain.gain.linearRampToValueAtTime(0, now+3);
-                    osc.start(now); osc.stop(now+3); lfo.stop(now+3);
-                    break;
-                case 'rest': // Peaceful chord
-                    [261.63, 329.63, 392.00].forEach(f => {
-                        const o=ac.createOscillator(); o.type='sine'; o.frequency.value=f;
-                        const g=ac.createGain(); o.connect(g); g.connect(masterGain);
-                        g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.1,now+2); g.gain.linearRampToValueAtTime(0,now+5);
-                        o.start(now); o.stop(now+5);
-                    });
-                    break;
-                case 'trap': // Snap + Thud
-                    const snap = ac.createBufferSource(); snap.buffer = noiseBuf; 
-                    const snapG = ac.createGain(); snap.connect(snapG); snapG.connect(masterGain);
-                    snapG.gain.setValueAtTime(0.5, now); snapG.gain.exponentialRampToValueAtTime(0.01, now+0.1);
-                    snap.start(now); snap.stop(now+0.1);
-                    break;
-                case 'boss': // Low Drone
-                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(50, now);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.4, now+0.5); gain.gain.linearRampToValueAtTime(0, now+4);
-                    osc.start(now); osc.stop(now+4);
-                    break;
-
-                // --- ANIMAL SOUNDS ---
-                case 'wolf': // Howl (Pitch up then long down)
-                    osc.type = 'triangle'; osc.frequency.setValueAtTime(400, now);
-                    osc.frequency.linearRampToValueAtTime(600, now + 0.5);
-                    osc.frequency.linearRampToValueAtTime(300, now + 2.5);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.3, now + 0.5); gain.gain.linearRampToValueAtTime(0, now + 2.5);
-                    osc.start(now); osc.stop(now + 2.5);
-                    break;
-                case 'bear': // Roar (Low Sawtooth + Filter opening)
-                    osc.type = 'sawtooth'; osc.frequency.value = 50;
-                    const bearF = ac.createBiquadFilter(); bearF.type='lowpass';
-                    bearF.frequency.setValueAtTime(100, now); bearF.frequency.linearRampToValueAtTime(800, now+0.3); bearF.frequency.linearRampToValueAtTime(100, now+1.5);
-                    osc.disconnect(); osc.connect(bearF); bearF.connect(gain);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.5, now+0.2); gain.gain.linearRampToValueAtTime(0, now+1.5);
-                    osc.start(now); osc.stop(now + 1.5);
-                    break;
-                case 'bird': // Tweet (High pitch fast jumps)
-                    osc.type='sine'; osc.frequency.setValueAtTime(2000, now); osc.frequency.linearRampToValueAtTime(2500, now+0.1);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now+0.05); gain.gain.linearRampToValueAtTime(0, now+0.2);
-                    osc.start(now); osc.stop(now+0.2);
-                    setTimeout(()=>{
-                         const o2=ac.createOscillator(); o2.type='sine'; o2.frequency.value=2200; const g2=ac.createGain(); 
-                         o2.connect(g2); g2.connect(masterGain);
-                         g2.gain.setValueAtTime(0, ac.currentTime); g2.gain.linearRampToValueAtTime(0.1, ac.currentTime+0.05); g2.gain.linearRampToValueAtTime(0, ac.currentTime+0.2);
-                         o2.start(ac.currentTime); o2.stop(ac.currentTime+0.2);
-                    }, 150);
-                    break;
-                case 'snake': // Hiss (Filtered Noise)
-                    const hiss = ac.createBufferSource(); hiss.buffer = noiseBuf;
-                    const hissF = ac.createBiquadFilter(); hissF.type='highpass'; hissF.frequency.value=4000;
-                    hiss.connect(hissF); hissF.connect(gain);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.2, now+0.5); gain.gain.linearRampToValueAtTime(0, now+2.0);
-                    hiss.start(now); hiss.stop(now+2.0);
-                    break;
-                case 'insect': // Chirp (Sawtooth bursts)
-                    const playChirp = (t) => {
-                        const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=4000;
-                        const g=ac.createGain(); o.connect(g); g.connect(masterGain);
-                        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1, t+0.02); g.gain.exponentialRampToValueAtTime(0.001, t+0.1);
-                        o.start(t); o.stop(t+0.1);
-                    };
-                    for(let i=0;i<3;i++) playChirp(now + i*0.15);
-                    break;
-                case 'horse': // Whinny (High pitch saw with heavy vibrato)
-                    osc.type='sawtooth'; osc.frequency.setValueAtTime(1000, now); osc.frequency.exponentialRampToValueAtTime(600, now+1.0);
-                    const hLfo = ac.createOscillator(); hLfo.frequency.value=15; const hLfoG=ac.createGain(); hLfoG.gain.value=100;
-                    hLfo.connect(hLfoG); hLfoG.connect(osc.frequency); hLfo.start(now);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.2, now+0.2); gain.gain.linearRampToValueAtTime(0, now+1.0);
-                    osc.start(now); osc.stop(now+1.0); hLfo.stop(now+1.0);
-                    break;
-                case 'cat': // Meow (Triangle, pitch rise then fall)
-                    osc.type='triangle'; osc.frequency.setValueAtTime(600, now); 
-                    osc.frequency.linearRampToValueAtTime(800, now+0.2); osc.frequency.linearRampToValueAtTime(500, now+0.8);
-                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now+0.1); gain.gain.linearRampToValueAtTime(0, now+0.8);
-                    osc.start(now); osc.stop(now+0.8);
-                    break;
-                case 'owl': // Hoo-Hoo (Sine, low, two pulses)
-                    const hoo = (t) => {
-                        const o=ac.createOscillator(); o.type='sine'; o.frequency.value=400;
-                        const g=ac.createGain(); o.connect(g); g.connect(masterGain);
-                        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t+0.1); g.gain.linearRampToValueAtTime(0, t+0.4);
-                        o.start(t); o.stop(t+0.4);
-                    };
-                    hoo(now); hoo(now+0.5);
-                    break;
+            if (type === 'critical') {
+                // NEW: Victory Fanfare (C Major Arpeggio)
+                [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+                    const {o, g} = mkOsc('square', f);
+                    const t = now + (i * 0.08); // Stagger notes
+                    g.gain.setValueAtTime(0, t);
+                    g.gain.linearRampToValueAtTime(0.08, t + 0.05);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+                    o.start(t); o.stop(t + 0.6);
+                });
+            } 
+            else if (type === 'insect') {
+                // NEW: Realistic Cricket (FM Synthesis)
+                const playChirp = (t) => {
+                    const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = 4200;
+                    const g = ac.createGain();
+                    // Modulator (creates the "burr" texture)
+                    const mod = ac.createOscillator(); mod.frequency.value = 40; 
+                    const modG = ac.createGain(); modG.gain.value = 800; 
+                    mod.connect(modG); modG.connect(o.frequency);
+                    
+                    o.connect(g); g.connect(masterGain);
+                    
+                    // Envelope
+                    g.gain.setValueAtTime(0, t);
+                    g.gain.linearRampToValueAtTime(0.05, t + 0.02); 
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                    
+                    o.start(t); o.stop(t + 0.15);
+                    mod.start(t); mod.stop(t + 0.15);
+                };
+                // Double chirp pattern
+                playChirp(now);
+                playChirp(now + 0.25);
             }
-        };
-
-        window.toggleAmbience = (t) => {
-             if(ac.state==='suspended') ac.resume();
-             ambNodes.forEach(n => { try{n.stop()}catch(e){} try{n.disconnect()}catch(e){} }); ambNodes=[];
-             document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active-loop'));
-             
-             if(ambType === t || t === 'stop') { ambType = null; return; }
-             ambType = t; 
-             document.getElementById(`ambience-${t}`)?.classList.add('active-loop');
-             
-             // Procedural Loops
-             const n=ac.createBufferSource(); n.buffer=noiseBuf; n.loop=true; 
-             const g=ac.createGain(); g.gain.value=0.08; 
-             const f=ac.createBiquadFilter(); 
-             
-             if(t.includes('battle')) { f.type='lowpass'; f.frequency.value=150; } // Low Rumble
-             else if(t==='village') { f.type='bandpass'; f.frequency.value=500; } // Mid Chatter
-             else if(t==='ocean') { f.type='lowpass'; f.frequency.value=300; } // Waves
-             else { f.type='lowpass'; f.frequency.value=400; }
-             
-             n.connect(f); f.connect(g); g.connect(masterGain); n.start();
-             ambNodes.push(n, g, f);
+            else if (type === 'success') {
+                [523.25, 659.25, 783.99].forEach((f, i) => {
+                    const {o, g} = mkOsc('triangle', f);
+                    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + i*0.1 + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+                    o.start(now + i*0.1); o.stop(now + 1.0);
+                });
+            }
+            else if (type === 'wolf') {
+                const {o, g} = mkOsc('triangle', 400);
+                o.frequency.linearRampToValueAtTime(600, now+0.5); o.frequency.linearRampToValueAtTime(300, now+2.5);
+                g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.2, now+0.5); g.gain.linearRampToValueAtTime(0, now+2.5);
+                o.start(now); o.stop(now+2.5);
+            }
+            else if (type === 'bear') {
+                const o = ac.createOscillator(); o.type='sawtooth'; o.frequency.value=50; 
+                const f = ac.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(100,now); f.frequency.linearRampToValueAtTime(600,now+0.2); f.frequency.linearRampToValueAtTime(100,now+1.0);
+                const g = ac.createGain(); o.connect(f); f.connect(g); g.connect(masterGain);
+                g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.4,now+0.1); g.gain.linearRampToValueAtTime(0,now+1.0);
+                o.start(now); o.stop(now+1.0);
+            }
+            else if (type === 'horse') {
+                const {o, g} = mkOsc('sawtooth', 1200);
+                o.frequency.exponentialRampToValueAtTime(600, now+0.6);
+                // Vibrato
+                const lfo = ac.createOscillator(); lfo.frequency.value=15; const lfoG=ac.createGain(); lfoG.gain.value=100;
+                lfo.connect(lfoG); lfoG.connect(o.frequency); lfo.start(now); lfo.stop(now+0.6);
+                g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.2, now+0.1); g.gain.exponentialRampToValueAtTime(0.01, now+0.6);
+                o.start(now); o.stop(now+0.6);
+            }
+            else if (type === 'cat') {
+                const {o, g} = mkOsc('triangle', 600);
+                o.frequency.linearRampToValueAtTime(900, now+0.2); o.frequency.linearRampToValueAtTime(500, now+0.6);
+                g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now+0.1); g.gain.linearRampToValueAtTime(0, now+0.6);
+                o.start(now); o.stop(now+0.6);
+            }
+            else if (type === 'owl') {
+                const hoo = (t) => {
+                    const {o, g} = mkOsc('sine', 400);
+                    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t+0.1); g.gain.linearRampToValueAtTime(0, t+0.4);
+                    o.start(t); o.stop(t+0.4);
+                };
+                hoo(now); hoo(now+0.5);
+            }
+            else if (type === 'snake') {
+                const n = ac.createBufferSource(); n.buffer = noiseBuf;
+                const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 3000;
+                const g = ac.createGain(); n.connect(f); f.connect(g); g.connect(masterGain);
+                g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.15, now+0.5); g.gain.linearRampToValueAtTime(0, now+2.0);
+                n.start(now); n.stop(now+2.0);
+            }
+            else if (type === 'bird') {
+                const {o, g} = mkOsc('sine', 2000);
+                o.frequency.exponentialRampToValueAtTime(1000, now+0.1);
+                g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now+0.01); g.gain.linearRampToValueAtTime(0, now+0.1);
+                o.start(now); o.stop(now+0.1);
+            }
+            else if (type === 'combat_start') {
+                const o = ac.createOscillator(); o.type='sawtooth'; o.frequency.value=60; 
+                const f = ac.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(200,now); f.frequency.linearRampToValueAtTime(1500,now+0.1); 
+                const g = ac.createGain(); o.connect(f); f.connect(g); g.connect(masterGain);
+                g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.4,now+0.1); g.gain.exponentialRampToValueAtTime(0.001,now+2); 
+                o.start(now); o.stop(now+2);
+            }
+            else {
+                // Generic fallback (Fail, Mystery, etc)
+                const {o, g} = mkOsc('sawtooth', 150);
+                if(type==='fail') o.frequency.linearRampToValueAtTime(100, now+0.5);
+                g.gain.setValueAtTime(0.1, now); g.gain.linearRampToValueAtTime(0, now+0.5);
+                o.start(now); o.stop(now+0.5);
+            }
         };
 
         // Init
