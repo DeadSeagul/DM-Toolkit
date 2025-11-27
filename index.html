@@ -2065,167 +2065,132 @@
             masterGain.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.01);
         });
 
-        // --- ROBUST SYNTH ENGINE ---
+        // --- SOUNDBOARD LOGIC (All Sounds) ---
         window.playTone = function(type) {
-            // 1. Wake up audio if needed
+            // 1. Auto-resume audio context if needed
             if(ac.state === 'suspended') ac.resume();
             
             const now = ac.currentTime;
-            const master = masterGain; // Use global master gain
+            const master = masterGain;
 
-            // Helper: Create a simple beep/tone
+            // --- Internal Helpers ---
+            
+            // Helper: Create a simple tone (Waveform, Freq, StartTime, Duration, Volume)
             const mkTone = (wave, freq, start, dur, vol=0.2) => {
-                const osc = ac.createOscillator();
+                const o = ac.createOscillator();
                 const g = ac.createGain();
-                osc.type = wave;
-                osc.frequency.setValueAtTime(freq, start);
-                osc.connect(g);
+                o.type = wave;
+                o.frequency.setValueAtTime(freq, start);
+                o.connect(g);
                 g.connect(master);
+                
+                // Envelope
                 g.gain.setValueAtTime(vol, start);
-                g.gain.exponentialRampToValueAtTime(0.01, start + dur);
-                osc.start(start);
-                osc.stop(start + dur);
-                return { osc, g };
+                g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+                
+                o.start(start);
+                o.stop(start + dur);
+                return { osc: o, gain: g };
             };
 
-            // Helper: Noise burst (for Trap/Snake)
-            const mkNoise = (dur, filterFreq, filterType) => {
+            // Helper: Create Noise (Duration, FilterType, FilterFreq)
+            const mkNoise = (dur, fType, fFreq) => {
                 const n = ac.createBufferSource();
-                n.buffer = noiseBuf;
+                n.buffer = noiseBuf; // Uses global noise buffer
                 const f = ac.createBiquadFilter();
-                f.type = filterType;
-                f.frequency.value = filterFreq;
+                f.type = fType;
+                f.frequency.value = fFreq;
                 const g = ac.createGain();
                 n.connect(f); f.connect(g); g.connect(master);
-                g.gain.setValueAtTime(0.3, now);
-                g.gain.exponentialRampToValueAtTime(0.01, now + dur);
+                g.gain.setValueAtTime(0.2, now);
+                g.gain.linearRampToValueAtTime(0, now + dur);
                 n.start(now); n.stop(now + dur);
+                return { src: n, gain: g };
             };
 
             switch (type) {
-                // --- UI / EVENTS ---
-                case 'success': // Major Triad (C - E - G)
-                    mkTone('triangle', 523.25, now, 0.6);
-                    mkTone('triangle', 659.25, now + 0.1, 0.6);
-                    mkTone('triangle', 783.99, now + 0.2, 1.0);
+                // --- UI / EVENT SOUNDS (Restored) ---
+                case 'combat_start': // War Horn
+                    const horn = mkTone('sawtooth', 60, now, 2.0, 0.4);
+                    const hf = ac.createBiquadFilter(); hf.type='lowpass';
+                    hf.frequency.setValueAtTime(200, now); 
+                    hf.frequency.linearRampToValueAtTime(1500, now+0.2);
+                    horn.osc.disconnect(); horn.osc.connect(hf); hf.connect(horn.gain);
                     break;
 
-                case 'critical': // High Fanfare (Rapid Arpeggio)
+                case 'success': // Major Triad
+                    mkTone('triangle', 523.25, now, 0.5);      // C5
+                    mkTone('triangle', 659.25, now+0.1, 0.5);  // E5
+                    mkTone('triangle', 783.99, now+0.2, 0.8);  // G5
+                    break;
+
+                case 'critical': // High Fanfare
                     mkTone('square', 523.25, now, 0.2, 0.1);
-                    mkTone('square', 1046.50, now + 0.1, 0.2, 0.1);
-                    mkTone('square', 1567.98, now + 0.2, 0.8, 0.1); // High G
+                    mkTone('square', 1046.50, now+0.05, 0.2, 0.1);
+                    mkTone('square', 1567.98, now+0.1, 0.5, 0.1);
                     break;
 
-                case 'fail': // Sad Trombone (Slide Down)
-                    const t1 = mkTone('sawtooth', 200, now, 1.0, 0.3);
-                    t1.osc.frequency.linearRampToValueAtTime(150, now + 0.8); // Slide pitch down
+                case 'fail': // Sad Slide Down
+                    const fail = mkTone('sawtooth', 150, now, 0.8, 0.3);
+                    fail.osc.frequency.linearRampToValueAtTime(80, now+0.8);
                     break;
 
-                case 'combat_start': // War Horn (Low Sawtooth)
-                    const horn = mkTone('sawtooth', 70, now, 2.5, 0.4);
-                    // Add filter for "brass" sound
-                    const hf = ac.createBiquadFilter();
-                    hf.type = 'lowpass';
-                    hf.frequency.setValueAtTime(200, now);
-                    hf.frequency.linearRampToValueAtTime(1500, now + 0.2); // Swell
-                    horn.osc.disconnect();
-                    horn.osc.connect(hf);
-                    hf.connect(horn.g);
+                case 'spell': // Magic Chime
+                    mkTone('sine', 880, now, 1.0, 0.3);
+                    mkTone('sine', 1760, now+0.1, 1.5, 0.2);
                     break;
 
-                case 'spell': // Magic Chime (Sine + High Pitch)
-                    mkTone('sine', 880, now, 1.0);
-                    mkTone('sine', 1760, now + 0.1, 1.5);
-                    break;
-
-                case 'mystery': // Theremin wobble
+                case 'mystery': // Theremin Wobble
                     const myst = mkTone('sine', 440, now, 2.5, 0.3);
-                    // Add Vibrato
-                    const lfo = ac.createOscillator();
-                    lfo.frequency.value = 6; // Speed
-                    const lfoG = ac.createGain();
-                    lfoG.gain.value = 20; // Depth
-                    lfo.connect(lfoG);
-                    lfoG.connect(myst.osc.frequency);
-                    lfo.start(now); lfo.stop(now + 2.5);
+                    const lfo = ac.createOscillator(); lfo.frequency.value = 6; 
+                    const lfoG = ac.createGain(); lfoG.gain.value = 20;
+                    lfo.connect(lfoG); lfoG.connect(myst.osc.frequency);
+                    lfo.start(now); lfo.stop(now+2.5);
                     break;
 
-                case 'rest': // Warm Chord
-                    mkTone('sine', 261.63, now, 3.0, 0.1); // C
-                    mkTone('sine', 329.63, now, 3.0, 0.1); // E
-                    mkTone('sine', 392.00, now, 3.0, 0.1); // G
+                case 'rest': // Peaceful Chord
+                    mkTone('sine', 261.63, now, 3.0, 0.1);
+                    mkTone('sine', 329.63, now, 3.0, 0.1);
+                    mkTone('sine', 392.00, now, 3.0, 0.1);
                     break;
 
                 case 'trap': // Snap + Thud
-                    mkNoise(0.1, 2000, 'highpass'); // Snap
-                    mkTone('square', 60, now, 0.3, 0.5); // Thud
+                    mkNoise(0.1, 'highpass', 2000); // Snap
+                    mkTone('square', 50, now, 0.3, 0.5); // Thud
                     break;
 
                 case 'boss': // Doom Drone
-                    const boss = mkTone('sawtooth', 45, now, 3.0, 0.5);
-                    boss.osc.frequency.linearRampToValueAtTime(40, now + 3.0); // Pitch bend down
+                    const boss = mkTone('sawtooth', 55, now, 3.0, 0.4);
+                    boss.osc.frequency.linearRampToValueAtTime(40, now+3);
                     break;
 
-                // --- ANIMALS ---
-                case 'wolf': // Howl (Triangle slide up then down)
-                    const wolf = mkTone('triangle', 300, now, 2.0, 0.3);
-                    wolf.osc.frequency.linearRampToValueAtTime(500, now + 0.5);
-                    wolf.osc.frequency.linearRampToValueAtTime(250, now + 2.0);
+                // --- ANIMAL SOUNDS (Upgraded) ---
+                case 'wolf': // Howl
+                    const wolf = mkTone('triangle', 300, now, 2.5, 0.3);
+                    wolf.osc.frequency.setValueAtTime(300, now);
+                    wolf.osc.frequency.linearRampToValueAtTime(600, now + 0.6); // Up
+                    wolf.osc.frequency.linearRampToValueAtTime(250, now + 2.5); // Down long
                     break;
 
-                case 'bear': // Growl (Low Sawtooth)
-                    const bear = mkTone('sawtooth', 50, now, 1.0, 0.4);
-                    // Filter movement simulates mouth opening
-                    const bf = ac.createBiquadFilter();
-                    bf.type = 'lowpass';
+                case 'bear': // Roar
+                    const bear = mkTone('sawtooth', 50, now, 1.2, 0.5);
+                    const bf = ac.createBiquadFilter(); bf.type='lowpass';
                     bf.frequency.setValueAtTime(100, now);
-                    bf.frequency.linearRampToValueAtTime(600, now + 0.4);
-                    bear.osc.disconnect();
-                    bear.osc.connect(bf);
-                    bf.connect(bear.g);
+                    bf.frequency.linearRampToValueAtTime(800, now+0.3); // Open mouth
+                    bf.frequency.linearRampToValueAtTime(100, now+1.0); // Close
+                    bear.osc.disconnect(); bear.osc.connect(bf); bf.connect(bear.gain);
                     break;
 
-                case 'horse': // Whinny (High Sawtooth with heavy vibrato)
-                    const horse = mkTone('sawtooth', 800, now, 0.8, 0.2);
-                    horse.osc.frequency.exponentialRampToValueAtTime(400, now + 0.8);
-                    // Fast vibrato
-                    const hlfo = ac.createOscillator();
-                    hlfo.frequency.value = 15; 
-                    const hlfoG = ac.createGain();
-                    hlfoG.gain.value = 100;
-                    hlfo.connect(hlfoG);
-                    hlfoG.connect(horse.osc.frequency);
-                    hlfo.start(now); hlfo.stop(now + 0.8);
+                case 'horse': // Whinny
+                    const horse = mkTone('sawtooth', 900, now, 1.0, 0.2);
+                    horse.osc.frequency.exponentialRampToValueAtTime(500, now+1.0);
+                    const hlfo = ac.createOscillator(); hlfo.frequency.value=12; 
+                    const hlfoG = ac.createGain(); hlfoG.gain.value=100;
+                    hlfo.connect(hlfoG); hlfoG.connect(horse.osc.frequency);
+                    hlfo.start(now); hlfo.stop(now+1.0);
                     break;
 
-                case 'cat': // Meow (Triangle slide up/down)
-                    const cat = mkTone('triangle', 500, now, 0.6, 0.2);
-                    cat.osc.frequency.linearRampToValueAtTime(800, now + 0.2); // Meee
-                    cat.osc.frequency.linearRampToValueAtTime(400, now + 0.6); // ooow
-                    break;
-
-                case 'owl': // Hoo Hoo
-                    mkTone('sine', 400, now, 0.2, 0.3);
-                    mkTone('sine', 350, now + 0.3, 0.4, 0.3);
-                    break;
-
-                case 'bird': // Chirp (Fast sine jumps)
-                    mkTone('sine', 2000, now, 0.1, 0.1);
-                    mkTone('sine', 2500, now + 0.15, 0.1, 0.1);
-                    break;
-
-                case 'snake': // Hiss (High pass noise)
-                    mkNoise(1.5, 3000, 'highpass');
-                    break;
-
-                case 'insect': // Crickets (High pitch pulses)
-                    mkTone('square', 4000, now, 0.05, 0.05);
-                    mkTone('square', 4000, now + 0.1, 0.05, 0.05);
-                    mkTone('square', 4000, now + 0.4, 0.05, 0.05);
-                    break;
-        
-            }
-        };
+                case 'cat': // Meow
 
         // --- Helper Functions for Soundboard ---
         function playNote(freq, t, dur, type = 'sine', vol = 0.3) {
