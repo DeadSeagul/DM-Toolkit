@@ -2796,6 +2796,130 @@
             `).join('');
         };
 
+// --- ULTIMATE MAP FIXER ---
+        // 1. Self-Repairing HTML: Creates the Maps tab/list if you missed adding them
+        (function repairMapUI() {
+            // Fix Tab Button
+            const tabContainer = document.querySelector('#notes .flex.border-b');
+            if (tabContainer && !document.querySelector('button[data-subtab="mapNotes"]')) {
+                const btn = document.createElement('button');
+                btn.className = "sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300";
+                btn.dataset.subtab = "mapNotes";
+                btn.onclick = () => window.switchSubTab('mapNotes');
+                btn.innerText = "🗺️ Maps";
+                tabContainer.appendChild(btn);
+            }
+            
+            // Fix Content Area
+            const contentContainer = document.querySelector('#notes .card');
+            if (contentContainer && !document.getElementById('mapNotes-sub-content')) {
+                const div = document.createElement('div');
+                div.id = "mapNotes-sub-content";
+                div.className = "sub-tab-content hidden";
+                div.innerHTML = '<div id="mapNotes-list" class="scrollable-content space-y-3"></div>';
+                // Insert before the "Add Note" button
+                const addBtn = contentContainer.querySelector('button[onclick*="addNewNote"]');
+                contentContainer.insertBefore(div, addBtn);
+            }
+        })();
+
+        // 2. Robust Save Function
+        window.saveMapToNotes = async () => {
+            if (!window.checkAuth()) return;
+            
+            const canvas = document.getElementById('gen-map-canvas');
+            if (!canvas) return alert("Canvas not found");
+
+            // Feedback
+            const btn = document.querySelector('button[onclick="window.saveMapToNotes()"]');
+            const originalText = btn ? btn.innerText : "Save";
+            if(btn) btn.innerText = "Saving...";
+
+            try {
+                const imgData = canvas.toDataURL("image/png");
+                const title = `Map ${new Date().toLocaleTimeString()}`;
+                // Create proper HTML image tag
+                const content = `<img src="${imgData}" style="width:100%; border-radius: 8px; border: 1px solid #4b5563;">`;
+
+                const newNote = { 
+                    id: crypto.randomUUID(), 
+                    title: title, 
+                    content: content, 
+                    timestamp: new Date().toISOString() 
+                };
+
+                // Ensure array exists
+                if (!window.structuredNotes) window.structuredNotes = {};
+                if (!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
+                
+                window.structuredNotes.mapNotes.unshift(newNote);
+                
+                // Save to DB
+                await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
+                
+                alert("Map Saved Successfully!");
+                window.switchTab('notes');
+                window.switchSubTab('mapNotes');
+            } catch (e) {
+                console.error(e);
+                alert("Save failed: " + e.message);
+            } finally {
+                if(btn) btn.innerText = originalText;
+            }
+        };
+
+        // 3. Updated Listener to Ensure Maps Load
+        const originalSetup = window.setupNotesListener;
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady) return;
+            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    // Merge all keys including mapNotes
+                    window.structuredNotes = {
+                        prepNotes: d.prepNotes || [],
+                        enemyNotes: d.enemyNotes || [],
+                        npcNotes: d.npcNotes || [],
+                        lootNotes: d.lootNotes || [],
+                        mapNotes: d.mapNotes || [] // CRITICAL FIX
+                    };
+                }
+                if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            });
+        };
+
+        // 4. Updated Renderer to handle Image Content safely
+        window.renderStructuredNotes = (tab) => {
+            const listId = tab + '-list';
+            const list = document.getElementById(listId);
+            if(!list) return;
+            
+            const notes = window.structuredNotes[tab] || [];
+            
+            if (notes.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 pt-4 text-xs">No items.</p>';
+                return;
+            }
+
+            list.innerHTML = notes.map(n => `
+                <div class="card p-2 mb-2 bg-gray-800 border border-gray-700">
+                    <div class="flex justify-between items-center cursor-pointer p-1 hover:bg-gray-700 rounded" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <span class="font-bold text-indigo-300 truncate text-sm">${n.title}</span>
+                        <span class="text-gray-500 text-xs">▼</span>
+                    </div>
+                    <div class="hidden mt-2 pt-2 border-t border-gray-700">
+                        <div class="mb-2 text-right">
+                            <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 hover:text-white border border-red-900 px-2 py-1 rounded bg-red-900/20">Delete</button>
+                        </div>
+                        <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
+                    </div>
+                </div>
+            `).join('');
+        };
+        
+        // Force refresh listener if already logged in
+        if(window.isAuthReady) window.setupNotesListener();
+
     </script>
 
     <!-- Login Modal -->
