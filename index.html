@@ -2650,6 +2650,58 @@
             });
         };
 
+// --- FIX: MAP SAVING & RENDERING ---
+
+        // 1. Update Listener to read 'mapNotes' from database
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady) return;
+            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    window.structuredNotes = {
+                        prepNotes: d.prepNotes || [],
+                        enemyNotes: d.enemyNotes || [],
+                        npcNotes: d.npcNotes || [],
+                        lootNotes: d.lootNotes || [],
+                        mapNotes: d.mapNotes || [] // Now listens for maps
+                    };
+                }
+                // Re-render current tab
+                if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            });
+        };
+
+        // 2. Update Renderer to find the correct list ID dynamically
+        window.renderStructuredNotes = (tab) => {
+            // Dynamic ID selection (Fixes the issue where it couldn't find 'mapNotes-list')
+            const listId = tab + '-list'; 
+            const list = document.getElementById(listId);
+            
+            if(!list) return;
+            
+            const notes = window.structuredNotes[tab] || [];
+            
+            if (notes.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 pt-4 text-xs">No saved items.</p>';
+                return;
+            }
+
+            list.innerHTML = notes.map(n => `
+                <div class="card p-2 mb-2 bg-gray-800 border border-gray-700">
+                    <div class="flex justify-between items-center cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <span class="font-bold text-indigo-300 truncate">${n.title}</span>
+                        <span class="text-gray-500">▼</span>
+                    </div>
+                    <div class="hidden mt-2 pt-2 border-t border-gray-700">
+                        <div class="mb-2 text-right">
+                            <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 hover:text-white border border-red-900 px-2 py-1 rounded bg-red-900/20">Delete</button>
+                        </div>
+                        <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
+                    </div>
+                </div>
+            `).join('');
+        };
+
     </script>
 
     <!-- Login Modal -->
