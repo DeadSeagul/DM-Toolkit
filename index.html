@@ -944,20 +944,38 @@
             if (snowCtx) snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
         }
 
+        // --- FIX: TAB HIGHLIGHTING ---
         window.switchTab = function(tabId) {
-            currentTab = tabId;
+            window.currentTab = tabId;
+            
+            // 1. Toggle Content Visibility
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
+            const target = document.getElementById(tabId);
+            if(target) target.classList.remove('hidden');
+            
+            // 2. Toggle Button Styles
             document.querySelectorAll('.tab-button').forEach(btn => {
+                // Reset all buttons
                 btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
                 btn.classList.add('text-gray-400', 'border-transparent');
-                // Match button text to tab ID (simple heuristic)
+                
                 const text = btn.textContent.toLowerCase();
-                if (text.includes(tabId) || (tabId === 'improv' && text.includes('prep'))) {
-                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
+                
+                // Check for match using specific keywords
+                const isMatch = 
+                    (tabId === 'improv' && text.includes('prep')) ||
+                    (tabId === 'statblocks' && text.includes('stats')) ||
+                    (tabId === 'soundboard' && text.includes('sound')) ||
+                    text.includes(tabId); // Catch-all for others (combat, loot, notes)
+
+                if (isMatch) {
+                    btn.classList.add('active'); 
+                    btn.classList.remove('text-gray-400');
                 }
             });
-            if (tabId === 'notes') switchSubTab(currentSubTab);
+
+            // 3. Refresh Notes Sub-tab
+            if (tabId === 'notes') window.switchSubTab(window.currentSubTab);
         };
 
         window.switchSubTab = function(tabId) {
