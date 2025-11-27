@@ -2702,6 +2702,100 @@
             `).join('');
         };
 
+// --- FIX: MAP SAVING & RENDERING ---
+
+        // 1. Logic to Capture and Save the Map
+        window.saveMapToNotes = async () => {
+            // Security Check
+            if (!window.isAuthReady || !window.userId) {
+                alert("Please log in to a Session to save maps.");
+                window.openLoginModal();
+                return;
+            }
+            
+            const canvas = document.getElementById('gen-map-canvas');
+            if (!canvas) return alert("Map canvas not found.");
+
+            // Convert canvas to image string
+            const imgData = canvas.toDataURL("image/png");
+            
+            // Create Note with Image
+            const imgTag = `<img src="${imgData}" class="w-full rounded border border-gray-600 mt-2" alt="Generated Map">`;
+            const title = `Map - ${new Date().toLocaleTimeString()}`;
+            
+            const newNote = { 
+                id: crypto.randomUUID(), 
+                title: title, 
+                content: imgTag, 
+                timestamp: new Date().toISOString() 
+            };
+
+            // Ensure array exists
+            if (!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
+            
+            // Add and Save
+            window.structuredNotes.mapNotes.unshift(newNote);
+            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
+            
+            alert("Map Saved to Notes!");
+            window.switchTab('notes'); 
+            window.switchSubTab('mapNotes');
+        };
+
+        // 2. Updated Listener to actually READ the 'mapNotes' from database
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady) return;
+            
+            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    // Merge all possible note types
+                    window.structuredNotes = {
+                        prepNotes: d.prepNotes || [],
+                        enemyNotes: d.enemyNotes || [],
+                        npcNotes: d.npcNotes || [],
+                        lootNotes: d.lootNotes || [],
+                        mapNotes: d.mapNotes || [] // Now includes Maps
+                    };
+                }
+                // Refresh the current view
+                if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            });
+        };
+
+        // 3. Updated Renderer to find ANY list dynamically (Fixes the bug)
+        window.renderStructuredNotes = (tab) => {
+            // Dynamically find the list ID (e.g., 'mapNotes-list')
+            const listId = tab + '-list'; 
+            const list = document.getElementById(listId);
+            
+            // If list doesn't exist in HTML, stop
+            if(!list) return;
+            
+            const notes = window.structuredNotes[tab] || [];
+            
+            if (notes.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 pt-4 text-xs">No saved items.</p>';
+                return;
+            }
+
+            list.innerHTML = notes.map(n => `
+                <div class="card p-2 mb-2 bg-gray-800 border border-gray-700">
+                    <div class="flex justify-between items-center cursor-pointer hover:bg-gray-700 p-1 rounded transition" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <span class="font-bold text-indigo-300 truncate text-sm">${n.title}</span>
+                        <span class="text-gray-500 text-xs">▼</span>
+                    </div>
+                    <div class="hidden mt-2 pt-2 border-t border-gray-700">
+                        <div class="mb-2 text-right">
+                            <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 hover:text-white border border-red-900 px-2 py-1 rounded bg-red-900/20">Delete</button>
+                        </div>
+                        <!-- Render HTML content (allows images) -->
+                        <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
+                    </div>
+                </div>
+            `).join('');
+        };
+
     </script>
 
     <!-- Login Modal -->
