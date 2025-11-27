@@ -527,10 +527,7 @@
                 <!-- AI Configuration Card -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
                     <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
-                    
-                    <!-- Warning Message -->
                     <p class="text-xs text-yellow-400 mb-2 font-bold">⚠️ You need to provide an API Key before using AI features.</p>
-                    
                     <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key. Saved locally. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline">Get Key Here</a>.</p>
                     <div class="flex gap-2">
                         <input type="password" id="user-api-key" placeholder="Paste API Key (AIza...)" class="flex-1 p-2 rounded-lg input-style text-sm">
@@ -546,7 +543,6 @@
                         <div><label class="block text-xs font-medium text-gray-400 mb-1">NPC Type</label><input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
                     <button onclick="window.generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
-                    <div id="ai-output" class="mt-4 whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300"></div>
                 </div>
 
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
@@ -564,6 +560,7 @@
                     <button onclick="window.generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-settlement-text">Generate</span><div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
                 
+                <!-- Result Display Card -->
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
                     <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden shadow-lg"><img id="generated-image" class="w-full h-auto object-cover bg-gray-700/30 min-h-[150px]"><p id="image-loading-status" class="text-center text-gray-400 p-3 bg-gray-800"></p></div>
