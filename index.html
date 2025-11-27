@@ -524,9 +524,11 @@
         <div id="content-area">
             <!-- Prep Tab -->
             <div id="improv" class="tab-content">
+                
                 <!-- AI Configuration Card -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
                     <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
+                    <!-- Warning Message -->
                     <p class="text-xs text-yellow-400 mb-2 font-bold">⚠️ You need to provide an API Key before using AI features.</p>
                     <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key. Saved locally. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline">Get Key Here</a>.</p>
                     <div class="flex gap-2">
@@ -536,6 +538,7 @@
                     <p id="api-key-status" class="mt-2 text-xs text-gray-500">Status: No key saved.</p>
                 </div>
 
+                <!-- Combat NPC Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Combat NPC Stats</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -545,12 +548,14 @@
                     <button onclick="window.generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
 
+                <!-- Creative Lore Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore</h2>
                     <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none" placeholder="Enter a prompt..."></textarea>
                     <button onclick="window.generateCreativeIdea()" id="generate-button" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-text">Generate Idea</span><div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
 
+                <!-- Settlement Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -558,6 +563,17 @@
                         <div><label class="block text-xs font-medium text-gray-400 mb-1">Vibe</label><input type="text" id="settlement-vibe" value="haunted fishing village" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
                     <button onclick="window.generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-settlement-text">Generate</span><div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
+                </div>
+
+                <!-- Map Generator (NEW) -->
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-purple-500/30">
+                    <h2 class="text-xl font-semibold mb-4 text-purple-300">🗺️ Map Generator</h2>
+                    <canvas id="gen-map-canvas" width="600" height="400" class="w-full h-64 bg-gray-900 rounded-lg mb-4 border border-gray-600"></canvas>
+                    <div class="flex gap-2">
+                        <button onclick="window.generateMap('cave')" class="flex-1 bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 rounded-lg text-sm">Generate Cave</button>
+                        <button onclick="window.generateMap('dungeon')" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 rounded-lg text-sm">Generate Dungeon</button>
+                    </div>
+                    <p class="text-[10px] text-gray-500 mt-2 text-center">Green = Floor, Grey = Wall</p>
                 </div>
                 
                 <!-- Result Display Card -->
@@ -568,7 +584,11 @@
                     <p id="npc-save-status" class="mt-2 text-sm text-center hidden"></p>
                     <div id="save-options-creative" class="mt-4 hidden">
                         <p class="text-sm text-center text-gray-400 mb-2">Save to:</p>
-                        <div class="grid grid-cols-3 gap-2"><button onclick="window.saveGeneratedContent('prepNotes')" class="save-notes-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg text-xs">Notes</button><button onclick="window.saveGeneratedContent('enemyNotes')" class="save-notes-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-xs">Enemies</button><button onclick="window.saveGeneratedContent('npcNotes')" class="save-notes-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs">NPCs</button></div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="window.saveGeneratedContent('prepNotes')" class="save-notes-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg text-xs">Notes</button>
+                            <button onclick="window.saveGeneratedContent('enemyNotes')" class="save-notes-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-xs">Enemies</button>
+                            <button onclick="window.saveGeneratedContent('npcNotes')" class="save-notes-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs">NPCs</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2487,7 +2507,87 @@
 
             document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
         };
- 
+ // --- MAP GENERATOR LOGIC ---
+        window.generateMap = (type) => {
+            const canvas = document.getElementById('gen-map-canvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            // Settings
+            const cols = 60; 
+            const rows = 40;
+            const tileW = canvas.width / cols;
+            const tileH = canvas.height / rows;
+            
+            // Initialize Grid (1 = Wall, 0 = Floor)
+            let map = [];
+            
+            if (type === 'cave') {
+                // Cellular Automata for Caves
+                // 1. Random Noise
+                for(let i=0; i<cols*rows; i++) map[i] = Math.random() < 0.45 ? 1 : 0;
+                
+                // 2. Smoothing (4 iterations)
+                for(let iter=0; iter<4; iter++) {
+                    let newMap = [...map];
+                    for(let y=0; y<rows; y++) {
+                        for(let x=0; x<cols; x++) {
+                            let neighbors = 0;
+                            for(let ny=y-1; ny<=y+1; ny++) {
+                                for(let nx=x-1; nx<=x+1; nx++) {
+                                    if(nx<0||ny<0||nx>=cols||ny>=rows) neighbors++; // Edges are walls
+                                    else if(map[ny*cols+nx] === 1) neighbors++;
+                                }
+                            }
+                            // Rules: Become wall if > 4 neighbors, else become floor
+                            newMap[y*cols+x] = (neighbors > 4) ? 1 : 0;
+                        }
+                    }
+                    map = newMap;
+                }
+            } 
+            else {
+                // Drunkard's Walk for Dungeons
+                map = new Array(cols*rows).fill(1); // All walls
+                let x = Math.floor(cols/2);
+                let y = Math.floor(rows/2);
+                let floors = 0;
+                const targetFloors = (cols*rows) * 0.4; // 40% open space
+                
+                while(floors < targetFloors) {
+                    if(map[y*cols+x] === 1) {
+                        map[y*cols+x] = 0;
+                        floors++;
+                    }
+                    
+                    // Move Randomly
+                    const dir = Math.floor(Math.random() * 4);
+                    if(dir===0 && x < cols-2) x++;
+                    else if(dir===1 && x > 1) x--;
+                    else if(dir===2 && y < rows-2) y++;
+                    else if(dir===3 && y > 1) y--;
+                }
+            }
+
+            // Draw
+            ctx.fillStyle = '#111827'; // Background
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for(let y=0; y<rows; y++) {
+                for(let x=0; x<cols; x++) {
+                    const tile = map[y*cols+x];
+                    if(tile === 1) {
+                        // Wall
+                        ctx.fillStyle = '#374151'; 
+                        ctx.fillRect(x*tileW, y*tileH, tileW, tileH);
+                    } else {
+                        // Floor (with grid line effect)
+                        ctx.fillStyle = '#064e3b'; 
+                        ctx.fillRect(x*tileW + 1, y*tileH + 1, tileW - 2, tileH - 2);
+                    }
+                }
+            }
+        };
     </script>
 
     <!-- Login Modal -->
