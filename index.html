@@ -944,38 +944,20 @@
             if (snowCtx) snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
         }
 
-        // --- FIX: TAB HIGHLIGHTING ---
         window.switchTab = function(tabId) {
-            window.currentTab = tabId;
-            
-            // 1. Toggle Content Visibility
+            currentTab = tabId;
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            const target = document.getElementById(tabId);
-            if(target) target.classList.remove('hidden');
-            
-            // 2. Toggle Button Styles
+            document.getElementById(tabId).classList.remove('hidden');
             document.querySelectorAll('.tab-button').forEach(btn => {
-                // Reset all buttons
                 btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
                 btn.classList.add('text-gray-400', 'border-transparent');
-                
+                // Match button text to tab ID (simple heuristic)
                 const text = btn.textContent.toLowerCase();
-                
-                // Check for match using specific keywords
-                const isMatch = 
-                    (tabId === 'improv' && text.includes('prep')) ||
-                    (tabId === 'statblocks' && text.includes('stats')) ||
-                    (tabId === 'soundboard' && text.includes('sound')) ||
-                    text.includes(tabId); // Catch-all for others (combat, loot, notes)
-
-                if (isMatch) {
-                    btn.classList.add('active'); 
-                    btn.classList.remove('text-gray-400');
+                if (text.includes(tabId) || (tabId === 'improv' && text.includes('prep'))) {
+                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
                 }
             });
-
-            // 3. Refresh Notes Sub-tab
-            if (tabId === 'notes') window.switchSubTab(window.currentSubTab);
+            if (tabId === 'notes') switchSubTab(currentSubTab);
         };
 
         window.switchSubTab = function(tabId) {
@@ -2505,193 +2487,6 @@
             document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
         };
  
-// --- FIX: NOTES DISPLAY & TABS ---
-        
-        // 1. Switch Sub-Tab (e.g. General -> Enemies)
-        window.switchSubTab = function(tabId) {
-            window.currentSubTab = tabId;
-            
-            // Hide all sub-content containers
-            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
-            
-            // Show the specific container for this tab
-            const target = document.getElementById(`${tabId}-sub-content`);
-            if(target) target.classList.remove('hidden');
-            
-            // Update active button styling
-            document.querySelectorAll('.sub-tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-gray-400');
-                if (btn.dataset.subtab === tabId) {
-                    btn.classList.add('active'); // Highlight active
-                } else {
-                    btn.classList.add('text-gray-400'); // Dim inactive
-                }
-            });
-            
-            // Force render the list immediately
-            window.renderStructuredNotes(tabId);
-        };
-
-        // 2. Render Notes List (Dynamic for ALL tabs)
-        window.renderStructuredNotes = function(tab) {
-            // Dynamically find the list ID (e.g. 'prepNotes' -> 'prepNotes-list')
-            const listId = `${tab}-list`; 
-            const list = document.getElementById(listId);
-            
-            if(!list) return; // Exit if list container doesn't exist
-            
-            const notes = window.structuredNotes[tab] || [];
-            
-            if (notes.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 pt-4 text-xs">No items yet.</p>';
-                return;
-            }
-
-            // Generate HTML for each note
-            list.innerHTML = notes.map(n => `
-                <div class="card p-3 mb-2 bg-gray-800 border border-gray-700 rounded-lg shadow-sm">
-                    <div class="flex justify-between items-center cursor-pointer hover:bg-gray-750 transition" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                        <span class="font-bold text-indigo-300 text-sm truncate flex-1">${n.title}</span>
-                        <span class="text-gray-500 text-xs ml-2">▼</span>
-                    </div>
-                    <div class="hidden mt-3 pt-3 border-t border-gray-700">
-                        <div class="flex justify-end mb-2">
-                            <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 hover:text-white border border-red-900 px-2 py-1 rounded bg-red-900/20 transition">Delete</button>
-                        </div>
-                        <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden leading-relaxed">${n.content}</div>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        // 3. Ensure 'Maps' and other dynamic tabs work when saving
-        window.saveGeneratedContent = async function(destinationTab) {
-            if (!window.checkAuth()) return; // Ensure logged in
-
-            const outputDiv = document.getElementById('ai-output');
-            let contentToSave = outputDiv.innerHTML.trim();
-            
-            // Handle Loot Tab special case
-            if (window.currentTab === 'loot') {
-                const lootOut = document.getElementById('loot-output');
-                if(lootOut) contentToSave = lootOut.innerText.trim();
-            }
-
-            if (!contentToSave || contentToSave.startsWith('Error') || contentToSave.includes('Results appear here')) {
-                alert('Nothing to save.');
-                return;
-            }
-
-            const title = (contentToSave.replace(/<[^>]*>/g, '').split('\n')[0].substring(0, 40) || 'New Note');
-            const newNote = { 
-                id: crypto.randomUUID(), 
-                title: title, 
-                content: contentToSave, 
-                timestamp: new Date().toISOString() 
-            };
-            
-            if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
-            window.structuredNotes[destinationTab].unshift(newNote); 
-            
-            await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
-            
-            // Crucial: Switch tabs AND force render
-            window.switchTab('notes'); 
-            window.switchSubTab(destinationTab);
-        };
-        
-        // --- FIX: IMMEDIATE SAVING & RENDERING ---
-
-        // 1. Robust Save Function (Updates UI first, then Database)
-        window.saveGeneratedContent = async function(destinationTab) {
-            // Security Check
-            if (!window.isAuthReady || !window.userId) {
-                alert("Please log in to a Session to save.");
-                window.openLoginModal();
-                return;
-            }
-
-            const outputDiv = document.getElementById('ai-output');
-            let contentToSave = outputDiv.innerHTML.trim();
-            
-            // Special handling for Loot tab text
-            if (window.currentTab === 'loot') {
-                const lootElement = document.getElementById('loot-output');
-                if(lootElement) contentToSave = lootElement.innerText.trim();
-            }
-
-            // Validation
-            if (!contentToSave || contentToSave.startsWith('Error') || contentToSave.includes('Results appear here')) {
-                alert('Nothing to save yet.');
-                return;
-            }
-
-            // Generate Title
-            // Remove HTML tags for the title to keep it clean
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = contentToSave;
-            const cleanText = tempDiv.textContent || tempDiv.innerText || "";
-            const title = cleanText.split('\n')[0].substring(0, 40) || 'New Note';
-
-            const newNote = { 
-                id: crypto.randomUUID(), 
-                title: title, 
-                content: contentToSave, 
-                timestamp: new Date().toISOString() 
-            };
-            
-            // Initialize array if missing
-            if (!window.structuredNotes) window.structuredNotes = {};
-            if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
-            
-            // 1. Update Local Data
-            window.structuredNotes[destinationTab].unshift(newNote); 
-            
-            // 2. Force Update Screen IMMEDIATELY (Don't wait for DB)
-            window.switchTab('notes'); 
-            window.switchSubTab(destinationTab);
-            
-            // 3. Save to Database in Background
-            try {
-                await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
-            } catch(e) {
-                console.error("Save failed:", e);
-                alert("Saved locally, but failed to sync to cloud: " + e.message);
-            }
-        };
-
-        // 2. Helper to save specific array to Firebase
-        window.saveStructuredNotes = async (tab, data) => {
-             if(!window.isAuthReady) return;
-             // Uses the global db/appId/userId variables
-             const ref = window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', 'shared_notes');
-             await window.setDoc(ref, { [tab]: data }, { merge: true });
-        };
-
-        // 3. Ensure the Listener reads ALL fields correctly
-        window.setupNotesListener = () => {
-            if(!window.isAuthReady) return;
-            const ref = window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', 'shared_notes');
-            
-            window.onSnapshot(ref, (doc) => {
-                if(doc.exists()) {
-                    const d = doc.data();
-                    // Merge updates carefully so we don't wipe local state instantly if DB is lagging
-                    if(d.prepNotes) window.structuredNotes.prepNotes = d.prepNotes;
-                    if(d.enemyNotes) window.structuredNotes.enemyNotes = d.enemyNotes;
-                    if(d.npcNotes) window.structuredNotes.npcNotes = d.npcNotes;
-                    if(d.lootNotes) window.structuredNotes.lootNotes = d.lootNotes;
-                    if(d.mapNotes) window.structuredNotes.mapNotes = d.mapNotes;
-                    
-                    // Refresh view if we are currently looking at notes
-                    if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
-                }
-            });
-        };
-        
-        // Force a listener restart if we are already logged in
-        if(window.isAuthReady) window.setupNotesListener();
-
     </script>
 
     <!-- Login Modal -->
