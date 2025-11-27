@@ -2559,6 +2559,132 @@
                 }); 
                 alert(
 
+// --- STRICT AUTHENTICATION & SAVE FIXES ---
+        
+        // 1. The Security Guard Function
+        window.checkAuth = () => {
+            // Check if Firebase has loaded a user
+            if (!window.isAuthReady || !window.userId) {
+                alert("⚠️ NOT LOGGED IN ⚠️\n\nYou must use 'Session Login' (top right) to create or join a room before you can save data to the cloud.");
+                window.openLoginModal();
+                return false;
+            }
+            return true;
+        };
+
+        // 2. Fix "Save Note", "Save Enemy", "Save NPC" (Prep Tab)
+        window.saveGeneratedContent = async function(destinationTab) {
+            // Run the security check first
+            if (!window.checkAuth()) return;
+
+            const outputDiv = document.getElementById('ai-output');
+            let contentToSave = outputDiv.innerHTML.trim();
+            
+            if (window.currentTab === 'loot') {
+                contentToSave = document.getElementById('loot-output').innerText.trim();
+            }
+
+            // Don't save empty or error messages
+            if (!contentToSave || contentToSave.startsWith('Error') || contentToSave.includes('Results appear here')) {
+                alert('There is no content to save yet. Please generate something first.');
+                return;
+            }
+
+            const title = (contentToSave.replace(/<[^>]*>/g, '').split('\n')[0].substring(0, 40) || 'New Note');
+            const newNote = { id: crypto.randomUUID(), title: title, content: contentToSave, timestamp: new Date().toISOString() };
+            
+            // Ensure the note array exists
+            if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
+            
+            // Save locally and to cloud
+            window.structuredNotes[destinationTab].unshift(newNote); 
+            await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
+            
+            // Jump to the tab to show success
+            window.switchTab('notes'); 
+            window.switchSubTab(destinationTab);
+        };
+
+        // 3. Fix "Save to Statblocks" (Generated NPC)
+        window.addNpcToStatblocks = async () => {
+            if (!window.checkAuth()) return;
+            
+            if (!window.lastGeneratedNpc) {
+                alert("No NPC has been generated yet.");
+                return;
+            }
+            
+            const n = window.lastGeneratedNpc;
+            try { 
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: n.name, 
+                    hp: n.max_hit_points, 
+                    ac: n.armor_class_ac, 
+                    toHit: 0, 
+                    initMod: n.initiative_bonus, 
+                    dmg: n.main_attack, 
+                    timestamp: new Date().toISOString() 
+                }); 
+                alert(`Saved ${n.name} to Statblocks!`); 
+                window.switchTab('statblocks');
+            } catch(e) { console.error(e); alert("Error saving: " + e.message); }
+        };
+
+        // 4. Fix "Save NPC" (Manual Statblock Tab)
+        window.saveStatblock = async () => {
+             if (!window.checkAuth()) return;
+             
+             const name = document.getElementById('stat-name').value.trim(); 
+             if(!name) return alert("Please enter a Name.");
+
+             await window.addDoc(getCol('dm_toolkit_statblocks'), {
+                 name, 
+                 hp: parseInt(document.getElementById('stat-hp').value)||0,
+                 ac: parseInt(document.getElementById('stat-ac').value)||0,
+                 toHit: parseInt(document.getElementById('stat-tohit').value)||0,
+                 initMod: parseInt(document.getElementById('stat-init-mod').value)||0,
+                 dmg: document.getElementById('stat-dmg').value,
+                 timestamp: new Date().toISOString()
+             });
+             
+             document.getElementById('stat-name').value = '';
+             alert("Statblock Saved Successfully!");
+        };
+        
+        // 5. Update the Generator to use the correct save button
+        // This ensures the button created by AI actually calls the window-attached function
+        window.generateCombatNpc = async () => {
+            const btn = document.getElementById('generate-combat-button'); 
+            const outputDiv = document.getElementById('ai-output');
+            const spinner = document.getElementById('combat-loading-spinner');
+            
+            if(btn) btn.disabled = true; 
+            if(spinner) spinner.classList.remove('hidden'); 
+            if(outputDiv) outputDiv.textContent = "Generating...";
+
+            try {
+                const txt = document.getElementById('npc-type').value; 
+                const lvl = document.getElementById('npc-level').value;
+                const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e combat NPC (Level ${lvl}, ${txt}) as JSON.` }] }] });
+                const stats = JSON.parse(data.candidates[0].content.parts[0].text.replace(/```json|```/g, '')); 
+                window.lastGeneratedNpc = stats;
+                
+                // Note the 'window.' prefix on the button onclick below
+                outputDiv.innerHTML = `
+                    <div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div>
+                    <div class="text-sm">AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points} | Init: ${stats.initiative_bonus}</div>
+                    <div class="mt-2 font-medium">${stats.main_attack}</div>
+                    <button onclick="window.addNpcToStatblocks()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg">Save to Stats</button>
+                `;
+            } catch(e) { 
+                if(outputDiv) outputDiv.textContent = "Error: " + e.message; 
+            } finally { 
+                if(btn) btn.disabled = false; 
+                if(spinner) spinner.classList.add('hidden'); 
+            }
+        };
+
+
  
     </script>
 
