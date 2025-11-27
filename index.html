@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -961,38 +960,16 @@
             if (tabId === 'notes') switchSubTab(currentSubTab);
         };
 
-        // --- UI Helpers (Fixed Tab Highlighting) ---
-        window.switchTab = function(tabId) {
-            window.currentTab = tabId;
-            
-            // 1. Hide all content, Show target content
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            const target = document.getElementById(tabId);
-            if(target) target.classList.remove('hidden');
-            
-            // 2. Update Button Styles
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                // Reset state
-                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
-                btn.classList.add('text-gray-400', 'border-transparent');
-                
-                const text = btn.textContent.toLowerCase();
-                
-                // Check for match (Handles the specific naming differences)
-                const isMatch = 
-                    (tabId === 'improv' && text.includes('prep')) ||
-                    (tabId === 'statblocks' && text.includes('stats')) ||
-                    (tabId === 'soundboard' && text.includes('sound')) ||
-                    text.includes(tabId); // Works for combat, monsters, loot, notes
-
-                if (isMatch) {
-                    btn.classList.add('active'); 
-                    btn.classList.remove('text-gray-400');
-                }
+        window.switchSubTab = function(tabId) {
+            currentSubTab = tabId;
+            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`${tabId}-sub-content`).classList.remove('hidden');
+            document.querySelectorAll('.sub-tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-gray-400');
+                if (btn.dataset.subtab === tabId) btn.classList.add('active');
+                else btn.classList.add('text-gray-400');
             });
-
-            // 3. Refresh notes if needed
-            if (tabId === 'notes') window.switchSubTab(window.currentSubTab);
+            renderStructuredNotes(currentSubTab);
         };
 
         window.updateApiKey = function(val) {
