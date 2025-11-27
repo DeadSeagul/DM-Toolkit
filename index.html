@@ -525,23 +525,16 @@
             <!-- Prep Tab -->
             <div id="improv" class="tab-content">
                 <!-- AI Configuration Card -->
-<div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
-    <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
-    
-    <!-- New Warning Message -->
-    <p class="text-xs text-yellow-400 mb-2 font-bold">⚠️ You need to provide an API Key before using AI features.</p>
-    
-    <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key. Saved locally. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline">Get Key Here</a>.</p>
-    <div class="flex gap-2">
-        <input type="password" id="user-api-key" placeholder="Paste API Key (AIza...)" class="flex-1 p-2 rounded-lg input-style text-sm">
-        <button onclick="window.saveApiKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-200">Save</button>
-    </div>
-    <p id="api-key-status" class="mt-2 text-xs text-gray-500">Status: No key saved.</p>
-</div>
-                    <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key. Saved locally. Get API Key <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline">Here</a>.</p>
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
+                    <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
+                    
+                    <!-- Warning Message -->
+                    <p class="text-xs text-yellow-400 mb-2 font-bold">⚠️ You need to provide an API Key before using AI features.</p>
+                    
+                    <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key. Saved locally. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline">Get Key Here</a>.</p>
                     <div class="flex gap-2">
                         <input type="password" id="user-api-key" placeholder="Paste API Key (AIza...)" class="flex-1 p-2 rounded-lg input-style text-sm">
-                        <button onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-200">Save</button>
+                        <button onclick="window.saveApiKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-200">Save</button>
                     </div>
                     <p id="api-key-status" class="mt-2 text-xs text-gray-500">Status: No key saved.</p>
                 </div>
@@ -552,22 +545,25 @@
                         <div><label class="block text-xs font-medium text-gray-400 mb-1">Level/CR</label><input type="text" id="npc-level" value="3" class="w-full p-2 rounded-lg input-style text-sm"></div>
                         <div><label class="block text-xs font-medium text-gray-400 mb-1">NPC Type</label><input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
-                    <button onclick="generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
-                    <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
+                    <button onclick="window.generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
+                    <div id="ai-output" class="mt-4 whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300"></div>
                 </div>
+
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore</h2>
                     <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none" placeholder="Enter a prompt..."></textarea>
-                    <button onclick="generateCreativeIdea()" id="generate-button" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-text">Generate Idea</span><div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
+                    <button onclick="window.generateCreativeIdea()" id="generate-button" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-text">Generate Idea</span><div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
+
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div><label class="block text-xs font-medium text-gray-400 mb-1">Type</label><select id="settlement-type" class="w-full p-2 rounded-lg input-style text-sm"><option value="Village">Village</option><option value="Town">Town</option><option value="City">City</option></select></div>
                         <div><label class="block text-xs font-medium text-gray-400 mb-1">Vibe</label><input type="text" id="settlement-vibe" value="haunted fishing village" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
-                    <button onclick="generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-settlement-text">Generate</span><div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
+                    <button onclick="window.generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-settlement-text">Generate</span><div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
+                
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
                     <div id="ai-image-output" class="mb-4 hidden rounded-lg overflow-hidden shadow-lg"><img id="generated-image" class="w-full h-auto object-cover bg-gray-700/30 min-h-[150px]"><p id="image-loading-status" class="text-center text-gray-400 p-3 bg-gray-800"></p></div>
@@ -575,7 +571,7 @@
                     <p id="npc-save-status" class="mt-2 text-sm text-center hidden"></p>
                     <div id="save-options-creative" class="mt-4 hidden">
                         <p class="text-sm text-center text-gray-400 mb-2">Save to:</p>
-                        <div class="grid grid-cols-3 gap-2"><button onclick="saveGeneratedContent('prepNotes')" class="save-notes-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg text-xs">Notes</button><button onclick="saveGeneratedContent('enemyNotes')" class="save-notes-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-xs">Enemies</button><button onclick="saveGeneratedContent('npcNotes')" class="save-notes-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs">NPCs</button></div>
+                        <div class="grid grid-cols-3 gap-2"><button onclick="window.saveGeneratedContent('prepNotes')" class="save-notes-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg text-xs">Notes</button><button onclick="window.saveGeneratedContent('enemyNotes')" class="save-notes-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg text-xs">Enemies</button><button onclick="window.saveGeneratedContent('npcNotes')" class="save-notes-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs">NPCs</button></div>
                     </div>
                 </div>
             </div>
