@@ -4,6 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aegis DM Toolkit</title>
+    <!-- Dynamic Home Screen Icon Generator -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Define your Logo SVG (Shield + Sword + D20)
+            const svgString = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="180" height="180">
+                <rect width="64" height="64" fill="#1e293b"/>
+                <path d="M32 4 L12 14 V30 C12 43 21 54 32 58 C43 54 52 43 52 30 V14 Z" fill="#1f2933" stroke="#f4d28b" stroke-width="2.5" stroke-linejoin="round" />
+                <g>
+                    <path d="M31 10 L33 10 L33 48 L32 52 L31 48 Z" fill="#cbd5e1" stroke="#94a3b8" stroke-width="1"/>
+                    <path d="M24 15 L40 15 L40 18 L24 18 Z" fill="#f4d28b" stroke="#b45309" stroke-width="1"/>
+                    <path d="M31 2 L33 2 L33 10 L31 10 Z" fill="#8b4513" stroke="#f4d28b" stroke-width="1"/>
+                    <circle cx="32" cy="2" r="2.5" fill="#f4d28b" stroke="#b45309" stroke-width="1"/>
+                </g>
+                <polygon points="32,18 24,24 24,34 32,40 40,34 40,24" fill="#8b4513" stroke="#f4d28b" stroke-width="1.5" stroke-linejoin="round" />
+                <text x="32" y="30" text-anchor="middle" font-size="8" fill="#f9f9f9" font-family="system-ui, sans-serif">20</text>
+            </svg>`;
+
+            // 2. Create a canvas to convert SVG -> PNG
+            const canvas = document.createElement('canvas');
+            canvas.width = 180;
+            canvas.height = 180;
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+
+            // 3. Load SVG and Draw
+            img.src = 'data:image/svg+xml;base64,' + btoa(svgString);
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0);
+                
+                // 4. Create the Apple Touch Icon link
+                const link = document.createElement('link');
+                link.rel = 'apple-touch-icon';
+                link.href = canvas.toDataURL('image/png'); // Convert to PNG data string
+                document.head.appendChild(link);
+                
+                // Also set standard favicon
+                const fav = document.createElement('link');
+                fav.rel = 'icon';
+                fav.href = canvas.toDataURL('image/png');
+                document.head.appendChild(fav);
+            };
+        });
+    </script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Aegis DM">
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Firebase SDKs -->
     <script type="module">
