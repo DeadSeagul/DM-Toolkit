@@ -2549,6 +2549,32 @@
                 if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
             });
         };
+        
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady || !window.userId) return;
+            
+            // 1. Force reload combat data for THIS session
+            window.loadCombatData();
+
+            // 2. Clear existing notes from memory to prevent crossover
+            window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+            if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+
+            // 3. Start listening to the NEW session's data
+            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    if(d.prepNotes) window.structuredNotes.prepNotes = d.prepNotes;
+                    if(d.enemyNotes) window.structuredNotes.enemyNotes = d.enemyNotes;
+                    if(d.npcNotes) window.structuredNotes.npcNotes = d.npcNotes;
+                    if(d.lootNotes) window.structuredNotes.lootNotes = d.lootNotes;
+                    // Support for maps if added later
+                    if(d.mapNotes) window.structuredNotes.mapNotes = d.mapNotes;
+                }
+                // Refresh view
+                if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            });
+        };
  
     </script>
 
