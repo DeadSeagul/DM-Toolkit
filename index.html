@@ -2623,6 +2623,77 @@
                 }
             });
         };
+        
+        // --- CRITICAL PATCH: SESSION DATA ISOLATION ---
+        
+        // 1. Force Database Paths to be PRIVATE (User ID specific)
+        window.getCol = (name) => {
+            // If not logged in, throw error to prevent saving to public
+            if (!window.userId) {
+                console.warn("Blocked save: No User ID");
+                return null; 
+            }
+            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
+        };
+
+        window.getSharedDoc = (name) => {
+            if (!window.userId) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
+        };
+
+        // 2. Fix Combat Tracker "Bleed" (Unique LocalStorage Keys)
+        window.getCombatStorageKey = () => {
+            const uid = window.userId || 'guest_session';
+            return `aegis_combat_${uid}`;
+        };
+
+        // 3. Reset Data on Login/Logout
+        // This wipes the screen when you switch accounts so you don't see the previous person's notes.
+        const originalAuthHandler = window.auth.onAuthStateChanged;
+        // We overwrite the handler to add the "Wipe" logic
+        window.auth.onAuthStateChanged = (callback) => {
+            return originalAuthHandler((user) => {
+                if (user) {
+                    // LOGGED IN:
+                    window.userId = user.uid;
+                    window.isAuthReady = true;
+                    
+                    // A. Clear old data from memory
+                    window.combatants = [];
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                    
+                    // B. Update UI
+                    window.updateLoginUI(user);
+                    
+                    // C. Load NEW data
+                    window.loadCombatData();
+                    window.setupNotesListener();
+                    if(window.setupStatblocksListener) window.setupStatblocksListener();
+                    
+                } else {
+                    // LOGGED OUT:
+                    window.userId = null;
+                    window.isAuthReady = false;
+                    
+                    // Wipe everything
+                    window.combatants = [];
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                    
+                    window.updateLoginUI(null);
+                    // Re-render empty state
+                    if(window.renderCombatants) window.renderCombatants();
+                    if(window.renderStructuredNotes && window.currentSubTab) window.renderStructuredNotes(window.currentSubTab);
+                }
+            });
+        };
+        
+        // 4. Fix "Connecting..." Label
+        // This forces the label to update immediately
+        const statusLabel = document.getElementById('db-status');
+        if(statusLabel) {
+            statusLabel.textContent = "Ready";
+            statusLabel.className = "text-xs px-2 py-1 rounded bg-gray-700 text-green-400 border border-green-900";
+        }
  
     </script>
 
