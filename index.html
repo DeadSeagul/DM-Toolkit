@@ -1337,6 +1337,47 @@
         let snowInterval; const snowCanvas = document.getElementById('snow-canvas'); const sCtx = snowCanvas ? snowCanvas.getContext('2d') : null;
         function startSnow() { if(!snowCanvas) return; snowCanvas.width=window.innerWidth; snowCanvas.height=window.innerHeight; let flakes=Array(100).fill().map(()=>({x:Math.random()*snowCanvas.width,y:Math.random()*snowCanvas.height,s:Math.random()+0.5})); snowInterval=setInterval(()=>{ sCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); sCtx.fillStyle='rgba(255,255,255,0.5)'; sCtx.beginPath(); flakes.forEach(f=>{sCtx.moveTo(f.x,f.y);sCtx.arc(f.x,f.y,2,0,Math.PI*2); f.y+=f.s; if(f.y>snowCanvas.height)f.y=0;}); sCtx.fill(); }, 50); }
         function stopSnow() { clearInterval(snowInterval); if(sCtx) sCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); }
+    
+    // --- FIX: API KEY VISUAL FEEDBACK ---
+        
+        window.updateApiKey = function(val) {
+            const cleanVal = val.trim();
+            window.userApiKey = cleanVal;
+            localStorage.setItem('dm_toolkit_api_key', cleanVal);
+            
+            // Update the red/green status text
+            const status = document.getElementById('api-key-status');
+            if (status) {
+                if (cleanVal.length > 10) {
+                    status.textContent = "Status: Key Saved ✅";
+                    status.className = "mt-2 text-xs text-green-400 font-bold";
+                } else {
+                    status.textContent = "Status: No key saved ❌";
+                    status.className = "mt-2 text-xs text-red-400";
+                }
+            }
+        };
+
+        window.saveApiKey = function() {
+            const input = document.getElementById('user-api-key');
+            if (input) {
+                window.updateApiKey(input.value);
+                alert("API Key Saved Successfully!");
+            } else {
+                alert("Error: Could not find input box.");
+            }
+        };
+
+        // Automatically load and display the key status right now
+        (function initKey() {
+            const saved = localStorage.getItem('dm_toolkit_api_key');
+            if (saved) {
+                const input = document.getElementById('user-api-key');
+                if (input) input.value = saved;
+                window.updateApiKey(saved);
+            }
+        })();
+    
     </script>
 
     <!-- Login Modal -->
