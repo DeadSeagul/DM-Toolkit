@@ -1458,6 +1458,66 @@
                  console.error("DB Error:", e);
              }
         };
+        
+        // --- PERSISTENCE & SESSION ID FIX ---
+
+        // 1. Notes Listener: Checks ALL variable names so nothing is "hidden"
+        window.setupNotesListener = () => {
+            // Only run if we have a Session ID
+            if(!window.isAuthReady || !window.userId) return;
+
+            // Sync Combat Data for this Session ID immediately
+            window.loadCombatData();
+
+            const docRef = window.getSharedDoc('shared_notes');
+            
+            window.onSnapshot(docRef, (doc) => {
+                if (doc.exists()) {
+                    const d = doc.data();
+                    // FIX: Check BOTH "structuredPrepNotes" and "prepNotes"
+                    window.structuredNotes = {
+                        prepNotes: d.structuredPrepNotes || d.prepNotes || [],
+                        enemyNotes: d.structuredEnemyNotes || d.enemyNotes || [],
+                        npcNotes: d.structuredNpcNotes || d.npcNotes || [],
+                        lootNotes: d.structuredLootNotes || d.lootNotes || [],
+                        mapNotes: d.structuredMapNotes || d.mapNotes || []
+                    };
+                } else {
+                    // New Session? Start clean.
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                }
+                
+                // Refresh the screen if we are looking at the notes tab
+                if (window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            });
+        };
+
+        // 2. Notes Saver: Ensures we save to the specific Session ID path
+        window.saveStructuredNotes = async (tab, data) => {
+             if(!window.userId) return;
+             // Always use the 'structured' prefix for consistency
+             const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+             try { 
+                 await window.setDoc(window.getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); 
+             } catch(e) { console.error("Save Error:", e); }
+        };
+
+        // 3. Combat Storage Key: LOCKS tracker data to this Session ID
+        window.getCombatStorageKey = () => {
+            if (!window.userId) return null; // Don't load 'guest' data if we are trying to be in a session
+            return `aegis_combat_${window.userId}`;
+        };
+
+        // 4. Re-Trigger Login Logic to ensure listeners fire on page refresh
+        // This catches the case where Firebase logs you in automatically on refresh
+        window.auth.onAuthStateChanged((user) => {
+            if (user) {
+                window.userId = user.uid;
+                window.isAuthReady = true;
+                window.updateLoginUI(user);
+                window.setupNotesListener(); // This triggers the load
+            }
+        });
     
     </script>
 
