@@ -2575,6 +2575,37 @@
                 if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
             });
         };
+        
+        // --- COMBINED FIX: SESSION ISOLATION + TRACKER STATUS ---
+        
+        // 1. Helper to get unique save file for this session
+        window.getCombatStorageKey = () => {
+            const id = window.userId || 'guest'; 
+            return `aegis_combat_${id}`;
+        };
+
+        // 2. Update Load function (Fixes Label AND Keeps Isolation)
+        window.loadCombatData = () => {
+            try {
+                // A. Fix the "Connecting..." label
+                const status = document.getElementById('db-status');
+                if(status) {
+                    status.textContent = "Ready (Local)";
+                    status.className = "text-xs px-2 py-1 rounded bg-green-900 text-green-100 border border-green-700 font-bold";
+                }
+
+                // B. Load data for THIS specific session only
+                const key = window.getCombatStorageKey();
+                const data = JSON.parse(localStorage.getItem(key) || '{}');
+                
+                window.combatants = data.combatants || [];
+                window.currentTurnIndex = data.currentTurnIndex || -1;
+                window.renderCombatants();
+            } catch(e) { console.error("Load Error:", e); }
+        };
+
+        // 3. Run immediately to update the label now
+        window.loadCombatData();
  
     </script>
 
