@@ -2493,6 +2493,76 @@
 
             document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
         };
+        
+        // --- CRITICAL FIX: SESSION ISOLATION ---
+        // This stops data from being shared between different sessions.
+
+        // 1. Force Database Paths to use your Private Session ID
+        window.getCol = (name) => {
+            if (!window.userId) return null; // Wait for login
+            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
+        };
+
+        window.getDocRef = (col, id) => {
+             if (!window.userId) return null;
+             return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
+        };
+
+        window.getSharedDoc = (name) => {
+            if (!window.userId) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
+        };
+
+        // 2. Fix Combat Tracker Sharing (Local Storage)
+        // This ensures 'Campaign A' tracker is separate from 'Campaign B'
+        window.getCombatStorageKey = () => {
+            const uid = window.userId || 'guest';
+            return `aegis_combat_${uid}`;
+        };
+
+        window.saveCombatData = () => {
+            const key = window.getCombatStorageKey();
+            localStorage.setItem(key, JSON.stringify({ 
+                combatants: window.combatants, 
+                currentTurnIndex: window.currentTurnIndex 
+            }));
+            window.renderCombatants();
+        };
+
+        window.loadCombatData = () => {
+            try {
+                const key = window.getCombatStorageKey();
+                const data = JSON.parse(localStorage.getItem(key) || '{}');
+                window.combatants = data.combatants || [];
+                window.currentTurnIndex = data.currentTurnIndex || -1;
+                window.renderCombatants();
+                
+                // Update visual status
+                const status = document.getElementById('db-status');
+                if(status) {
+                    if (window.userId) {
+                        status.textContent = "Ready (Session)";
+                        status.className = "text-xs px-2 py-1 rounded bg-green-900 text-green-100 border border-green-700 font-bold";
+                    } else {
+                        status.textContent = "Local (Not Saved)";
+                        status.className = "text-xs px-2 py-1 rounded bg-gray-700 text-gray-400";
+                    }
+                }
+            } catch(e) { console.error("Load Error:", e); }
+        };
+
+        // 3. Refresh Data on Login
+        // This ensures that when you log in, we switch to the correct data immediately
+        const originalUpdateLoginUI = window.updateLoginUI;
+        window.updateLoginUI = (user) => {
+            originalUpdateLoginUI(user); // Run UI update
+            if (user) {
+                // We are logged in! Reload combat for THIS user
+                window.loadCombatData();
+                // Setup notes for THIS user
+                if(window.setupNotesListener) window.setupNotesListener();
+            }
+        };
  
     </script>
 
