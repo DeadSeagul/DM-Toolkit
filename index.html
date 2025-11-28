@@ -2863,6 +2863,143 @@
         
         // Force initialization now
         window.loadCombatData();
+        
+        // --- MASTER REPAIR: DATA PERSISTENCE & TRACKER FIX ---
+
+        // 1. Safe Combat Storage Key (Works for Guests AND Logged In users)
+        window.getCombatStorageKey = () => {
+            const uid = window.userId || 'guest_session';
+            return `aegis_combat_${uid}`;
+        };
+
+        // 2. Fixed Tracker Add Function (Creates list if missing)
+        window.addCombatant = () => {
+            const nameEl = document.getElementById('combatant-name');
+            const name = nameEl.value.trim();
+            if (!name) return alert("Please enter a name.");
+
+            // Auto-repair list if it vanished
+            if (!window.combatants || !Array.isArray(window.combatants)) {
+                window.combatants = [];
+            }
+
+            const hpVal = parseInt(document.getElementById('combatant-hp').value) || 0;
+            const initVal = parseInt(document.getElementById('combatant-init').value) || 0;
+            const acVal = parseInt(document.getElementById('combatant-ac').value) || 10;
+            const atkVal = document.getElementById('combatant-atk') ? document.getElementById('combatant-atk').value : "";
+
+            const newC = { 
+                id: crypto.randomUUID(), 
+                name: name, 
+                init: initVal, 
+                maxHp: hpVal, 
+                currentHp: hpVal, 
+                ac: acVal, 
+                attack: atkVal,
+                conditions: [] 
+            };
+
+            window.combatants.push(newC);
+            window.saveCombatData(); // Save immediately
+            
+            nameEl.value = '';
+            // Don't clear other fields for faster entry
+        };
+
+        // 3. Fixed Save/Load (Local Storage Priority)
+        window.saveCombatData = () => {
+            const key = window.getCombatStorageKey();
+            localStorage.setItem(key, JSON.stringify({ 
+                combatants: window.combatants, 
+                currentTurnIndex: window.currentTurnIndex 
+            }));
+            window.renderCombatants();
+        };
+
+        window.loadCombatData = () => {
+            const key = window.getCombatStorageKey();
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    window.combatants = data.combatants || [];
+                    window.currentTurnIndex = data.currentTurnIndex || -1;
+                } else {
+                    // Don't wipe if loading failed, just init empty
+                    window.combatants = [];
+                }
+                window.renderCombatants();
+                
+                // Update Status Label
+                const status = document.getElementById('db-status');
+                if(status) {
+                    status.textContent = window.userId ? "Session Ready" : "Local Ready";
+                    status.className = window.userId ? "text-xs px-2 py-1 rounded bg-green-900 text-green-100 font-bold" : "text-xs px-2 py-1 rounded bg-gray-600 text-gray-300";
+                }
+            } catch(e) { console.error("Load Error:", e); }
+        };
+
+        // 4. Fixed Statblock Saver (Cloud Only)
+        window.addNpcToStatblocks = async () => {
+            // Strict Auth Check
+            if (!window.isAuthReady || !window.userId) {
+                alert("You must be logged in to a Session to save Statblocks.");
+                window.openLoginModal();
+                return;
+            }
+            
+            if (!window.lastGeneratedNpc) return alert("No NPC generated to save.");
+            
+            const n = window.lastGeneratedNpc;
+            const docData = { 
+                name: n.name, 
+                hp: n.max_hit_points, 
+                ac: n.armor_class_ac, 
+                toHit: 0, 
+                initMod: n.initiative_bonus, 
+                dmg: n.main_attack, 
+                timestamp: new Date().toISOString() 
+            };
+
+            try { 
+                // Use dynamic collection path
+                const col = window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, 'dm_toolkit_statblocks');
+                await window.addDoc(col, docData);
+                alert(`Saved ${n.name} to Statblocks!`); 
+                window.switchTab('statblocks');
+            } catch(e) { 
+                console.error(e); 
+                alert("Save failed: " + e.message); 
+            }
+        };
+
+        // 5. Fixed Notes Listener (Prevents wiping on refresh)
+        window.setupNotesListener = () => {
+            if (!window.isAuthReady || !window.userId) return;
+
+            // Re-load combat data now that we have a User ID
+            window.loadCombatData();
+
+            const docRef = window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', 'shared_notes');
+            
+            window.onSnapshot(docRef, (doc) => {
+                if (doc.exists()) {
+                    const d = doc.data();
+                    // Merge carefully
+                    if(d.prepNotes) window.structuredNotes.prepNotes = d.prepNotes;
+                    if(d.enemyNotes) window.structuredNotes.enemyNotes = d.enemyNotes;
+                    if(d.npcNotes) window.structuredNotes.npcNotes = d.npcNotes;
+                    if(d.lootNotes) window.structuredNotes.lootNotes = d.lootNotes;
+                    if(d.mapNotes) window.structuredNotes.mapNotes = d.mapNotes;
+                    
+                    // Refresh UI if on Notes tab
+                    if (window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+                }
+            });
+        };
+
+        // Force init on load
+        if(window.combatants.length === 0) window.loadCombatData();
  
     </script>
 
