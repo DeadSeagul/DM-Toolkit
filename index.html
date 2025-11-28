@@ -2579,6 +2579,74 @@
             if (window.auth) await window.signOut(window.auth);
             window.location.reload(); // Hard refresh clears all memory
         };
+        
+        // --- PERSISTENCE FIX (Restores Saved Notes & Tracker) ---
+
+        // 1. Fix Notes Listener (Reads correct database fields)
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady || !window.userId) return;
+
+            // Reload combat to ensure it's ready
+            window.loadCombatData();
+
+            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    // FIX: Map the database fields (structuredX) to local variables
+                    window.structuredNotes = {
+                        prepNotes: d.structuredPrepNotes || d.prepNotes || [],
+                        enemyNotes: d.structuredEnemyNotes || d.enemyNotes || [],
+                        npcNotes: d.structuredNpcNotes || d.npcNotes || [],
+                        lootNotes: d.structuredLootNotes || d.lootNotes || [],
+                        mapNotes: d.structuredMapNotes || d.mapNotes || []
+                    };
+                } else {
+                    // Initialize empty if new session
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                }
+                // Refresh the UI immediately
+                if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            });
+        };
+
+        // 2. Fix Saver (Ensures consistent naming)
+        window.saveStructuredNotes = async (tab, data) => {
+             if(!window.isAuthReady) return;
+             // FIX: Construct the field name correctly (e.g. 'prepNotes' -> 'structuredPrepNotes')
+             const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+             try { 
+                 await window.setDoc(window.getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); 
+             } catch(e) { console.error("Save Error:", e); }
+        };
+
+        // 3. Fix Combat Adder (Prevents "freeze" if list is empty)
+        window.addCombatant = () => {
+             const name = document.getElementById('combatant-name').value.trim();
+             if(!name) return;
+             
+             // Safety: Ensure array exists
+             if (!window.combatants) window.combatants = [];
+             
+             const hpVal = parseInt(document.getElementById('combatant-hp').value)||0;
+             const atkVal = document.getElementById('combatant-atk') ? document.getElementById('combatant-atk').value : "";
+
+             window.combatants.push({ 
+                 id: crypto.randomUUID(), 
+                 name, 
+                 init: parseInt(document.getElementById('combatant-init').value)||0, 
+                 maxHp: hpVal, 
+                 currentHp: hpVal, 
+                 ac: parseInt(document.getElementById('combatant-ac').value)||0, 
+                 attack: atkVal, 
+                 conditions: [] 
+             });
+             
+             window.saveCombatData();
+             document.getElementById('combatant-name').value = '';
+        };
+
+        // Force re-run listener if we are already logged in
+        if (window.isAuthReady && window.userId) window.setupNotesListener();
  
     </script>
 
