@@ -2568,6 +2568,61 @@
                 window.loadCombatData();
             }
         });
+        
+        // --- CRITICAL FIX: STRICT SESSION ISOLATION ---
+
+        // 1. Force Database Paths to use the PRIVATE User ID folder
+        window.getCol = (name) => {
+            if (!window.userId) throw new Error("Not logged in");
+            // OLD PATH: artifacts/appId/public/data/name
+            // NEW PATH: artifacts/appId/users/userId/name
+            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
+        };
+
+        window.getDocRef = (col, id) => {
+             if (!window.userId) throw new Error("Not logged in");
+             return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
+        };
+
+        window.getSharedDoc = (name) => {
+            if (!window.userId) throw new Error("Not logged in");
+            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
+        };
+
+        // 2. Force Combat Tracker to use unique LocalStorage slot
+        window.getCombatStorageKey = () => {
+            if (!window.userId) return 'aegis_combat_guest'; 
+            return `aegis_combat_${window.userId}`;
+        };
+
+        // 3. Wipe memory on Login/Logout to prevent "Ghost Data"
+        // This stops Account A's notes from staying on screen when Account B logs in
+        const originalAuthHandler = window.auth.onAuthStateChanged;
+        window.auth.onAuthStateChanged = (callback) => {
+            return originalAuthHandler((user) => {
+                if (user) {
+                    // Logged In: Wipe UI first, then load NEW data
+                    window.userId = user.uid;
+                    window.combatants = []; 
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                    
+                    // Now load specific data
+                    window.updateLoginUI(user);
+                    window.setupNotesListener();
+                    window.loadCombatData();
+                    if(window.setupStatblocksListener) window.setupStatblocksListener();
+                } else {
+                    // Logged Out: Wipe everything
+                    window.userId = null;
+                    window.combatants = [];
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                    window.updateLoginUI(null);
+                    // Re-render empty state
+                    if(window.currentTab === 'combat') window.renderCombatants();
+                    if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+                }
+            });
+        };
  
     </script>
 
