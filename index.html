@@ -559,6 +559,32 @@
                     <button onclick="window.generateSettlement()" id="generate-settlement-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-settlement-text">Generate</span><div id="settlement-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
                 
+                <!-- Advanced Battlemap Generator -->
+<div class="card p-4 rounded-lg shadow-xl mb-6 border border-purple-500/30">
+    <h2 class="text-xl font-semibold mb-4 text-purple-300 flex items-center gap-2">
+        <span>🗺️</span> Battlemap Architect
+    </h2>
+    
+    <!-- Canvas for Drawing -->
+    <canvas id="gen-map-canvas" width="800" height="600" class="w-full h-64 bg-gray-900 rounded-lg mb-4 border-2 border-gray-700 shadow-inner cursor-crosshair"></canvas>
+    
+    <!-- Controls -->
+    <div class="flex gap-2 mb-3">
+        <select id="map-type-select" class="bg-gray-800 text-white text-sm rounded-lg border border-gray-600 p-2 focus:border-purple-500 outline-none">
+            <option value="dungeon">Dungeon</option>
+            <option value="cave">Cavern</option>
+            <option value="forest">Forest</option>
+            <option value="tavern">Tavern</option>
+        </select>
+        <button onclick="window.generateDetailedMap()" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm shadow-lg transition duration-200">Generate New Map</button>
+    </div>
+    
+    <!-- Save Button -->
+    <button onclick="window.saveMapToNotes()" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold py-2 rounded-lg text-xs border border-gray-600 flex items-center justify-center gap-2">
+        <span>💾</span> Save Map to Notes
+    </button>
+</div>
+                
                 <!-- Result Display Card -->
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
@@ -2485,6 +2511,148 @@
             const remainderText = remainder > 0 ? ` <span class='text-red-400'>(${remainder}cp left)</span>` : "";
 
             document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
+        };
+        
+        // --- BATTLEMAP GENERATOR ENGINE ---
+        window.generateDetailedMap = () => {
+            const canvas = document.getElementById('gen-map-canvas');
+            const typeSelect = document.getElementById('map-type-select');
+            const type = typeSelect ? typeSelect.value : 'dungeon';
+            
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const tileSize = 40; 
+
+            // Helper: Random Number
+            const rng = (min, max) => Math.floor(Math.random() * (max - min) + min);
+            
+            // 1. Base Fill
+            ctx.fillStyle = '#0f172a'; // Dark Void
+            ctx.fillRect(0, 0, w, h);
+
+            // 2. Terrain Logic
+            if (type === 'forest') {
+                // Grass Base
+                ctx.fillStyle = '#1a472a'; 
+                ctx.fillRect(0, 0, w, h);
+                // Texturing (Grass Blades)
+                for(let i=0; i<4000; i++) {
+                    ctx.fillStyle = Math.random() > 0.5 ? '#2d6a4f' : '#143621';
+                    ctx.fillRect(Math.random()*w, Math.random()*h, 2, 3);
+                }
+                // Trees
+                for(let i=0; i<20; i++) {
+                    const x = rng(20, w-20); const y = rng(20, h-20); const r = rng(25, 45);
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.arc(x+5, y+5, r, 0, Math.PI*2); ctx.fill(); // Shadow
+                    ctx.fillStyle = '#0f2e1b'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); // Base
+                    ctx.fillStyle = '#2d6a4f'; ctx.beginPath(); ctx.arc(x, y, r*0.6, 0, Math.PI*2); ctx.fill(); // Top
+                }
+            } 
+            else if (type === 'cave') {
+                // Dirt Floor
+                ctx.fillStyle = '#3f3f46'; ctx.fillRect(0,0,w,h);
+                // Cellular Automata for Walls
+                let map = new Array(Math.ceil(w/20) * Math.ceil(h/20)).fill(0).map(() => Math.random() > 0.45 ? 1 : 0);
+                const cols = Math.ceil(w/20);
+                
+                for(let k=0; k<5; k++) { // Smooth 5 times
+                    let newMap = [...map];
+                    for(let i=0; i<map.length; i++) {
+                        let n = 0;
+                        // Simple neighbor check
+                        if(map[i-1]) n++; if(map[i+1]) n++; if(map[i-cols]) n++; if(map[i+cols]) n++;
+                        if(map[i-cols-1]) n++; if(map[i-cols+1]) n++; if(map[i+cols-1]) n++; if(map[i+cols+1]) n++;
+                        
+                        if(n > 4) newMap[i] = 1; else if(n < 3) newMap[i] = 0;
+                    }
+                    map = newMap;
+                }
+                
+                ctx.fillStyle = '#18181b'; // Rock Wall
+                for(let i=0; i<map.length; i++) {
+                    if(map[i]) ctx.fillRect((i%cols)*20, Math.floor(i/cols)*20, 20, 20);
+                }
+            }
+            else if (type === 'dungeon' || type === 'tavern') {
+                const isTavern = type === 'tavern';
+                ctx.fillStyle = '#000000'; ctx.fillRect(0,0,w,h);
+                
+                const rooms = [];
+                const count = isTavern ? 3 : 7;
+                
+                for(let i=0; i<count; i++) {
+                    const rw = rng(4, 10) * tileSize;
+                    const rh = rng(4, 8) * tileSize;
+                    const rx = rng(1, (w-rw)/tileSize - 1) * tileSize;
+                    const ry = rng(1, (h-rh)/tileSize - 1) * tileSize;
+                    
+                    let overlap = false;
+                    rooms.forEach(r => {
+                        if (rx < r.x + r.w + tileSize && rx + rw + tileSize > r.x && ry < r.y + r.h + tileSize && ry + rh + tileSize > r.y) overlap = true;
+                    });
+                    
+                    if (!overlap || isTavern) {
+                        rooms.push({x:rx, y:ry, w:rw, h:rh});
+                        // Floor
+                        ctx.fillStyle = isTavern ? '#5d4037' : '#52525b';
+                        ctx.fillRect(rx, ry, rw, rh);
+                        // Floor Pattern
+                        ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; ctx.beginPath();
+                        if(isTavern) { for(let ly=ry; ly<ry+rh; ly+=15) { ctx.moveTo(rx, ly); ctx.lineTo(rx+rw, ly); } } // Planks
+                        else { for(let lx=rx; lx<rx+rw; lx+=tileSize) { ctx.moveTo(lx, ry); ctx.lineTo(lx, ry+rh); } for(let ly=ry; ly<ry+rh; ly+=tileSize) { ctx.moveTo(rx, ly); ctx.lineTo(rx+rw, ly); } } // Tiles
+                        ctx.stroke();
+                        // Walls
+                        ctx.strokeStyle = isTavern ? '#3e2723' : '#94a3b8'; ctx.lineWidth = 6; ctx.strokeRect(rx, ry, rw, rh);
+                    }
+                }
+                
+                // Simple Corridors for Dungeon
+                if (!isTavern && rooms.length > 1) {
+                    ctx.strokeStyle = '#52525b'; ctx.lineWidth = tileSize * 0.8; ctx.lineCap = 'square'; ctx.beginPath();
+                    for(let i=0; i<rooms.length-1; i++) {
+                        const c1 = {x: rooms[i].x + rooms[i].w/2, y: rooms[i].y + rooms[i].h/2};
+                        const c2 = {x: rooms[i+1].x + rooms[i+1].w/2, y: rooms[i+1].y + rooms[i+1].h/2};
+                        ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c1.y); ctx.lineTo(c2.x, c2.y);
+                    }
+                    ctx.stroke();
+                }
+            }
+
+            // 3. Grid Overlay
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1; ctx.beginPath();
+            for(let x=0; x<=w; x+=tileSize) { ctx.moveTo(x,0); ctx.lineTo(x,h); }
+            for(let y=0; y<=h; y+=tileSize) { ctx.moveTo(0,y); ctx.lineTo(w,y); }
+            ctx.stroke();
+        };
+
+        window.saveMapToNotes = async () => {
+            if(!window.userId) { alert("Please log in to save maps."); window.openLoginModal(); return; }
+            
+            const canvas = document.getElementById('gen-map-canvas');
+            if(!canvas) return;
+            
+            // Create Image Tag
+            const img = `<img src="${canvas.toDataURL()}" style="width:100%; border-radius:8px; border:1px solid #4b5563; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">`;
+            const note = { 
+                id: crypto.randomUUID(), 
+                title: `Map ${new Date().toLocaleTimeString()}`, 
+                content: img, 
+                timestamp: new Date().toISOString() 
+            };
+            
+            // Ensure array exists
+            if(!window.structuredNotes) window.structuredNotes = {};
+            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
+            
+            // Save
+            window.structuredNotes.mapNotes.unshift(note);
+            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
+            
+            alert("Map Saved!");
+            window.switchTab('notes'); 
+            window.switchSubTab('mapNotes');
         };
  
     </script>
