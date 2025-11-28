@@ -2694,6 +2694,80 @@
             statusLabel.textContent = "Ready";
             statusLabel.className = "text-xs px-2 py-1 rounded bg-gray-700 text-green-400 border border-green-900";
         }
+        
+        // --- UI & API KEY REPAIR KIT ---
+        
+        // 1. Fix Tab Switching
+        window.switchTab = function(tabId) {
+            window.currentTab = tabId;
+            
+            // Hide all content
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            
+            // Show target
+            const target = document.getElementById(tabId);
+            if(target) target.classList.remove('hidden');
+            
+            // Update Buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
+                btn.classList.add('text-gray-400', 'border-transparent');
+                
+                const text = btn.textContent.toLowerCase();
+                // Heuristic matching for button names vs IDs
+                const isMatch = 
+                    (tabId === 'improv' && text.includes('prep')) ||
+                    (tabId === 'statblocks' && text.includes('stats')) ||
+                    (tabId === 'soundboard' && text.includes('sound')) ||
+                    text.includes(tabId);
+
+                if (isMatch) {
+                    btn.classList.add('active'); 
+                    btn.classList.remove('text-gray-400');
+                }
+            });
+
+            // Refresh Notes if needed
+            if (tabId === 'notes' && window.switchSubTab) {
+                window.switchSubTab(window.currentSubTab || 'prepNotes');
+            }
+        };
+
+        // 2. Fix API Key Saving
+        window.updateApiKey = function(val) {
+            const cleanVal = val ? val.trim() : "";
+            window.userApiKey = cleanVal;
+            localStorage.setItem('dm_toolkit_api_key', cleanVal);
+            
+            const status = document.getElementById('api-key-status');
+            if (status) {
+                if (cleanVal.length > 10) {
+                    status.textContent = "Status: Key Saved ✅";
+                    status.className = "mt-2 text-xs text-green-400 font-bold";
+                } else {
+                    status.textContent = "Status: No key saved ❌";
+                    status.className = "mt-2 text-xs text-red-400";
+                }
+            }
+        };
+
+        window.saveApiKey = function() {
+            const input = document.getElementById('user-api-key');
+            if (input) {
+                window.updateApiKey(input.value);
+                alert("API Key Saved Successfully!");
+            } else {
+                alert("Error: Input not found.");
+            }
+        };
+        
+        // 3. Auto-load Key on startup (Safety run)
+        if(localStorage.getItem('dm_toolkit_api_key')) {
+             const k = localStorage.getItem('dm_toolkit_api_key');
+             const inp = document.getElementById('user-api-key');
+             if(inp) inp.value = k;
+             window.updateApiKey(k);
+        }
  
     </script>
 
