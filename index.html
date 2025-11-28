@@ -2493,6 +2493,81 @@
 
             document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
         };
+        
+        // --- CRITICAL FIX: SESSION DATA ISOLATION ---
+        // This overwrites the previous database paths to ensure data is private to the Session ID.
+
+        // 1. Helper: Get Current Session ID (or null)
+        window.getSessionId = () => {
+            if (window.auth && window.auth.currentUser) return window.auth.currentUser.uid;
+            return null;
+        };
+
+        // 2. Redefine Database Paths to use USER ID instead of PUBLIC
+        window.getCol = (name) => {
+            const uid = window.getSessionId();
+            if (!uid) throw new Error("Not logged in");
+            // CHANGE: Path is now users/{uid}/{name}
+            return window.collection(window.db, 'artifacts', window.appId, 'users', uid, name);
+        };
+
+        window.getDocRef = (col, id) => {
+             const uid = window.getSessionId();
+             if (!uid) throw new Error("Not logged in");
+             return window.doc(window.db, 'artifacts', window.appId, 'users', uid, col, id);
+        };
+
+        window.getSharedDoc = (name) => {
+            const uid = window.getSessionId();
+            if (!uid) throw new Error("Not logged in");
+            return window.doc(window.db, 'artifacts', window.appId, 'users', uid, 'session_data', name);
+        };
+
+        // 3. Redefine Combat Storage to be Session Specific (Local Storage)
+        window.getCombatStorageKey = () => {
+            const uid = window.getSessionId() || 'guest';
+            return `aegis_combat_${uid}`;
+        };
+
+        // 4. Reload Logic on Login (To switch data streams immediately)
+        // We hook into the auth state change to force a refresh of the data
+        window.auth.onAuthStateChanged((user) => {
+            const loginBtn = document.getElementById('login-btn');
+            const profile = document.getElementById('user-profile');
+            
+            if (user) {
+                // Logged In
+                window.userId = user.uid;
+                window.isAuthReady = true;
+                
+                // UI
+                if(loginBtn) loginBtn.classList.add('hidden');
+                if(profile) profile.classList.remove('hidden');
+                document.getElementById('user-name').textContent = user.email.split('@')[0].replace(/_/g, ' ');
+                
+                // DATA RESET & RELOAD
+                // 1. Clear old notes from view (so Campaign A notes don't show in Campaign B)
+                window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                if (window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+
+                // 2. Load Combat for THIS session
+                window.loadCombatData(); 
+
+                // 3. Start Listeners for THIS session
+                if(window.setupNotesListener) window.setupNotesListener();
+                if(window.setupStatblocksListener) window.setupStatblocksListener();
+                
+            } else {
+                // Logged Out
+                window.userId = null;
+                window.isAuthReady = false;
+                if(loginBtn) loginBtn.classList.remove('hidden');
+                if(profile) profile.classList.add('hidden');
+                
+                // Revert to Guest Data
+                window.loadCombatData();
+            }
+        });
  
     </script>
 
