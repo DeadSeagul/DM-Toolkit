@@ -3001,6 +3001,149 @@
         // Force init on load
         if(window.combatants.length === 0) window.loadCombatData();
  
+// --- MASTER LOGIC RESET (Fixes Tracker, Saving, & Persistence) ---
+
+        // 1. GLOBAL VARIABLE RESET (Ensures they exist)
+        window.combatants = window.combatants || [];
+        window.structuredNotes = window.structuredNotes || { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+        
+        // 2. FORCE GENERATOR TO SAVE DATA GLOBALLY
+        window.generateCombatNpc = async () => {
+            const btn = document.getElementById('generate-combat-button'); 
+            const out = document.getElementById('ai-output');
+            if(btn) btn.disabled = true; 
+            if(out) out.textContent = "Generating...";
+
+            try {
+                const txt = document.getElementById('npc-type').value; 
+                const lvl = document.getElementById('npc-level').value;
+                // Use the AI call
+                const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e combat NPC (Level ${lvl}, ${txt}) in JSON with keys: name, armor_class_ac, max_hit_points, initiative_bonus, main_attack.` }] }] });
+                
+                // Parse and SAVE to GLOBAL variable
+                const text = data.candidates[0].content.parts[0].text;
+                const jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}')+1);
+                const stats = JSON.parse(jsonStr);
+                
+                // CRITICAL: Save to window so the other button can find it
+                window.lastGeneratedNpc = stats; 
+                
+                if(out) out.innerHTML = `
+                    <div class="font-bold text-green-400 text-xl">${stats.name}</div>
+                    <div class="text-sm text-gray-300">AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points}</div>
+                    <div class="text-sm text-gray-400 mt-1">${stats.main_attack}</div>
+                    <button onclick="window.addNpcToStatblocks()" class="mt-3 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg">Save to Stats</button>
+                `;
+            } catch(e) { 
+                if(out) out.textContent = "Error: " + e.message; 
+            } finally { 
+                if(btn) btn.disabled = false; 
+            }
+        };
+
+        // 3. ROBUST STATBLOCK SAVER
+        window.addNpcToStatblocks = async () => {
+            // Check Auth
+            if (!window.userId) {
+                alert("Please log in to a Session to save statblocks.");
+                window.openLoginModal();
+                return;
+            }
+            // Check Data
+            if (!window.lastGeneratedNpc) {
+                alert("No NPC found in memory. Please click 'Generate' again.");
+                return;
+            }
+            
+            const n = window.lastGeneratedNpc;
+            try { 
+                // Save to Firebase
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: n.name, 
+                    hp: n.max_hit_points, 
+                    ac: n.armor_class_ac, 
+                    toHit: 0, 
+                    initMod: n.initiative_bonus, 
+                    dmg: n.main_attack, 
+                    timestamp: new Date().toISOString() 
+                }); 
+                alert(`Saved ${n.name} successfully!`); 
+            } catch(e) { 
+                console.error(e); 
+                alert("Save Failed: " + e.message); 
+            }
+        };
+
+        // 4. FIXED COMBAT TRACKER (Auto-Fixes List)
+        window.addCombatant = () => {
+            const nameInput = document.getElementById('combatant-name');
+            const name = nameInput.value.trim();
+            if(!name) return alert("Enter a name!");
+
+            // Safety: Re-initialize list if it's corrupt/missing
+            if (!Array.isArray(window.combatants)) window.combatants = [];
+
+            const hp = parseInt(document.getElementById('combatant-hp').value)||0;
+            const atk = document.getElementById('combatant-atk') ? document.getElementById('combatant-atk').value : "";
+
+            window.combatants.push({ 
+                id: crypto.randomUUID(), 
+                name, 
+                init: parseInt(document.getElementById('combatant-init').value)||0, 
+                maxHp: hp, 
+                currentHp: hp, 
+                ac: parseInt(document.getElementById('combatant-ac').value)||0, 
+                attack: atk, 
+                conditions: [] 
+            });
+            
+            // Save immediately
+            window.saveCombatData();
+            nameInput.value = '';
+        };
+
+        // 5. PERSISTENT STORAGE LOGIC
+        // This determines WHERE to save/load data (Local vs Session)
+        window.getStorageKey = () => {
+            const uid = window.userId || 'guest_user';
+            return `aegis_combat_${uid}`;
+        };
+
+        window.saveCombatData = () => {
+            const key = window.getStorageKey();
+            const data = { 
+                combatants: window.combatants, 
+                currentTurnIndex: window.currentTurnIndex 
+            };
+            // Save to Browser Storage (Survivies Refresh)
+            localStorage.setItem(key, JSON.stringify(data));
+            window.renderCombatants();
+        };
+
+        window.loadCombatData = () => {
+            const key = window.getStorageKey();
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const d = JSON.parse(raw);
+                    window.combatants = d.combatants || [];
+                    window.currentTurnIndex = d.currentTurnIndex || -1;
+                }
+                window.renderCombatants();
+                
+                // Update Status UI
+                const status = document.getElementById('db-status');
+                if(status) {
+                    status.textContent = window.userId ? "Session Active" : "Local Mode";
+                    status.className = window.userId ? "text-xs px-2 py-1 rounded bg-green-900 text-white" : "text-xs px-2 py-1 rounded bg-gray-600 text-gray-300";
+                }
+            } catch(e) { console.error("Load failed", e); }
+        };
+
+        // 6. AUTO-RELOAD ON STARTUP
+        // This forces the data to appear as soon as the page opens
+        window.loadCombatData();
+
     </script>
 
     <!-- Login Modal -->
