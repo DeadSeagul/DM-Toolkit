@@ -2494,6 +2494,61 @@
 
             document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
         };
+        
+        // --- SESSION ISOLATION PATCH (Overrides previous logic) ---
+
+        // 1. Unique Storage Key for Combat
+        window.getCombatStorageKey = () => {
+            const id = window.userId || 'guest'; 
+            return `aegis_combat_${id}`;
+        };
+
+        // 2. Load Combat (Specific to Session)
+        window.loadCombatData = () => {
+            try {
+                const key = window.getCombatStorageKey();
+                const data = JSON.parse(localStorage.getItem(key) || '{}');
+                window.combatants = data.combatants || [];
+                window.currentTurnIndex = data.currentTurnIndex || -1;
+                window.renderCombatants();
+            } catch(e) { console.error("Load Error:", e); }
+        };
+
+        // 3. Save Combat (Specific to Session)
+        window.saveCombatData = () => {
+            const key = window.getCombatStorageKey();
+            localStorage.setItem(key, JSON.stringify({ 
+                combatants: window.combatants, 
+                currentTurnIndex: window.currentTurnIndex 
+            }));
+            window.renderCombatants();
+        };
+
+        // 4. Notes Listener (Clears old notes when switching sessions)
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady || !window.userId) return;
+            
+            // Force reload combat for this specific user
+            window.loadCombatData();
+
+            // Wipe visible notes so they don't bleed over from previous login
+            window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+            if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+
+            // Start listening to the new session's data
+            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    window.structuredNotes.prepNotes = d.prepNotes || [];
+                    window.structuredNotes.enemyNotes = d.enemyNotes || [];
+                    window.structuredNotes.npcNotes = d.npcNotes || [];
+                    window.structuredNotes.lootNotes = d.lootNotes || [];
+                    window.structuredNotes.mapNotes = d.mapNotes || [];
+                }
+                // Refresh view
+                if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            });
+        };
  
     </script>
 
