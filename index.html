@@ -523,10 +523,14 @@
         <div id="content-area">
             <!-- Prep Tab -->
             <div id="improv" class="tab-content">
+                
                 <!-- AI Configuration Card -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-indigo-500/30">
                     <h2 class="text-xl font-semibold mb-2 text-indigo-300">🔑 AI Configuration</h2>
+                    
+                    <!-- Warning Message -->
                     <p class="text-xs text-yellow-400 mb-2 font-bold">⚠️ You need to provide an API Key before using AI features.</p>
+                    
                     <p class="text-xs text-gray-400 mb-3">Enter your Google Gemini API Key. Saved locally. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline">Get Key Here</a>.</p>
                     <div class="flex gap-2">
                         <input type="password" id="user-api-key" placeholder="Paste API Key (AIza...)" class="flex-1 p-2 rounded-lg input-style text-sm">
@@ -535,6 +539,7 @@
                     <p id="api-key-status" class="mt-2 text-xs text-gray-500">Status: No key saved.</p>
                 </div>
 
+                <!-- Combat NPC Stats -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Combat NPC Stats</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -542,14 +547,17 @@
                         <div><label class="block text-xs font-medium text-gray-400 mb-1">NPC Type</label><input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style text-sm"></div>
                     </div>
                     <button onclick="window.generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
+                    <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
 
+                <!-- Creative Lore -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Creative Lore</h2>
                     <textarea id="improv-prompt" rows="3" class="w-full p-3 rounded-lg input-style resize-none" placeholder="Enter a prompt..."></textarea>
                     <button onclick="window.generateCreativeIdea()" id="generate-button" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-text">Generate Idea</span><div id="creative-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
 
+                <!-- Settlement Generator -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-teal-300">Settlement Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
