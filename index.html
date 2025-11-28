@@ -2606,6 +2606,130 @@
 
         // 3. Run immediately to update the label now
         window.loadCombatData();
+        
+        // --- SYSTEM CORE RESTORE (Fixes Save/Load & Tracker) ---
+
+        // 1. Ensure Session ID is always available for paths
+        window.getCurrentSessionId = () => {
+            if (window.auth && window.auth.currentUser) return window.auth.currentUser.uid;
+            return window.userId || 'guest_session';
+        };
+
+        // 2. Fixed Database Helpers (Dynamic ID fetching)
+        window.getCol = (name) => window.collection(window.db, 'artifacts', window.appId, 'users', window.getCurrentSessionId(), name);
+        window.getSharedDoc = (name) => window.doc(window.db, 'artifacts', window.appId, 'users', window.getCurrentSessionId(), 'session_data', name);
+
+        // 3. Robust Notes Listener (Fixes "Gone" Notes)
+        window.setupNotesListener = () => {
+            // Don't run if not logged in
+            const uid = window.getCurrentSessionId();
+            if (!uid || uid === 'guest_session') return;
+
+            console.log("Connecting to notes for:", uid);
+
+            // Force reload local combat data too
+            window.loadCombatData();
+
+            // Listen to Firestore
+            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
+                if (doc.exists()) {
+                    const d = doc.data();
+                    // Safely merge data without wiping existing keys if missing
+                    window.structuredNotes = {
+                        prepNotes: d.prepNotes || [],
+                        enemyNotes: d.enemyNotes || [],
+                        npcNotes: d.npcNotes || [],
+                        lootNotes: d.lootNotes || [],
+                        mapNotes: d.mapNotes || []
+                    };
+                } else {
+                    // Only wipe if the document genuinely doesn't exist for this user
+                    console.log("No notes found for this session, starting fresh.");
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                }
+                // Refresh UI
+                if (window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            }, (error) => {
+                console.error("Notes Sync Error:", error);
+                if(error.code === 'permission-denied') alert("Error: Access Denied. Your session may have expired. Please Log Out and Log In again.");
+            });
+        };
+
+        // 4. Fixed Combat Tracker (Fixes "Can't Add")
+        window.getCombatStorageKey = () => `aegis_combat_${window.getCurrentSessionId()}`;
+
+        window.addCombatant = () => {
+            const nameEl = document.getElementById('combatant-name');
+            const name = nameEl.value.trim();
+            
+            if (!name) {
+                alert("Please enter a name.");
+                return;
+            }
+
+            // Initialize array if it crashed or disappeared
+            if (!window.combatants) window.combatants = [];
+
+            // Grab stats safely
+            const hp = parseInt(document.getElementById('combatant-hp').value) || 0;
+            const init = parseInt(document.getElementById('combatant-init').value) || 0;
+            const ac = parseInt(document.getElementById('combatant-ac').value) || 10;
+            const atk = document.getElementById('combatant-atk') ? document.getElementById('combatant-atk').value : "";
+
+            const newCombatant = {
+                id: crypto.randomUUID(),
+                name: name,
+                init: init,
+                maxHp: hp,
+                currentHp: hp,
+                ac: ac,
+                attack: atk,
+                conditions: []
+            };
+
+            window.combatants.push(newCombatant);
+            window.saveCombatData();
+            
+            // Clear name input only (keeps other stats for fast entry)
+            nameEl.value = '';
+            nameEl.focus();
+        };
+
+        window.saveCombatData = () => {
+            const key = window.getCombatStorageKey();
+            localStorage.setItem(key, JSON.stringify({
+                combatants: window.combatants,
+                currentTurnIndex: window.currentTurnIndex
+            }));
+            window.renderCombatants();
+        };
+
+        window.loadCombatData = () => {
+            const key = window.getCombatStorageKey();
+            try {
+                const raw = localStorage.getItem(key);
+                const data = raw ? JSON.parse(raw) : {};
+                window.combatants = data.combatants || [];
+                window.currentTurnIndex = data.currentTurnIndex || -1;
+                window.renderCombatants();
+                
+                // Update Status Label
+                const status = document.getElementById('db-status');
+                if(status) {
+                    status.textContent = "Ready";
+                    status.className = "text-xs px-2 py-1 rounded bg-green-900 text-green-100 border border-green-700 font-bold";
+                }
+            } catch (e) {
+                console.error("Combat Load Error:", e);
+                window.combatants = [];
+            }
+        };
+
+        // --- Force Re-Init on Page Load ---
+        if (window.auth && window.auth.currentUser) {
+            window.userId = window.auth.currentUser.uid;
+            window.setupNotesListener();
+        }
  
     </script>
 
