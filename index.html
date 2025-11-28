@@ -1378,6 +1378,87 @@
             }
         })();
     
+    // --- FIX: SAVE BUTTONS FOR GENERATED CONTENT ---
+
+        // 1. Robust Save Function
+        window.saveGeneratedContent = async function(destinationTab) {
+            // A. Security Check
+            if (!window.userId) { 
+                alert("⚠️ Please log in to a Session to save notes."); 
+                window.openLoginModal(); 
+                return; 
+            }
+
+            // B. Find Content
+            // Try finding content in the main output or loot output
+            const mainOutput = document.getElementById('ai-output');
+            const lootOutput = document.getElementById('loot-output');
+            
+            let contentToSave = "";
+            
+            // If we are on the Loot tab, prioritize loot output
+            if (window.currentTab === 'loot' && lootOutput && lootOutput.innerText.length > 5) {
+                contentToSave = lootOutput.innerText.trim();
+            } 
+            // Otherwise check the main AI output
+            else if (mainOutput && mainOutput.innerHTML.length > 5 && !mainOutput.innerHTML.includes("Results appear here")) {
+                contentToSave = mainOutput.innerHTML.trim();
+            }
+
+            // C. Validation
+            if (!contentToSave) {
+                alert("Nothing to save! Please generate some content first.");
+                return;
+            }
+
+            // D. Generate Title (First 40 chars of text)
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = contentToSave;
+            const cleanText = tempDiv.textContent || tempDiv.innerText || "";
+            const title = cleanText.split('\n')[0].substring(0, 40).trim() || 'Generated Note';
+
+            // E. Create Note Object
+            const newNote = { 
+                id: crypto.randomUUID(), 
+                title: title, 
+                content: contentToSave, 
+                timestamp: new Date().toISOString() 
+            };
+            
+            // F. Update State & Save
+            // Ensure the target array exists
+            if (!window.structuredNotes) window.structuredNotes = {};
+            if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
+            
+            // Add to top of list
+            window.structuredNotes[destinationTab].unshift(newNote);
+            
+            try {
+                // Save to Firebase
+                await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
+                
+                // G. Success Feedback
+                // Switch to the notes tab immediately to show the user
+                window.switchTab('notes'); 
+                window.switchSubTab(destinationTab);
+                
+            } catch (e) {
+                console.error("Save failed:", e);
+                alert("Error saving to cloud: " + e.message);
+            }
+        };
+
+        // 2. Ensure Database Save Helper exists and works
+        window.saveStructuredNotes = async (tab, data) => {
+             if(!window.userId) return;
+             try {
+                 const ref = window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', 'shared_notes');
+                 await window.setDoc(ref, { [tab]: data }, { merge: true });
+             } catch(e) {
+                 console.error("DB Error:", e);
+             }
+        };
+    
     </script>
 
     <!-- Login Modal -->
