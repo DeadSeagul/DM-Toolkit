@@ -2493,6 +2493,105 @@
 
             document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
         };
+        
+        // --- CRITICAL FIX: PRIVATE SESSIONS & COMBAT UPDATE ---
+
+        // 1. Overwrite Database Paths to be PRIVATE (User ID specific)
+        window.getCol = (name) => {
+            if (!window.userId) return null;
+            // CHANGE: Saves to 'users/{userId}' instead of 'public'
+            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
+        };
+
+        window.getDocRef = (col, id) => {
+             if (!window.userId) return null;
+             return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
+        };
+
+        window.getSharedDoc = (name) => {
+            if (!window.userId) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
+        };
+
+        // 2. Update Combat Tracker to Display Attacks & Save Privately
+        window.addCombatant = async () => {
+             if(!window.isAuthReady) return alert("Please log in to a session.");
+             
+             const name = document.getElementById('combatant-name').value.trim();
+             if(!name) return;
+
+             const init = parseInt(document.getElementById('combatant-init').value)||0;
+             const hp = parseInt(document.getElementById('combatant-hp').value)||0;
+             const ac = parseInt(document.getElementById('combatant-ac').value)||0;
+             // Capture Attack Info
+             const atk = document.getElementById('combatant-atk') ? document.getElementById('combatant-atk').value : "";
+
+             // Save to Private Collection
+             await window.addDoc(window.getCol('shared_combatants'), { 
+                 name, init, maxHp: hp, currentHp: hp, ac, attack: atk, conditions: [], initModifier: init 
+             });
+             
+             document.getElementById('combatant-name').value = '';
+             if(document.getElementById('combatant-atk')) document.getElementById('combatant-atk').value = '';
+        };
+
+        window.renderCombatants = () => {
+            const list = document.getElementById('initiative-list');
+            if(!list) return;
+            
+            // Safety Check
+            if (!window.combatants || window.combatants.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 pt-8">List empty.</p>';
+                return;
+            }
+
+            const dndConditions = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious', 'Exhaustion', 'Concentrating'];
+            const condOpts = dndConditions.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+            list.innerHTML = window.combatants.sort((a,b)=>b.init-a.init).map((c, i) => {
+                const active = (i === window.currentTurnIndex) ? 'border-indigo-500 bg-indigo-900/20' : 'border-gray-600';
+                const badges = (c.conditions||[]).map(con=>`<span onclick="window.removeCondition('${c.id}','${con}')" class="cursor-pointer bg-red-900 px-1 rounded text-[10px] mr-1 border border-red-700">${con} ×</span>`).join('');
+                
+                // VISUAL FIX: Display the Attack/Damage
+                const atkShow = c.attack ? `<div class="text-xs text-yellow-400 font-mono mt-1">⚔️ ${c.attack}</div>` : '';
+
+                return `
+                <div class="flex items-start p-2 bg-gray-800 rounded mb-1 border-l-4 ${active}">
+                    <div class="w-8 font-bold text-center pt-1">${c.init}</div>
+                    <div class="flex-1 ml-2 min-w-0">
+                        <div class="font-bold text-sm text-gray-200 truncate">${c.name} <span class="text-xs text-gray-400 ml-1">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</span></div>
+                        ${atkShow}
+                        <div class="mt-1 flex flex-wrap gap-1">${badges}</div>
+                        <select onchange="window.addCondition('${c.id}',this.value);this.value='';" class="mt-1 bg-gray-900 text-[10px] border border-gray-600 rounded px-1"><option value="">+ Cond</option>${condOpts}</select>
+                    </div>
+                    <div class="flex flex-col items-end gap-1 ml-1">
+                        <div class="flex items-center gap-1"><input type="number" id="dmg-${i}" class="w-8 text-black text-xs rounded p-1" placeholder="#"><button onclick="window.modHp('${c.id}',${i},-1)" class="text-xs bg-red-900 hover:bg-red-700 text-white px-2 py-1 rounded">Dmg</button><button onclick="window.modHp('${c.id}',${i},1)" class="text-xs bg-green-900 hover:bg-green-700 text-white px-2 py-1 rounded">Heal</button></div>
+                        <button onclick="window.delCombatant('${c.id}')" class="text-xs text-gray-500 hover:text-red-400 underline mt-1">Remove</button>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            // Update Roller Target List
+            const sel = document.getElementById('combatant-selector');
+            if(sel) sel.innerHTML = '<option>Target</option>' + window.combatants.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
+        };
+
+        // 3. Restart Listeners on Login to ensure we look at the NEW private path
+        const originalUpdateUI = window.updateLoginUI;
+        window.updateLoginUI = (user) => {
+            originalUpdateUI(user);
+            if(user) {
+                console.log("Switching to Private Data for:", user.uid);
+                // Restart listeners with the new User ID
+                if(window.setupNotesListener) window.setupNotesListener();
+                if(window.setupCombatDataListeners) window.setupCombatDataListeners();
+                if(window.setupStatblocksListener) window.setupStatblocksListener();
+            } else {
+                // Clear screen on logout
+                window.combatants = [];
+                window.renderCombatants();
+            }
+        };
  
     </script>
 
