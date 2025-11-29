@@ -857,9 +857,9 @@
     <!-- Snow Visuals Canvas -->
     <canvas id="snow-canvas"></canvas>
 
-    <!-- 2. APP LOGIC (Crash-Proof: Passive Loading) -->
+    <!-- 2. APP LOGIC (Cloud Persistence Enabled) -->
     <script>
-        // --- 1. GLOBAL VARIABLES (Define these immediately) ---
+        // --- 1. GLOBAL STATE ---
         window.userId = null;
         window.isAuthReady = false;
         window.currentTab = 'improv';
@@ -875,114 +875,56 @@
         window.lastGeneratedNpc = null;
         window.lastGeneratedMonster = null;
 
-        // --- 2. UI FUNCTIONS (Define these FIRST so buttons never break) ---
-        window.switchTab = function(tabId) {
-            window.currentTab = tabId;
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            const target = document.getElementById(tabId);
-            if(target) target.classList.remove('hidden');
+        // --- 2. AUTH & CONNECTION MANAGER ---
+        window.auth.onAuthStateChanged((user) => {
+            const loginBtn = document.getElementById('login-btn');
+            const profile = document.getElementById('user-profile');
             
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
-                btn.classList.add('text-gray-400', 'border-transparent');
-                const text = btn.textContent.toLowerCase();
-                const isMatch = (tabId === 'improv' && text.includes('prep')) || 
-                                (tabId === 'statblocks' && text.includes('stats')) || 
-                                (tabId === 'soundboard' && text.includes('sound')) || 
-                                text.includes(tabId);
-                if (isMatch) {
-                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
-                }
-            });
-            if (tabId === 'notes') window.switchSubTab(window.currentSubTab);
-        };
-        
-        window.switchSubTab = function(tabId) {
-            window.currentSubTab = tabId;
-            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
-            const target = document.getElementById(`${tabId}-sub-content`);
-            if(target) target.classList.remove('hidden');
-            
-            document.querySelectorAll('.sub-tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-gray-400');
-                if (btn.dataset.subtab === tabId) btn.classList.add('active');
-                else btn.classList.add('text-gray-400');
-            });
-            window.renderStructuredNotes(tabId);
-        };
-
-        window.openLoginModal = () => document.getElementById('login-modal').classList.remove('hidden');
-        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
-        
-        window.saveApiKey = () => {
-            const val = document.getElementById('user-api-key').value.trim();
-            window.userApiKey = val;
-            localStorage.setItem('dm_toolkit_api_key', val);
-            const status = document.getElementById('api-key-status');
-            if(status) { status.textContent = "Key Saved ✅"; status.className = "mt-2 text-xs text-green-400"; }
-        };
-        
-        window.toggleTheme = () => {
-            window.isChristmasMode = !window.isChristmasMode;
-            localStorage.setItem('aegis_theme', window.isChristmasMode ? 'christmas' : 'default');
-            applyTheme();
-        };
-        function applyTheme() {
-            if(window.isChristmasMode) { document.body.classList.add('christmas-mode'); window.startSnow(); } 
-            else { document.body.classList.remove('christmas-mode'); window.stopSnow(); }
-        }
-
-        // --- 3. AUTH HANDLER (The Listener) ---
-        // This waits for Firebase to be ready before trying to load data
-        if(window.auth) {
-            window.auth.onAuthStateChanged((user) => {
-                const loginBtn = document.getElementById('login-btn');
-                const profile = document.getElementById('user-profile');
+            if (user) {
+                // LOGGED IN
+                console.log("Session Connected:", user.uid);
+                window.userId = user.uid;
+                window.isAuthReady = true;
                 
-                if (user) {
-                    // LOGGED IN
-                    console.log("User Logged In:", user.uid);
-                    window.userId = user.uid;
-                    window.isAuthReady = true;
-                    
-                    if(loginBtn) loginBtn.classList.add('hidden');
-                    if(profile) profile.classList.remove('hidden');
-                    document.getElementById('user-name').textContent = user.email.split('@')[0].replace(/_/g, ' ');
-                    
-                    // NOW it is safe to load data
-                    window.setupNotesListener();
-                    window.setupStatblocksListener();
-                    window.loadCombatData(); 
-                    
-                } else {
-                    // LOGGED OUT
-                    console.log("User Logged Out");
-                    window.userId = null;
-                    window.isAuthReady = false;
-                    
-                    if(loginBtn) loginBtn.classList.remove('hidden');
-                    if(profile) profile.classList.add('hidden');
-                    
-                    // Wipe Data so it doesn't bleed
-                    window.combatants = [];
-                    window.savedStatblocks = [];
-                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
-                    
-                    // Load Guest Data (Local Only)
-                    window.loadCombatData(); 
-                    if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
-                }
-            });
-        }
+                // Update UI
+                if(loginBtn) loginBtn.classList.add('hidden');
+                if(profile) profile.classList.remove('hidden');
+                document.getElementById('user-name').textContent = user.email.split('@')[0].replace(/_/g, ' ');
+                document.getElementById('user-avatar').src = `https://ui-avatars.com/api/?name=${user.email.split('@')[0]}&background=6366f1&color=fff`;
+
+                // START CLOUD LISTENERS (This loads your saved data)
+                window.setupNotesListener(); 
+                window.setupStatblocksListener();
+                window.setupCombatListener(); // New Cloud Combat Sync
+                
+            } else {
+                // LOGGED OUT
+                window.userId = null;
+                window.isAuthReady = false;
+                
+                if(loginBtn) loginBtn.classList.remove('hidden');
+                if(profile) profile.classList.add('hidden');
+                
+                // Wipe Data from Screen
+                window.combatants = [];
+                window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                window.savedStatblocks = [];
+                
+                // Render Empty State
+                window.renderCombatants();
+                if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+                if(window.currentTab === 'statblocks') window.renderStatblocks();
+            }
+        });
 
         window.handleSessionLogin = async () => {
             const name = document.getElementById('session-name-input').value.trim();
             const pass = document.getElementById('session-pass-input').value.trim();
             const status = document.getElementById('login-status');
-            if (!name || !pass) { if(status) status.textContent="Enter Name & Password"; return; }
+            if(!name || !pass) return status.textContent = "Enter Name & Password";
             
             const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
-            if(status) status.textContent = "Connecting...";
+            status.textContent = "Connecting...";
             
             try {
                 await window.signInWithEmailAndPassword(window.auth, email, pass);
@@ -992,61 +934,73 @@
                     try { 
                         await window.createUserWithEmailAndPassword(window.auth, email, pass); 
                         window.closeLoginModal(); 
-                    } catch(regErr) { if(status) status.textContent = "Reg Error: " + regErr.message; }
+                    } catch(regErr) { 
+                        if(status) status.textContent = "Registration Error: " + regErr.message; 
+                    }
                 } else if(status) status.textContent = "Error: " + e.message;
             }
         };
+        window.logoutUser = async () => { await window.signOut(window.auth); window.location.reload(); };
 
-        window.logoutUser = async () => { 
-            if(window.auth) await window.signOut(window.auth); 
-            window.location.reload(); 
+        // --- 3. DATABASE HELPERS (Private & Cloud) ---
+        window.getSessionPath = () => {
+            if (!window.userId) return null;
+            return window.userId;
         };
 
-        // --- 4. PRIVATE DATABASE PATHS ---
-        // These functions use the User ID to ensure privacy
         window.getCol = (name) => {
-            if (!window.userId) return null; 
-            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
+            const uid = window.getSessionPath();
+            if (!uid) return null; 
+            return window.collection(window.db, 'artifacts', window.appId, 'users', uid, name);
         };
+        
         window.getSharedDoc = (name) => {
-            if (!window.userId) return null;
-            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
+            const uid = window.getSessionPath();
+            if (!uid) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', uid, 'session_data', name);
         };
+        
         window.getDocRef = (col, id) => {
-            if (!window.userId) return null;
-            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
+            const uid = window.getSessionPath();
+            if (!uid) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', uid, col, id);
         };
 
-        // --- 5. COMBAT TRACKER (Session Isolated) ---
-        window.getCombatStorageKey = () => {
-            const uid = window.userId || 'guest_session';
-            return `aegis_combat_${uid}`;
-        };
-
-        window.loadCombatData = () => {
-            const key = window.getCombatStorageKey();
-            try {
-                const raw = localStorage.getItem(key);
-                const data = raw ? JSON.parse(raw) : {};
-                window.combatants = data.combatants || [];
-                window.currentTurnIndex = data.currentTurnIndex || -1;
-                
+        // --- 4. COMBAT TRACKER (Cloud Powered) ---
+        window.setupCombatListener = () => {
+            if(!window.userId) return;
+            
+            // Listen to 'combat_state' document in the cloud
+            window.onSnapshot(window.getSharedDoc('combat_state'), (doc) => {
                 const status = document.getElementById('db-status');
-                if(status) {
-                    status.textContent = window.userId ? "Session Ready" : "Local Ready";
-                    status.className = window.userId ? "text-xs px-2 py-1 rounded bg-green-900 text-green-100 font-bold" : "text-xs px-2 py-1 rounded bg-gray-700 text-gray-400";
+                
+                if (doc.exists()) {
+                    const d = doc.data();
+                    window.combatants = d.combatants || [];
+                    window.currentTurnIndex = d.currentTurnIndex || -1;
+                } else {
+                    window.combatants = [];
+                    window.currentTurnIndex = -1;
                 }
+                
+                if(status) {
+                    status.textContent = "Cloud Synced";
+                    status.className = "text-xs px-2 py-1 rounded bg-green-900 text-green-100 border border-green-700 font-bold";
+                }
+                
                 window.renderCombatants();
-            } catch(e) { console.error("Load failed", e); }
+            });
         };
 
-        window.saveCombatData = () => {
-            const key = window.getCombatStorageKey();
-            localStorage.setItem(key, JSON.stringify({ 
-                combatants: window.combatants, 
-                currentTurnIndex: window.currentTurnIndex 
-            }));
-            window.renderCombatants();
+        window.saveCombatData = async () => {
+            if(!window.userId) return; // Don't save if guest
+            try {
+                await window.setDoc(window.getSharedDoc('combat_state'), { 
+                    combatants: window.combatants, 
+                    currentTurnIndex: window.currentTurnIndex 
+                }, { merge: true });
+                // No need to call render, the Listener will trigger it automatically!
+            } catch(e) { console.error("Combat Save Error", e); }
         };
 
         window.addCombatant = () => {
@@ -1109,7 +1063,8 @@
         window.sortInitiative = () => { window.combatants.sort((a,b) => (b.init||0) - (a.init||0)); window.currentTurnIndex = 0; window.saveCombatData(); };
         window.assignInitiativeRoll = () => { const idx=parseInt(document.getElementById('combatant-selector').value); if(!isNaN(idx) && window.combatants[idx]) { window.combatants[idx].init = window.lastRoll; window.saveCombatData(); } };
 
-        // --- 6. NOTES LOGIC ---
+
+        // --- 5. NOTES LOGIC ---
         window.setupNotesListener = () => {
             if(!window.isAuthReady) return;
             window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
@@ -1122,6 +1077,8 @@
                         lootNotes: d.structuredLootNotes || d.lootNotes || [],
                         mapNotes: d.structuredMapNotes || d.mapNotes || []
                     };
+                } else {
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
                 }
                 if (window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
             });
@@ -1130,7 +1087,7 @@
         window.saveStructuredNotes = async (tab, data) => {
             if(!window.isAuthReady) return;
             const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
-            try { await window.setDoc(window.getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error(e); }
+            try { await window.setDoc(window.getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error("Save Error", e); }
         };
 
         window.renderStructuredNotes = (tab) => {
@@ -1144,9 +1101,7 @@
                         <span class="truncate">${n.title}</span><span>▼</span>
                     </div>
                     <div class="hidden mt-2 pt-2 border-t border-gray-700">
-                        <div class="mb-2 text-right">
-                            <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 border border-red-900 px-2 py-1 rounded bg-red-900/20">Delete</button>
-                        </div>
+                        <div class="mb-2 text-right"><button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 border border-red-900 px-2 py-1 rounded">Delete</button></div>
                         <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
                     </div>
                 </div>`).join('') : '<p class="text-center text-gray-500 pt-4 text-xs">No items.</p>';
@@ -1175,13 +1130,25 @@
             if(!content || content.includes("Results appear here")) return alert("Nothing to save.");
             const title = (content.replace(/<[^>]*>/g, '').split('\n')[0].substring(0, 30)) || "Generated Note";
             const newNote = { id: crypto.randomUUID(), title, content, timestamp: new Date().toISOString() };
+            
             if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
             window.structuredNotes[destinationTab].unshift(newNote);
             await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
             window.switchTab('notes'); window.switchSubTab(destinationTab);
         };
+        
+        window.saveMapToNotes = async () => {
+            if(!window.userId) { alert("Please log in to save maps."); window.openLoginModal(); return; }
+            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return;
+            const img = `<img src="${canvas.toDataURL()}" style="width:100%; border-radius:8px;">`;
+            const note = { id: crypto.randomUUID(), title: `Map ${new Date().toLocaleTimeString()}`, content: img, timestamp: new Date().toISOString() };
+            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
+            window.structuredNotes.mapNotes.unshift(note);
+            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
+            alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
+        };
 
-        // --- 7. STATBLOCKS ---
+        // --- 6. STATBLOCKS ---
         window.setupStatblocksListener = () => {
             if(!window.isAuthReady) return;
             window.onSnapshot(window.query(window.getCol('dm_toolkit_statblocks')), (snap) => {
@@ -1237,22 +1204,45 @@
         };
         window.saveMonsterToNotes = async () => window.saveGeneratedContent('enemyNotes');
         window.saveCombatNpcToNotes = async (tab) => window.saveGeneratedContent(tab);
-        window.saveMapToNotes = async () => {
-            if(!window.userId) { alert("Please log in to save maps."); window.openLoginModal(); return; }
-            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return;
-            const img = `<img src="${canvas.toDataURL()}" style="width:100%; border-radius:8px;">`;
-            const note = { id: crypto.randomUUID(), title: `Map ${new Date().toLocaleTimeString()}`, content: img, timestamp: new Date().toISOString() };
-            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
-            window.structuredNotes.mapNotes.unshift(note);
-            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
-            alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
+
+        // --- 7. UI HELPERS ---
+        window.switchTab = (t) => {
+            window.currentTab = t; document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
+            document.getElementById(t).classList.remove('hidden');
+            if(t === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
+                btn.classList.add('text-gray-400', 'border-transparent');
+                const txt = btn.textContent.toLowerCase();
+                if ((t==='improv' && txt.includes('prep')) || (t==='statblocks' && txt.includes('stats')) || (t==='soundboard' && txt.includes('sound')) || txt.includes(t)) {
+                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
+                }
+            });
         };
+        window.switchSubTab = (t) => { 
+            window.currentSubTab=t; 
+            document.querySelectorAll('.sub-tab-content').forEach(e => e.classList.add('hidden'));
+            document.getElementById(`${t}-sub-content`).classList.remove('hidden');
+            document.querySelectorAll('.sub-tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-gray-400');
+                if (btn.dataset.subtab === t) btn.classList.add('active');
+                else btn.classList.add('text-gray-400');
+            });
+            window.renderStructuredNotes(t);
+        };
+        window.openLoginModal = () => document.getElementById('login-modal').classList.remove('hidden');
+        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
+        window.updateApiKey = (val) => { window.userApiKey = val.trim(); localStorage.setItem('dm_toolkit_api_key', window.userApiKey); document.getElementById('api-key-status').textContent="Key Saved!"; };
+        window.saveApiKey = () => window.updateApiKey(document.getElementById('user-api-key').value);
+        window.toggleTheme = () => { window.isChristmasMode = !window.isChristmasMode; localStorage.setItem('aegis_theme', window.isChristmasMode ? 'christmas' : 'default'); applyTheme(); };
+        function applyTheme() { if(window.isChristmasMode) { document.body.classList.add('christmas-mode'); startSnow(); } else { document.body.classList.remove('christmas-mode'); stopSnow(); } }
+        
+        window.uploadDiceTexture = (input) => { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { const i = new Image(); i.onload=()=>window.customDiceImage=i; i.src=e.target.result; }; r.readAsDataURL(input.files[0]); } };
+        window.resetDiceTexture = () => { window.customDiceImage = null; document.getElementById('dice-texture-input').value=''; };
 
-        // --- 8. GENERATORS & SOUND ---
+        // --- 8. GENERATORS ---
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
-        const combatSchema = { type: "OBJECT", properties: { name: { "type": "STRING" }, level_or_cr: { "type": "STRING" }, armor_class_ac: { "type": "INTEGER" }, max_hit_points: { "type": "INTEGER" }, initiative_bonus: { "type": "INTEGER" }, main_attack: { "type": "STRING" } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
-        const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: {type:"INTEGER"}, DEX: {type:"INTEGER"}, CON: {type:"INTEGER"}, INT: {type:"INTEGER"}, WIS: {type:"INTEGER"}, CHA: {type:"INTEGER"} }, required: ["STR","DEX","CON","INT","WIS","CHA"] }, saving_throws: {type:"ARRAY", items:{type:"STRING"}}, skills: {type:"ARRAY", items:{type:"STRING"}}, damage_vulnerabilities: {type:"ARRAY", items:{type:"STRING"}}, damage_resistances: {type:"ARRAY", items:{type:"STRING"}}, damage_immunities: {type:"ARRAY", items:{type:"STRING"}}, condition_immunities: {type:"ARRAY", items:{type:"STRING"}}, senses: {type:"STRING"}, languages: {type:"STRING"}, challenge_rating: {type:"STRING"}, xp: {type:"INTEGER"}, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} } } } }, required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"] };
-
         async function callAI(payload) {
             let key = window.userApiKey || document.getElementById('user-api-key')?.value.trim();
             if (!key) { alert("Please enter API Key in Prep tab"); throw new Error("No API Key"); }
@@ -1260,29 +1250,6 @@
             if (res.ok) return await res.json();
             throw new Error("API Error");
         }
-
-        window.generateCombatNpc = async () => {
-            const btn = document.getElementById('generate-combat-button'); const out = document.getElementById('ai-output');
-            if(btn) btn.disabled = true; if(out) out.textContent = "Generating...";
-            try {
-                const txt = document.getElementById('npc-type').value; const lvl = document.getElementById('npc-level').value;
-                const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e combat NPC (Level ${lvl}, ${txt}) in JSON with keys: name, armor_class_ac, max_hit_points, initiative_bonus, main_attack.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } });
-                const stats = JSON.parse(data.candidates[0].content.parts[0].text); window.lastGeneratedNpc = stats;
-                out.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div><div class="text-sm">AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points} | Init: ${stats.initiative_bonus}</div><div class="mt-2 font-medium">${stats.main_attack}</div><button onclick="window.addNpcToStatblocks()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg">Save to Stats</button>`;
-            } catch(e) { if(out) out.textContent = "Error: " + e.message; } finally { if(btn) btn.disabled = false; }
-        };
-
-        window.generateMonsterStatblock = async () => {
-             const btn = document.getElementById('generate-monster-button'); const output = document.getElementById('monster-output');
-             btn.disabled = true; output.textContent = "Generating...";
-             try {
-                 const name = document.getElementById('monster-name').value; const cr = document.getElementById('monster-cr').value;
-                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e monster "${name}" (CR ${cr}) JSON.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } });
-                 const stats = JSON.parse(data.candidates[0].content.parts[0].text); window.lastGeneratedMonster = stats;
-                 output.innerHTML = `<div class="dnd-statblock text-left"><div class="dnd-header">${stats.name}</div><div class="italic text-black text-sm">${stats.size} ${stats.type}</div><div class="text-sm text-red-900"><p><strong>AC</strong> ${stats.armor_class}</p><p><strong>HP</strong> ${stats.hit_points}</p></div></div>`;
-                 document.getElementById('save-options-monster').classList.remove('hidden');
-             } catch(e) { output.textContent = "Error: " + e.message; } finally { btn.disabled = false; }
-        };
         window.generateSettlement = async () => {
              const btn = document.getElementById('generate-settlement-button'); const outputDiv = document.getElementById('ai-output');
              btn.disabled = true; outputDiv.textContent = "Generating...";
@@ -1331,26 +1298,23 @@
             document.getElementById('loot-split-result').innerHTML = `Each: ${Math.floor(share/100)}gp, ${(share%100)}cp ${rem>0?`(${rem}cp left)`:''}`;
         };
 
-        // --- Soundboard ---
+        // --- Sound & Dice ---
         const ac = new (window.AudioContext||window.webkitAudioContext)();
         const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
         const unlockAudio = () => { if (ac.state === 'suspended') ac.resume(); };
         document.addEventListener('click', unlockAudio); document.addEventListener('touchstart', unlockAudio);
         const noiseBuf = ac.createBuffer(1, 22050, 22050); for(let i=0;i<22050;i++) noiseBuf.getChannelData(0)[i]=Math.random()*2-1;
-
+        
         window.playTone = (type) => {
             if(ac.state==='suspended') ac.resume();
-            const now=ac.currentTime; const osc=ac.createOscillator(); const gain=ac.createGain();
-            osc.connect(gain); gain.connect(masterGain);
-            // Simplified for stability
-            if(type==='wolf') { osc.type='triangle'; osc.frequency.setValueAtTime(300,now); osc.frequency.linearRampToValueAtTime(500,now+0.5); gain.gain.setValueAtTime(0,now); gain.gain.linearRampToValueAtTime(0.3,now+0.5); gain.gain.linearRampToValueAtTime(0,now+2); osc.start(now); osc.stop(now+2); }
-            else if(type==='success') { [523,659,783].forEach((f,i)=>{const o=ac.createOscillator(); o.type='triangle'; o.frequency.value=f; const g=ac.createGain(); o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.1,now+i*0.1); g.gain.exponentialRampToValueAtTime(0.001,now+1); o.start(now+i*0.1); o.stop(now+1);}); }
-            else { osc.frequency.value=440; gain.gain.setValueAtTime(0.1,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.2); osc.start(now); osc.stop(now+0.2); }
+            const now=ac.currentTime; const osc=ac.createOscillator(); const g=ac.createGain(); osc.connect(g); g.connect(masterGain);
+            if(type==='wolf') { osc.type='triangle'; osc.frequency.setValueAtTime(400,now); osc.frequency.linearRampToValueAtTime(600,now+0.5); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.2,now+0.5); g.gain.linearRampToValueAtTime(0,now+2); osc.start(now); osc.stop(now+2); }
+            else if(type==='bear') { osc.type='sawtooth'; osc.frequency.value=50; g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.4,now+0.1); g.gain.linearRampToValueAtTime(0,now+1.0); osc.start(now); osc.stop(now+1.0); }
+            else if(type==='success'){ [523,659,783].forEach((f,i)=>{const o=ac.createOscillator();o.type='triangle';o.frequency.value=f;const gx=ac.createGain();o.connect(gx);gx.connect(masterGain);gx.gain.setValueAtTime(0,now);gx.gain.linearRampToValueAtTime(0.1,now+i*0.1);gx.gain.exponentialRampToValueAtTime(0.001,now+1);o.start(now+i*0.1);o.stop(now+1);}); }
+            else { osc.frequency.value=440; g.gain.linearRampToValueAtTime(0,now+0.2); osc.start(now); osc.stop(now+0.2); }
         };
         window.toggleAmbience = (t) => { if(ac.state==='suspended') ac.resume(); };
-        
-        window.uploadDiceTexture = (input) => { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { const i = new Image(); i.onload=()=>window.customDiceImage=i; i.src=e.target.result; }; r.readAsDataURL(input.files[0]); } };
-        window.resetDiceTexture = () => { window.customDiceImage = null; document.getElementById('dice-texture-input').value=''; };
+
         (function() {
             const canvas = document.getElementById('dice-canvas'); if(!canvas) return; const ctx = canvas.getContext('2d'); let dice=[];
             function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;} window.addEventListener('resize', resize); resize();
@@ -1361,16 +1325,15 @@
         window.rollD20 = () => { window.lastRoll = Math.floor(Math.random()*20)+1; document.getElementById('last-roll-display').textContent = window.lastRoll; window.throwDiceVisuals([window.lastRoll], 20); };
         window.rollSimple = (s) => { window.throwDiceVisuals([Math.floor(Math.random()*s)+1], s); };
         window.rollCustomDice = () => { const n=parseInt(document.getElementById('dice-num').value); const t=parseInt(document.getElementById('dice-type').value); let r=[]; for(let i=0;i<n;i++) r.push(Math.floor(Math.random()*t)+1); document.getElementById('dice-roll-result').textContent = r.reduce((a,b)=>a+b,0); window.throwDiceVisuals(r, t); };
+        window.assignInitiativeRoll = () => { const idx=parseInt(document.getElementById('combatant-selector').value); if(!isNaN(idx) && window.combatants[idx]) { window.combatants[idx].init = window.lastRoll; window.saveCombatData(); } };
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
              if(window.userApiKey) document.getElementById('user-api-key').value = window.userApiKey;
              applyTheme();
-             document.getElementById('master-volume')?.addEventListener('input', (e)=>masterGain.gain.value=e.target.value);
-             window.loadCombatData();
              window.switchTab('improv');
         });
-        
+
         // Snow
         let snowInterval; const snowCanvas = document.getElementById('snow-canvas'); const sCtx = snowCanvas ? snowCanvas.getContext('2d') : null;
         function startSnow() { if(!snowCanvas) return; snowCanvas.width=window.innerWidth; snowCanvas.height=window.innerHeight; let flakes=Array(100).fill().map(()=>({x:Math.random()*snowCanvas.width,y:Math.random()*snowCanvas.height,s:Math.random()+0.5})); snowInterval=setInterval(()=>{ sCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); sCtx.fillStyle='rgba(255,255,255,0.5)'; sCtx.beginPath(); flakes.forEach(f=>{sCtx.moveTo(f.x,f.y);sCtx.arc(f.x,f.y,2,0,Math.PI*2); f.y+=f.s; if(f.y>snowCanvas.height)f.y=0;}); sCtx.fill(); }, 50); }
