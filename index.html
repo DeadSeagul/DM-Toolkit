@@ -1252,47 +1252,205 @@
         window.nextTurn = () => { if(window.combatants.length) { window.currentTurnIndex = (window.currentTurnIndex + 1) % window.combatants.length; window.saveCombatData(); } };
         window.sortInitiative = () => { window.combatants.sort((a,b) => (b.init||0) - (a.init||0)); window.currentTurnIndex = 0; window.saveCombatData(); };
 
-        // --- 8. GENERATORS ---
+        // --- AI & GENERATORS (Restored Full Logic) ---
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+        
+        // JSON Schemas for structured data
         const combatSchema = { type: "OBJECT", properties: { name: { "type": "STRING" }, level_or_cr: { "type": "STRING" }, armor_class_ac: { "type": "INTEGER" }, max_hit_points: { "type": "INTEGER" }, initiative_bonus: { "type": "INTEGER" }, main_attack: { "type": "STRING" } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
+        
         const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: {type:"INTEGER"}, DEX: {type:"INTEGER"}, CON: {type:"INTEGER"}, INT: {type:"INTEGER"}, WIS: {type:"INTEGER"}, CHA: {type:"INTEGER"} }, required: ["STR","DEX","CON","INT","WIS","CHA"] }, saving_throws: {type:"ARRAY", items:{type:"STRING"}}, skills: {type:"ARRAY", items:{type:"STRING"}}, damage_vulnerabilities: {type:"ARRAY", items:{type:"STRING"}}, damage_resistances: {type:"ARRAY", items:{type:"STRING"}}, damage_immunities: {type:"ARRAY", items:{type:"STRING"}}, condition_immunities: {type:"ARRAY", items:{type:"STRING"}}, senses: {type:"STRING"}, languages: {type:"STRING"}, challenge_rating: {type:"STRING"}, xp: {type:"INTEGER"}, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} } } } }, required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"] };
 
         async function callAI(payload) {
             let key = window.userApiKey || document.getElementById('user-api-key')?.value.trim();
             if (!key) { alert("Please enter API Key in Prep tab"); throw new Error("No API Key"); }
-            const res = await fetch(`${API_URL}?key=${key}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-            if (res.ok) return await res.json();
-            throw new Error("API Error");
+            
+            // Retry Logic to handle busy API
+            for (let i = 0; i < 3; i++) {
+                try {
+                    const res = await fetch(`${API_URL}?key=${key}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                    if (res.ok) return await res.json();
+                    if (res.status === 429) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); // Backoff if busy
+                    else throw new Error("API Error " + res.status);
+                } catch (e) { if(i===2) throw e; }
+            }
         }
 
+        // 1. Combat NPC Generator
         window.generateCombatNpc = async () => {
-            const btn = document.getElementById('generate-combat-button'); const out = document.getElementById('ai-output');
-            if(btn) btn.disabled = true; if(out) out.textContent = "Generating...";
+            const btn = document.getElementById('generate-combat-button'); 
+            const outputDiv = document.getElementById('ai-output');
+            const spinner = document.getElementById('combat-loading-spinner');
+            
+            if(btn) btn.disabled = true; 
+            if(spinner) spinner.classList.remove('hidden');
+            if(outputDiv) outputDiv.textContent = "Generating...";
+            
             try {
-                const txt = document.getElementById('npc-type').value; const lvl = document.getElementById('npc-level').value;
+                const txt = document.getElementById('npc-type').value; 
+                const lvl = document.getElementById('npc-level').value;
                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e combat NPC (Level ${lvl}, ${txt}) in JSON with keys: name, armor_class_ac, max_hit_points, initiative_bonus, main_attack.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } });
-                const stats = JSON.parse(data.candidates[0].content.parts[0].text); 
+                
+                const text = data.candidates[0].content.parts[0].text;
+                const stats = JSON.parse(text);
                 window.lastGeneratedNpc = stats;
-                out.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div><div class="text-sm">AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points} | Init: ${stats.initiative_bonus}</div><div class="mt-2 font-medium">${stats.main_attack}</div><button onclick="window.addNpcToStatblocks()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg">Save to Stats</button>`;
-            } catch(e) { if(out) out.textContent = "Error: " + e.message; }
-            finally { if(btn) btn.disabled = false; }
+                
+                outputDiv.innerHTML = `
+                    <div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div>
+                    <div class="text-sm text-gray-300">AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points} | Init: ${stats.initiative_bonus}</div>
+                    <div class="text-sm text-gray-400 mt-1 font-mono border-l-2 border-gray-600 pl-2">${stats.main_attack}</div>
+                    <button onclick="window.addNpcToStatblocks()" class="mt-3 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg">Save to Stats</button>
+                `;
+            } catch(e) { if(outputDiv) outputDiv.textContent = "Error: " + e.message; }
+            finally { if(btn) btn.disabled = false; if(spinner) spinner.classList.add('hidden'); }
         };
 
+        // 2. Monster Generator
+        window.generateMonsterStatblock = async () => {
+             const btn = document.getElementById('generate-monster-button');
+             const spinner = document.getElementById('monster-loading-spinner');
+             const output = document.getElementById('monster-output');
+             
+             btn.disabled = true;
+             if(spinner) spinner.classList.remove('hidden');
+             output.textContent = "Generating..."; 
+             
+             try {
+                 const name = document.getElementById('monster-name').value;
+                 const cr = document.getElementById('monster-cr').value; 
+                 const prompt = `Generate D&D 5e monster statblock for "${name}" (CR ${cr}). Return strictly JSON matching the schema provided.`;
+                 const data = await callAI({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } });
+                 
+                 const stats = JSON.parse(data.candidates[0].content.parts[0].text);
+                 window.lastGeneratedMonster = stats;
+                 
+                 const getMod = (score) => Math.floor((score - 10) / 2);
+                 const formatMod = (score) => { const m = getMod(score); return m >= 0 ? `+${m}` : m; };
+
+                 // Render Detailed Statblock
+                 output.innerHTML = `
+                     <div class="dnd-statblock text-left">
+                         <div class="dnd-header">${stats.name}</div>
+                         <div class="italic text-black text-sm">${stats.size} ${stats.type}, ${stats.alignment}</div>
+                         <div class="tapered-rule"></div>
+                         <div class="text-sm text-red-900">
+                             <p><strong>Armor Class</strong> ${stats.armor_class} (${stats.ac_type || ''})</p>
+                             <p><strong>Hit Points</strong> ${stats.hit_points} (${stats.hit_dice})</p>
+                             <p><strong>Speed</strong> ${stats.speed}</p>
+                         </div>
+                         <div class="tapered-rule"></div>
+                         <div class="grid grid-cols-6 gap-1 text-center text-red-900 text-xs">
+                              <div><strong>STR</strong><br>${stats.ability_scores.STR}</div>
+                              <div><strong>DEX</strong><br>${stats.ability_scores.DEX}</div>
+                              <div><strong>CON</strong><br>${stats.ability_scores.CON}</div>
+                              <div><strong>INT</strong><br>${stats.ability_scores.INT}</div>
+                              <div><strong>WIS</strong><br>${stats.ability_scores.WIS}</div>
+                              <div><strong>CHA</strong><br>${stats.ability_scores.CHA}</div>
+                         </div>
+                         <div class="tapered-rule"></div>
+                         <div class="text-sm text-black space-y-2 mt-2">
+                             ${stats.actions.map(a => `<div class="leading-snug"><strong class="italic text-red-900">${a.name}.</strong> ${a.description}</div>`).join('')}
+                         </div>
+                     </div>`;
+                 document.getElementById('save-options-monster').classList.remove('hidden');
+             } catch(e) { output.textContent = "Error: " + e.message; } 
+             finally { btn.disabled = false; if(spinner) spinner.classList.add('hidden'); }
+        };
+
+        // 3. Settlement Generator
+        window.generateSettlement = async () => {
+             const btn = document.getElementById('generate-settlement-button'); 
+             const spinner = document.getElementById('settlement-loading-spinner');
+             const outputDiv = document.getElementById('ai-output');
+             btn.disabled = true; 
+             if(spinner) spinner.classList.remove('hidden');
+             outputDiv.textContent = "Generating...";
+             
+             try {
+                 const type = document.getElementById('settlement-type').value;
+                 const vibe = document.getElementById('settlement-vibe').value;
+                 const data = await callAI({ contents: [{ parts: [{ text: `Generate details for a D&D ${type}: ${vibe}. Markdown format with Leader, Locations, and Secrets.` }] }] });
+                 outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+                 document.getElementById('save-options-creative').classList.remove('hidden');
+             } catch(e) { outputDiv.textContent = "Error: " + e.message; } 
+             finally { btn.disabled = false; if(spinner) spinner.classList.add('hidden'); }
+        };
+
+        // 4. Creative Lore Generator
+        window.generateCreativeIdea = async () => {
+             const btn = document.getElementById('generate-button'); 
+             const spinner = document.getElementById('creative-loading-spinner');
+             const outputDiv = document.getElementById('ai-output');
+             
+             btn.disabled = true; 
+             if(spinner) spinner.classList.remove('hidden');
+             outputDiv.textContent = "Generating...";
+             
+             try {
+                 const p = document.getElementById('improv-prompt').value;
+                 const data = await callAI({ contents: [{ parts: [{ text: `Generate creative D&D idea: ${p}. Markdown format.` }] }] });
+                 outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+                 document.getElementById('save-options-creative').classList.remove('hidden');
+             } catch(e) { outputDiv.textContent = "Error: " + e.message; } 
+             finally { btn.disabled = false; if(spinner) spinner.classList.add('hidden'); }
+        };
+
+        // 5. Loot Generator
+        window.generateLoot = async () => {
+             const source = document.getElementById('loot-source').value; 
+             const btn = document.getElementById('generate-loot-button'); 
+             const spinner = document.getElementById('loot-loading-spinner');
+             const outputDiv = document.getElementById('loot-output');
+             
+             btn.disabled = true;
+             
+             if (source === 'wiki') {
+                 // Wiki fallback logic
+                 const wikiLootTable = [{ name: "Bag of Holding", url: "https://dnd5e.wikidot.com/wondrous-items:bag-of-holding" }, { name: "Potion of Healing", url: "https://dnd5e.wikidot.com/wondrous-items:potion-of-healing" }, {name: "Winged Boots", url: "https://dnd5e.wikidot.com/wondrous-items:winged-boots"}];
+                 let html = "<ul class='list-disc list-inside'>";
+                 for(let i=0; i<5; i++) { const item = wikiLootTable[Math.floor(Math.random()*wikiLootTable.length)]; html += `<li><a href="${item.url}" target="_blank" class="text-blue-400 font-bold hover:underline">${item.name}</a></li>`; }
+                 outputDiv.innerHTML = html + "</ul>"; 
+                 btn.disabled = false; return;
+             }
+
+             if(spinner) spinner.classList.remove('hidden'); 
+             outputDiv.textContent = "Generating...";
+             
+             try {
+                 const lvl = document.getElementById('loot-level').value; const type = document.getElementById('loot-type').value;
+                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e loot list for Level ${lvl} ${type}. Format as concise markdown list.` }] }] });
+                 outputDiv.innerText = data.candidates[0].content.parts[0].text;
+             } catch(e) { outputDiv.innerText = "Error: " + e.message; } 
+             finally { btn.disabled = false; if(spinner) spinner.classList.add('hidden'); }
+        };
+
+        // --- SAVING WRAPPERS (Connected to Session Logic) ---
         window.addNpcToStatblocks = async () => {
             if (!window.userId) { alert('Please log in to save.'); window.openLoginModal(); return; }
             const s = window.lastGeneratedNpc;
             if(!s) return alert("No NPC generated.");
             try { 
-                await window.addDoc(window.getCol('dm_toolkit_statblocks'), { name: s.name, hp: s.max_hit_points, ac: s.armor_class_ac, toHit: 0, initMod: s.initiative_bonus, dmg: s.main_attack, timestamp: new Date().toISOString() });
+                // Uses window.getCol() which is now session-isolated
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: s.name, hp: s.max_hit_points, ac: s.armor_class_ac, toHit: 0, initMod: s.initiative_bonus, dmg: s.main_attack, timestamp: new Date().toISOString() 
+                });
                 alert("Saved!"); window.switchTab('statblocks');
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error(e); alert("Save Failed: " + e.message); }
         };
 
-        // Generators... (Simplified for space)
-        window.generateSettlement = async () => { /* ...Same Logic... */ alert('API Connected.'); };
-        window.generateCreativeIdea = async () => { /* ...Same Logic... */ alert('API Connected.'); };
-        window.generateLoot = async () => { /* ...Same Logic... */ alert('API Connected.'); };
-        
+        window.addMonsterToStatblocks = async () => {
+            if (!window.userId) { alert('Please log in to save.'); window.openLoginModal(); return; }
+            const m = window.lastGeneratedMonster;
+            if(!m) return alert("No Monster generated.");
+            try { 
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: m.name, hp: m.hit_points, ac: m.armor_class, toHit: 0, initMod: 0, dmg: "Attack", timestamp: new Date().toISOString() 
+                });
+                alert("Saved!"); window.switchTab('statblocks');
+            } catch(e) { console.error(e); alert("Save Failed: " + e.message); }
+        };
+
+        window.saveMonsterToNotes = async () => window.saveGeneratedContent('enemyNotes');
+        window.saveCombatNpcToNotes = async (tab) => window.saveGeneratedContent(tab);
         // --- Sound & Dice ---
         const ac = new (window.AudioContext||window.webkitAudioContext)();
         const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
