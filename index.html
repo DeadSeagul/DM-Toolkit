@@ -857,17 +857,15 @@
     <!-- Snow Visuals Canvas -->
     <canvas id="snow-canvas"></canvas>
 
-    <!-- 2. APP LOGIC (Session Isolated & Private) -->
+    <!-- 2. APP LOGIC (Crash-Proof: Passive Loading) -->
     <script>
-        // --- 1. GLOBAL STATE ---
+        // --- 1. GLOBAL VARIABLES (Define these immediately) ---
         window.userId = null;
         window.isAuthReady = false;
         window.currentTab = 'improv';
         window.currentSubTab = 'prepNotes';
         window.combatants = [];
         window.currentTurnIndex = -1;
-        window.lastRoll = 0;
-        // Initialize with empty arrays to prevent "undefined" errors
         window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
         window.savedStatblocks = [];
         window.userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
@@ -877,200 +875,150 @@
         window.lastGeneratedNpc = null;
         window.lastGeneratedMonster = null;
 
-        // --- 2. PRIVATE DATABASE PATHS (The Fix) ---
-        // These functions ensure data is saved to YOUR specific Session ID folder
-        window.getCol = (name) => {
-            if (!window.userId) return null; 
-            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
+        // --- 2. UI FUNCTIONS (Define these FIRST so buttons never break) ---
+        window.switchTab = function(tabId) {
+            window.currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(tabId);
+            if(target) target.classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
+                btn.classList.add('text-gray-400', 'border-transparent');
+                const text = btn.textContent.toLowerCase();
+                const isMatch = (tabId === 'improv' && text.includes('prep')) || 
+                                (tabId === 'statblocks' && text.includes('stats')) || 
+                                (tabId === 'soundboard' && text.includes('sound')) || 
+                                text.includes(tabId);
+                if (isMatch) {
+                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
+                }
+            });
+            if (tabId === 'notes') window.switchSubTab(window.currentSubTab);
         };
         
-        window.getSharedDoc = (name) => {
-            if (!window.userId) return null;
-            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
-        };
-
-        window.getDocRef = (col, id) => {
-             if (!window.userId) return null;
-             return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
-        };
-
-        // --- 3. AUTHENTICATION & DATA LOADING ---
-        window.auth.onAuthStateChanged((user) => {
-            const loginBtn = document.getElementById('login-btn');
-            const profile = document.getElementById('user-profile');
+        window.switchSubTab = function(tabId) {
+            window.currentSubTab = tabId;
+            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(`${tabId}-sub-content`);
+            if(target) target.classList.remove('hidden');
             
-            if (user) {
-                // LOGGED IN: Switch to Private Mode
-                window.userId = user.uid;
-                window.isAuthReady = true;
-                
-                // UI
-                if(loginBtn) loginBtn.classList.add('hidden');
-                if(profile) profile.classList.remove('hidden');
-                document.getElementById('user-name').textContent = user.email.split('@')[0].replace(/_/g, ' ');
-                document.getElementById('user-avatar').src = `https://ui-avatars.com/api/?name=${user.email.split('@')[0]}&background=6366f1&color=fff`;
+            document.querySelectorAll('.sub-tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-gray-400');
+                if (btn.dataset.subtab === tabId) btn.classList.add('active');
+                else btn.classList.add('text-gray-400');
+            });
+            window.renderStructuredNotes(tabId);
+        };
 
-                // LOAD YOUR DATA
-                window.setupNotesListener(); 
-                window.setupStatblocksListener();
-                window.loadCombatData(); 
+        window.openLoginModal = () => document.getElementById('login-modal').classList.remove('hidden');
+        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
+        
+        window.saveApiKey = () => {
+            const val = document.getElementById('user-api-key').value.trim();
+            window.userApiKey = val;
+            localStorage.setItem('dm_toolkit_api_key', val);
+            const status = document.getElementById('api-key-status');
+            if(status) { status.textContent = "Key Saved ✅"; status.className = "mt-2 text-xs text-green-400"; }
+        };
+        
+        window.toggleTheme = () => {
+            window.isChristmasMode = !window.isChristmasMode;
+            localStorage.setItem('aegis_theme', window.isChristmasMode ? 'christmas' : 'default');
+            applyTheme();
+        };
+        function applyTheme() {
+            if(window.isChristmasMode) { document.body.classList.add('christmas-mode'); window.startSnow(); } 
+            else { document.body.classList.remove('christmas-mode'); window.stopSnow(); }
+        }
+
+        // --- 3. AUTH HANDLER (The Listener) ---
+        // This waits for Firebase to be ready before trying to load data
+        if(window.auth) {
+            window.auth.onAuthStateChanged((user) => {
+                const loginBtn = document.getElementById('login-btn');
+                const profile = document.getElementById('user-profile');
                 
-            } else {
-                // LOGGED OUT: Switch to Guest Mode
-                window.userId = null;
-                window.isAuthReady = false;
-                
-                if(loginBtn) loginBtn.classList.remove('hidden');
-                if(profile) profile.classList.add('hidden');
-                
-                // Wipe Screen
-                window.combatants = [];
-                window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
-                window.savedStatblocks = [];
-                
-                // Load Guest Local Data
-                window.loadCombatData();
-                
-                // Refresh Views
-                if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
-                if(window.currentTab === 'statblocks') window.renderStatblocks();
-            }
-        });
+                if (user) {
+                    // LOGGED IN
+                    console.log("User Logged In:", user.uid);
+                    window.userId = user.uid;
+                    window.isAuthReady = true;
+                    
+                    if(loginBtn) loginBtn.classList.add('hidden');
+                    if(profile) profile.classList.remove('hidden');
+                    document.getElementById('user-name').textContent = user.email.split('@')[0].replace(/_/g, ' ');
+                    
+                    // NOW it is safe to load data
+                    window.setupNotesListener();
+                    window.setupStatblocksListener();
+                    window.loadCombatData(); 
+                    
+                } else {
+                    // LOGGED OUT
+                    console.log("User Logged Out");
+                    window.userId = null;
+                    window.isAuthReady = false;
+                    
+                    if(loginBtn) loginBtn.classList.remove('hidden');
+                    if(profile) profile.classList.add('hidden');
+                    
+                    // Wipe Data so it doesn't bleed
+                    window.combatants = [];
+                    window.savedStatblocks = [];
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                    
+                    // Load Guest Data (Local Only)
+                    window.loadCombatData(); 
+                    if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+                }
+            });
+        }
 
         window.handleSessionLogin = async () => {
             const name = document.getElementById('session-name-input').value.trim();
             const pass = document.getElementById('session-pass-input').value.trim();
             const status = document.getElementById('login-status');
+            if (!name || !pass) { if(status) status.textContent="Enter Name & Password"; return; }
             
-            if (!name || !pass) { if(status) status.textContent = "Enter Name & Password"; return; }
             const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
-            
             if(status) status.textContent = "Connecting...";
             
             try {
                 await window.signInWithEmailAndPassword(window.auth, email, pass);
                 window.closeLoginModal();
             } catch (e) {
-                // Auto-Register Logic
                 if(e.code.includes('user-not-found') || e.code.includes('invalid-credential')) {
                     try { 
                         await window.createUserWithEmailAndPassword(window.auth, email, pass); 
                         window.closeLoginModal(); 
-                    } catch(regErr) { 
-                        if(status) status.textContent = "Registration Error: " + regErr.message; 
-                    }
+                    } catch(regErr) { if(status) status.textContent = "Reg Error: " + regErr.message; }
                 } else if(status) status.textContent = "Error: " + e.message;
             }
         };
-        window.logoutUser = async () => { await window.signOut(window.auth); window.location.reload(); };
 
-        // --- 4. NOTES LOGIC ---
-        window.setupNotesListener = () => {
-            if(!window.isAuthReady) return;
-            
-            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
-                if (doc.exists()) {
-                    const d = doc.data();
-                    // Load data, preserving empty arrays if fields are missing
-                    window.structuredNotes = {
-                        prepNotes: d.prepNotes || [],
-                        enemyNotes: d.enemyNotes || [],
-                        npcNotes: d.npcNotes || [],
-                        lootNotes: d.lootNotes || [],
-                        mapNotes: d.mapNotes || []
-                    };
-                } else {
-                    // First time login? Create empty structure
-                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
-                }
-                if (window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
-            });
+        window.logoutUser = async () => { 
+            if(window.auth) await window.signOut(window.auth); 
+            window.location.reload(); 
         };
 
-        window.saveStructuredNotes = async (tab, data) => {
-            if(!window.isAuthReady) return;
-            try { 
-                await window.setDoc(window.getSharedDoc('shared_notes'), { [tab]: data }, { merge: true }); 
-            } catch(e) { console.error("Save Error:", e); }
+        // --- 4. PRIVATE DATABASE PATHS ---
+        // These functions use the User ID to ensure privacy
+        window.getCol = (name) => {
+            if (!window.userId) return null; 
+            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
         };
-
-        window.renderStructuredNotes = (tab) => {
-            const listId = `${tab}-list`; 
-            const list = document.getElementById(listId);
-            if(!list) return;
-            
-            const notes = window.structuredNotes[tab] || [];
-            if (notes.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 pt-4 text-xs">No items found.</p>';
-                return;
-            }
-            list.innerHTML = notes.map(n => `
-                <div class="card p-2 mb-2 bg-gray-800 border border-gray-700 rounded">
-                    <div class="font-bold text-indigo-300 cursor-pointer flex justify-between p-1" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                        <span class="truncate">${n.title}</span><span class="text-gray-500">▼</span>
-                    </div>
-                    <div class="hidden mt-2 pt-2 border-t border-gray-700">
-                        <div class="mb-2 text-right">
-                            <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 border border-red-900 px-2 py-1 rounded bg-red-900/20">Delete</button>
-                        </div>
-                        <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
-                    </div>
-                </div>
-            `).join('');
+        window.getSharedDoc = (name) => {
+            if (!window.userId) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
         };
-
-        window.saveGeneratedContent = async (destinationTab) => {
-            if (!window.userId) { alert('Please log in to a Session to save.'); window.openLoginModal(); return; }
-            
-            const outputDiv = document.getElementById('ai-output');
-            let content = outputDiv.innerHTML.trim();
-            if(window.currentTab === 'loot') {
-                const loot = document.getElementById('loot-output');
-                if(loot) content = loot.innerText.trim();
-            }
-            
-            if(!content || content.includes("Results appear here")) return alert("Nothing to save.");
-            
-            const div = document.createElement('div'); div.innerHTML = content;
-            const title = (div.textContent || "").split('\n')[0].substring(0, 30) || "Generated Note";
-            
-            const newNote = { id: crypto.randomUUID(), title, content, timestamp: new Date().toISOString() };
-            
-            if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
-            window.structuredNotes[destinationTab].unshift(newNote);
-            
-            await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
-            window.switchTab('notes'); window.switchSubTab(destinationTab);
-        };
-        
-        window.addNewNote = (tab) => {
-            if(!window.structuredNotes[tab]) window.structuredNotes[tab] = [];
-            window.structuredNotes[tab].unshift({id:crypto.randomUUID(), title:'Manual Note', content:'Edit me...'});
-            window.saveStructuredNotes(tab, window.structuredNotes[tab]);
-            window.renderStructuredNotes(tab);
-        };
-        
-        window.deleteNote = async (id, tab) => {
-            window.structuredNotes[tab] = window.structuredNotes[tab].filter(n => n.id !== id);
-            await window.saveStructuredNotes(tab, window.structuredNotes[tab]);
-            window.renderStructuredNotes(tab);
-        };
-        
-        // Map Saver
-        window.saveMapToNotes = async () => {
-            if(!window.userId) { alert("Please log in to save maps."); window.openLoginModal(); return; }
-            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return;
-            const img = `<img src="${canvas.toDataURL()}" style="width:100%; border-radius:8px;">`;
-            const note = { id: crypto.randomUUID(), title: `Map ${new Date().toLocaleTimeString()}`, content: img, timestamp: new Date().toISOString() };
-            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
-            window.structuredNotes.mapNotes.unshift(note);
-            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
-            alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
+        window.getDocRef = (col, id) => {
+            if (!window.userId) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
         };
 
         // --- 5. COMBAT TRACKER (Session Isolated) ---
         window.getCombatStorageKey = () => {
-            // Use User ID for key to keep sessions separate
             const uid = window.userId || 'guest_session';
             return `aegis_combat_${uid}`;
         };
@@ -1085,7 +1033,7 @@
                 
                 const status = document.getElementById('db-status');
                 if(status) {
-                    status.textContent = window.userId ? "Ready (Session)" : "Ready (Local)";
+                    status.textContent = window.userId ? "Session Ready" : "Local Ready";
                     status.className = window.userId ? "text-xs px-2 py-1 rounded bg-green-900 text-green-100 font-bold" : "text-xs px-2 py-1 rounded bg-gray-700 text-gray-400";
                 }
                 window.renderCombatants();
@@ -1151,7 +1099,7 @@
             const sel = document.getElementById('combatant-selector');
             if(sel) sel.innerHTML = '<option value="" disabled selected>Target</option>' + window.combatants.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
         };
-
+        
         window.delCombatant = (id) => { window.combatants = window.combatants.filter(c => c.id !== id); window.saveCombatData(); };
         window.modHp = (id, idx, mul) => { const v=parseInt(document.getElementById(`dmg-${idx}`).value); if(!isNaN(v)) { const c=window.combatants.find(x=>x.id===id); if(c){ c.currentHp = Math.max(0, Math.min(c.maxHp, c.currentHp + (v*mul))); window.saveCombatData(); } } };
         window.addCondition = (id, c) => { const ent = window.combatants.find(x=>x.id===id); if(ent && !ent.conditions.includes(c)) { ent.conditions.push(c); window.saveCombatData(); } };
@@ -1161,7 +1109,79 @@
         window.sortInitiative = () => { window.combatants.sort((a,b) => (b.init||0) - (a.init||0)); window.currentTurnIndex = 0; window.saveCombatData(); };
         window.assignInitiativeRoll = () => { const idx=parseInt(document.getElementById('combatant-selector').value); if(!isNaN(idx) && window.combatants[idx]) { window.combatants[idx].init = window.lastRoll; window.saveCombatData(); } };
 
-        // --- 6. STATBLOCKS ---
+        // --- 6. NOTES LOGIC ---
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady) return;
+            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
+                if (doc.exists()) {
+                    const d = doc.data();
+                    window.structuredNotes = {
+                        prepNotes: d.structuredPrepNotes || d.prepNotes || [],
+                        enemyNotes: d.structuredEnemyNotes || d.enemyNotes || [],
+                        npcNotes: d.structuredNpcNotes || d.npcNotes || [],
+                        lootNotes: d.structuredLootNotes || d.lootNotes || [],
+                        mapNotes: d.structuredMapNotes || d.mapNotes || []
+                    };
+                }
+                if (window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            });
+        };
+
+        window.saveStructuredNotes = async (tab, data) => {
+            if(!window.isAuthReady) return;
+            const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+            try { await window.setDoc(window.getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error(e); }
+        };
+
+        window.renderStructuredNotes = (tab) => {
+            const listId = `${tab}-list`; 
+            const list = document.getElementById(listId);
+            if(!list) return;
+            const notes = window.structuredNotes[tab] || [];
+            list.innerHTML = notes.length ? notes.map(n => `
+                <div class="card p-2 mb-2 bg-gray-800 border border-gray-700 rounded">
+                    <div class="font-bold text-indigo-300 cursor-pointer flex justify-between p-1" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <span class="truncate">${n.title}</span><span>▼</span>
+                    </div>
+                    <div class="hidden mt-2 pt-2 border-t border-gray-700">
+                        <div class="mb-2 text-right">
+                            <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 border border-red-900 px-2 py-1 rounded bg-red-900/20">Delete</button>
+                        </div>
+                        <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
+                    </div>
+                </div>`).join('') : '<p class="text-center text-gray-500 pt-4 text-xs">No items.</p>';
+        };
+        
+        window.addNewNote = (tab) => {
+            if(!window.structuredNotes[tab]) window.structuredNotes[tab] = [];
+            window.structuredNotes[tab].unshift({id:crypto.randomUUID(), title:'Manual Note', content:'Edit me...'});
+            window.saveStructuredNotes(tab, window.structuredNotes[tab]);
+            window.renderStructuredNotes(tab);
+        };
+        window.deleteNote = async (id, tab) => {
+            window.structuredNotes[tab] = window.structuredNotes[tab].filter(n => n.id !== id);
+            await window.saveStructuredNotes(tab, window.structuredNotes[tab]);
+            window.renderStructuredNotes(tab);
+        };
+
+        window.saveGeneratedContent = async (destinationTab) => {
+            if (!window.userId) { alert('Please log in to a Session to save.'); window.openLoginModal(); return; }
+            const outputDiv = document.getElementById('ai-output');
+            let content = outputDiv.innerHTML.trim();
+            if(window.currentTab === 'loot') {
+                const loot = document.getElementById('loot-output');
+                if(loot) content = loot.innerText.trim();
+            }
+            if(!content || content.includes("Results appear here")) return alert("Nothing to save.");
+            const title = (content.replace(/<[^>]*>/g, '').split('\n')[0].substring(0, 30)) || "Generated Note";
+            const newNote = { id: crypto.randomUUID(), title, content, timestamp: new Date().toISOString() };
+            if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
+            window.structuredNotes[destinationTab].unshift(newNote);
+            await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
+            window.switchTab('notes'); window.switchSubTab(destinationTab);
+        };
+
+        // --- 7. STATBLOCKS ---
         window.setupStatblocksListener = () => {
             if(!window.isAuthReady) return;
             window.onSnapshot(window.query(window.getCol('dm_toolkit_statblocks')), (snap) => {
@@ -1217,8 +1237,18 @@
         };
         window.saveMonsterToNotes = async () => window.saveGeneratedContent('enemyNotes');
         window.saveCombatNpcToNotes = async (tab) => window.saveGeneratedContent(tab);
+        window.saveMapToNotes = async () => {
+            if(!window.userId) { alert("Please log in to save maps."); window.openLoginModal(); return; }
+            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return;
+            const img = `<img src="${canvas.toDataURL()}" style="width:100%; border-radius:8px;">`;
+            const note = { id: crypto.randomUUID(), title: `Map ${new Date().toLocaleTimeString()}`, content: img, timestamp: new Date().toISOString() };
+            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
+            window.structuredNotes.mapNotes.unshift(note);
+            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
+            alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
+        };
 
-        // --- 7. AI & GENERATORS ---
+        // --- 8. GENERATORS & SOUND ---
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
         const combatSchema = { type: "OBJECT", properties: { name: { "type": "STRING" }, level_or_cr: { "type": "STRING" }, armor_class_ac: { "type": "INTEGER" }, max_hit_points: { "type": "INTEGER" }, initiative_bonus: { "type": "INTEGER" }, main_attack: { "type": "STRING" } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
         const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: {type:"INTEGER"}, DEX: {type:"INTEGER"}, CON: {type:"INTEGER"}, INT: {type:"INTEGER"}, WIS: {type:"INTEGER"}, CHA: {type:"INTEGER"} }, required: ["STR","DEX","CON","INT","WIS","CHA"] }, saving_throws: {type:"ARRAY", items:{type:"STRING"}}, skills: {type:"ARRAY", items:{type:"STRING"}}, damage_vulnerabilities: {type:"ARRAY", items:{type:"STRING"}}, damage_resistances: {type:"ARRAY", items:{type:"STRING"}}, damage_immunities: {type:"ARRAY", items:{type:"STRING"}}, condition_immunities: {type:"ARRAY", items:{type:"STRING"}}, senses: {type:"STRING"}, languages: {type:"STRING"}, challenge_rating: {type:"STRING"}, xp: {type:"INTEGER"}, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} } } } }, required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"] };
@@ -1294,51 +1324,12 @@
             const w=canvas.width, h=canvas.height; ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,w,h);
             for(let i=0;i<5;i++){ ctx.fillStyle='#374151'; ctx.fillRect(Math.random()*(w-100), Math.random()*(h-100), 80, 80); }
         };
-        window.saveMapToNotes = async () => {
-            if(!window.userId) { alert("Please log in to save maps."); window.openLoginModal(); return; }
-            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return;
-            const img = `<img src="${canvas.toDataURL()}" style="width:100%; border-radius:8px;">`;
-            const note = { id: crypto.randomUUID(), title: `Map ${new Date().toLocaleTimeString()}`, content: img, timestamp: new Date().toISOString() };
-            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
-            window.structuredNotes.mapNotes.unshift(note);
-            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
-            alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
+        window.splitLoot = () => {
+            const pp=parseInt(document.getElementById('loot-pp').value)||0; const gp=parseInt(document.getElementById('loot-gp').value)||0; const ep=parseInt(document.getElementById('loot-ep').value)||0; const sp=parseInt(document.getElementById('loot-sp').value)||0; const cp=parseInt(document.getElementById('loot-cp').value)||0; const n=parseInt(document.getElementById('loot-party-size').value)||1;
+            const totalCp = (pp*1000) + (gp*100) + (ep*50) + (sp*10) + cp;
+            const share = Math.floor(totalCp/n); const rem = totalCp%n;
+            document.getElementById('loot-split-result').innerHTML = `Each: ${Math.floor(share/100)}gp, ${(share%100)}cp ${rem>0?`(${rem}cp left)`:''}`;
         };
-
-        // --- 8. UI & INIT ---
-        window.switchTab = (t) => {
-            window.currentTab = t; document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
-            document.getElementById(t).classList.remove('hidden');
-            if(t === 'notes') window.renderStructuredNotes(window.currentSubTab);
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
-                btn.classList.add('text-gray-400', 'border-transparent');
-                const txt = btn.textContent.toLowerCase();
-                if ((t==='improv' && txt.includes('prep')) || (t==='statblocks' && txt.includes('stats')) || (t==='soundboard' && txt.includes('sound')) || txt.includes(t)) {
-                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
-                }
-            });
-        };
-        window.switchSubTab = (t) => { 
-            window.currentSubTab=t; 
-            document.querySelectorAll('.sub-tab-content').forEach(e => e.classList.add('hidden'));
-            document.getElementById(`${t}-sub-content`).classList.remove('hidden');
-            document.querySelectorAll('.sub-tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-gray-400');
-                if (btn.dataset.subtab === t) btn.classList.add('active');
-                else btn.classList.add('text-gray-400');
-            });
-            window.renderStructuredNotes(t);
-        };
-        window.openLoginModal = () => document.getElementById('login-modal').classList.remove('hidden');
-        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
-        window.updateApiKey = (val) => { window.userApiKey = val.trim(); localStorage.setItem('dm_toolkit_api_key', window.userApiKey); document.getElementById('api-key-status').textContent="Key Saved!"; };
-        window.saveApiKey = () => window.updateApiKey(document.getElementById('user-api-key').value);
-        window.toggleTheme = () => { window.isChristmasMode = !window.isChristmasMode; localStorage.setItem('aegis_theme', window.isChristmasMode ? 'christmas' : 'default'); applyTheme(); };
-        function applyTheme() { if(window.isChristmasMode) { document.body.classList.add('christmas-mode'); startSnow(); } else { document.body.classList.remove('christmas-mode'); stopSnow(); } }
-        
-        window.uploadDiceTexture = (input) => { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { const i = new Image(); i.onload=()=>window.customDiceImage=i; i.src=e.target.result; }; r.readAsDataURL(input.files[0]); } };
-        window.resetDiceTexture = () => { window.customDiceImage = null; document.getElementById('dice-texture-input').value=''; };
 
         // --- Soundboard ---
         const ac = new (window.AudioContext||window.webkitAudioContext)();
@@ -1346,18 +1337,20 @@
         const unlockAudio = () => { if (ac.state === 'suspended') ac.resume(); };
         document.addEventListener('click', unlockAudio); document.addEventListener('touchstart', unlockAudio);
         const noiseBuf = ac.createBuffer(1, 22050, 22050); for(let i=0;i<22050;i++) noiseBuf.getChannelData(0)[i]=Math.random()*2-1;
-        
+
         window.playTone = (type) => {
             if(ac.state==='suspended') ac.resume();
-            const now=ac.currentTime; const osc=ac.createOscillator(); const g=ac.createGain(); osc.connect(g); g.connect(masterGain);
-            if(type==='wolf') { osc.type='triangle'; osc.frequency.setValueAtTime(400,now); osc.frequency.linearRampToValueAtTime(600,now+0.5); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.2,now+0.5); g.gain.linearRampToValueAtTime(0,now+2); osc.start(now); osc.stop(now+2); }
-            else if(type==='bear') { osc.type='sawtooth'; osc.frequency.value=50; g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.4,now+0.1); g.gain.linearRampToValueAtTime(0,now+1.0); osc.start(now); osc.stop(now+1.0); }
-            else if(type==='success'){ [523,659,783].forEach((f,i)=>{const o=ac.createOscillator();o.type='triangle';o.frequency.value=f;const gx=ac.createGain();o.connect(gx);gx.connect(masterGain);gx.gain.setValueAtTime(0,now);gx.gain.linearRampToValueAtTime(0.1,now+i*0.1);gx.gain.exponentialRampToValueAtTime(0.001,now+1);o.start(now+i*0.1);o.stop(now+1);}); }
-            else { osc.frequency.value=440; g.gain.linearRampToValueAtTime(0,now+0.2); osc.start(now); osc.stop(now+0.2); }
+            const now=ac.currentTime; const osc=ac.createOscillator(); const gain=ac.createGain();
+            osc.connect(gain); gain.connect(masterGain);
+            // Simplified for stability
+            if(type==='wolf') { osc.type='triangle'; osc.frequency.setValueAtTime(300,now); osc.frequency.linearRampToValueAtTime(500,now+0.5); gain.gain.setValueAtTime(0,now); gain.gain.linearRampToValueAtTime(0.3,now+0.5); gain.gain.linearRampToValueAtTime(0,now+2); osc.start(now); osc.stop(now+2); }
+            else if(type==='success') { [523,659,783].forEach((f,i)=>{const o=ac.createOscillator(); o.type='triangle'; o.frequency.value=f; const g=ac.createGain(); o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.1,now+i*0.1); g.gain.exponentialRampToValueAtTime(0.001,now+1); o.start(now+i*0.1); o.stop(now+1);}); }
+            else { osc.frequency.value=440; gain.gain.setValueAtTime(0.1,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.2); osc.start(now); osc.stop(now+0.2); }
         };
         window.toggleAmbience = (t) => { if(ac.state==='suspended') ac.resume(); };
-
-        // --- Dice ---
+        
+        window.uploadDiceTexture = (input) => { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { const i = new Image(); i.onload=()=>window.customDiceImage=i; i.src=e.target.result; }; r.readAsDataURL(input.files[0]); } };
+        window.resetDiceTexture = () => { window.customDiceImage = null; document.getElementById('dice-texture-input').value=''; };
         (function() {
             const canvas = document.getElementById('dice-canvas'); if(!canvas) return; const ctx = canvas.getContext('2d'); let dice=[];
             function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;} window.addEventListener('resize', resize); resize();
@@ -1368,7 +1361,6 @@
         window.rollD20 = () => { window.lastRoll = Math.floor(Math.random()*20)+1; document.getElementById('last-roll-display').textContent = window.lastRoll; window.throwDiceVisuals([window.lastRoll], 20); };
         window.rollSimple = (s) => { window.throwDiceVisuals([Math.floor(Math.random()*s)+1], s); };
         window.rollCustomDice = () => { const n=parseInt(document.getElementById('dice-num').value); const t=parseInt(document.getElementById('dice-type').value); let r=[]; for(let i=0;i<n;i++) r.push(Math.floor(Math.random()*t)+1); document.getElementById('dice-roll-result').textContent = r.reduce((a,b)=>a+b,0); window.throwDiceVisuals(r, t); };
-        window.assignInitiativeRoll = () => { const idx=parseInt(document.getElementById('combatant-selector').value); if(!isNaN(idx) && window.combatants[idx]) { window.combatants[idx].init = window.lastRoll; window.saveCombatData(); } };
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
