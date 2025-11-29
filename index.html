@@ -857,172 +857,170 @@
     <!-- Snow Visuals Canvas -->
     <canvas id="snow-canvas"></canvas>
 
-    <!-- 2. APP LOGIC (Crash-Proof: Passive Mode) -->
+    <!-- 2. APP LOGIC (Session Isolated & Private) -->
     <script>
-        // --- 1. GLOBAL VARIABLES ---
+        // --- 1. GLOBAL STATE ---
         window.userId = null;
         window.isAuthReady = false;
         window.currentTab = 'improv';
         window.currentSubTab = 'prepNotes';
         window.combatants = [];
         window.currentTurnIndex = -1;
+        window.lastRoll = 0;
+        // Initialize with empty arrays to prevent "undefined" errors
         window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
         window.savedStatblocks = [];
         window.userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
         window.isChristmasMode = localStorage.getItem('aegis_theme') === 'christmas';
+        window.customDiceColor = null; 
+        window.customDiceImage = null;
         window.lastGeneratedNpc = null;
         window.lastGeneratedMonster = null;
-        window.customDiceColor = null;
-        window.customDiceImage = null;
 
-        // --- 2. UI FUNCTIONS (Define these FIRST so buttons always work) ---
-        window.switchTab = function(tabId) {
-            window.currentTab = tabId;
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            const target = document.getElementById(tabId);
-            if(target) target.classList.remove('hidden');
-            
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
-                btn.classList.add('text-gray-400', 'border-transparent');
-                const text = btn.textContent.toLowerCase();
-                if (text.includes(tabId) || (tabId==='improv' && text.includes('prep')) || (tabId==='statblocks' && text.includes('stats'))) {
-                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
-                }
-            });
-            if (tabId === 'notes') window.switchSubTab(window.currentSubTab);
-        };
-
-        window.switchSubTab = function(tabId) {
-            window.currentSubTab = tabId;
-            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`${tabId}-sub-content`)?.classList.remove('hidden');
-            
-            document.querySelectorAll('.sub-tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-gray-400');
-                if (btn.dataset.subtab === tabId) btn.classList.add('active');
-                else btn.classList.add('text-gray-400');
-            });
-            window.renderStructuredNotes(tabId);
-        };
-
-        window.openLoginModal = () => document.getElementById('login-modal').classList.remove('hidden');
-        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
-        
-        window.saveApiKey = () => {
-            const val = document.getElementById('user-api-key').value.trim();
-            window.userApiKey = val;
-            localStorage.setItem('dm_toolkit_api_key', val);
-            const status = document.getElementById('api-key-status');
-            if(status) { status.textContent = "Key Saved ✅"; status.className = "mt-2 text-xs text-green-400"; }
+        // --- 2. PRIVATE DATABASE PATHS (The Fix) ---
+        // These functions ensure data is saved to YOUR specific Session ID folder
+        window.getCol = (name) => {
+            if (!window.userId) return null; 
+            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
         };
         
-        window.toggleTheme = () => {
-            window.isChristmasMode = !window.isChristmasMode;
-            localStorage.setItem('aegis_theme', window.isChristmasMode ? 'christmas' : 'default');
-            applyTheme();
+        window.getSharedDoc = (name) => {
+            if (!window.userId) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
         };
-        function applyTheme() {
-            if(window.isChristmasMode) { document.body.classList.add('christmas-mode'); window.startSnow(); } 
-            else { document.body.classList.remove('christmas-mode'); window.stopSnow(); }
-        }
 
-        // --- 3. AUTH HANDLERS (Called by Top Script) ---
-        // This function is triggered by the top module when Firebase is ready
-        window.updateLoginUI = (user) => {
+        window.getDocRef = (col, id) => {
+             if (!window.userId) return null;
+             return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
+        };
+
+        // --- 3. AUTHENTICATION & DATA LOADING ---
+        window.auth.onAuthStateChanged((user) => {
             const loginBtn = document.getElementById('login-btn');
             const profile = document.getElementById('user-profile');
             
             if (user) {
+                // LOGGED IN: Switch to Private Mode
                 window.userId = user.uid;
                 window.isAuthReady = true;
                 
+                // UI
                 if(loginBtn) loginBtn.classList.add('hidden');
                 if(profile) profile.classList.remove('hidden');
                 document.getElementById('user-name').textContent = user.email.split('@')[0].replace(/_/g, ' ');
                 document.getElementById('user-avatar').src = `https://ui-avatars.com/api/?name=${user.email.split('@')[0]}&background=6366f1&color=fff`;
 
-                // Load User Data
-                window.setupNotesListener();
+                // LOAD YOUR DATA
+                window.setupNotesListener(); 
                 window.setupStatblocksListener();
-                window.loadCombatData();
+                window.loadCombatData(); 
                 
             } else {
+                // LOGGED OUT: Switch to Guest Mode
                 window.userId = null;
                 window.isAuthReady = false;
                 
                 if(loginBtn) loginBtn.classList.remove('hidden');
                 if(profile) profile.classList.add('hidden');
                 
-                // Wipe Data
+                // Wipe Screen
                 window.combatants = [];
                 window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
                 window.savedStatblocks = [];
                 
-                window.loadCombatData(); // Load guest/local data
+                // Load Guest Local Data
+                window.loadCombatData();
+                
+                // Refresh Views
                 if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+                if(window.currentTab === 'statblocks') window.renderStatblocks();
             }
-        };
+        });
 
         window.handleSessionLogin = async () => {
             const name = document.getElementById('session-name-input').value.trim();
             const pass = document.getElementById('session-pass-input').value.trim();
             const status = document.getElementById('login-status');
-            if (!name || !pass) { if(status) status.textContent="Enter Name & Password"; return; }
             
+            if (!name || !pass) { if(status) status.textContent = "Enter Name & Password"; return; }
             const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
+            
             if(status) status.textContent = "Connecting...";
             
             try {
                 await window.signInWithEmailAndPassword(window.auth, email, pass);
                 window.closeLoginModal();
             } catch (e) {
+                // Auto-Register Logic
                 if(e.code.includes('user-not-found') || e.code.includes('invalid-credential')) {
                     try { 
                         await window.createUserWithEmailAndPassword(window.auth, email, pass); 
                         window.closeLoginModal(); 
-                    } catch(regErr) { if(status) status.textContent = "Reg Error: " + regErr.message; }
+                    } catch(regErr) { 
+                        if(status) status.textContent = "Registration Error: " + regErr.message; 
+                    }
                 } else if(status) status.textContent = "Error: " + e.message;
             }
         };
+        window.logoutUser = async () => { await window.signOut(window.auth); window.location.reload(); };
 
-        window.logoutUser = async () => { if(window.auth) await window.signOut(window.auth); window.location.reload(); };
-
-        // --- 4. DATABASE & SAVING (Private Mode) ---
-        window.getCol = (name) => {
-            if (!window.userId) return null; 
-            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
-        };
-        window.getSharedDoc = (name) => {
-            if (!window.userId) return null;
-            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
-        };
-
+        // --- 4. NOTES LOGIC ---
         window.setupNotesListener = () => {
-            if(!window.userId) return;
+            if(!window.isAuthReady) return;
+            
             window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
                 if (doc.exists()) {
                     const d = doc.data();
+                    // Load data, preserving empty arrays if fields are missing
                     window.structuredNotes = {
-                        prepNotes: d.structuredPrepNotes || d.prepNotes || [],
-                        enemyNotes: d.structuredEnemyNotes || d.enemyNotes || [],
-                        npcNotes: d.structuredNpcNotes || d.npcNotes || [],
-                        lootNotes: d.structuredLootNotes || d.lootNotes || [],
-                        mapNotes: d.structuredMapNotes || d.mapNotes || []
+                        prepNotes: d.prepNotes || [],
+                        enemyNotes: d.enemyNotes || [],
+                        npcNotes: d.npcNotes || [],
+                        lootNotes: d.lootNotes || [],
+                        mapNotes: d.mapNotes || []
                     };
+                } else {
+                    // First time login? Create empty structure
+                    window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
                 }
                 if (window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
             });
         };
 
         window.saveStructuredNotes = async (tab, data) => {
-            if(!window.userId) return;
-            const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
-            try { await window.setDoc(window.getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error("Save Error", e); }
+            if(!window.isAuthReady) return;
+            try { 
+                await window.setDoc(window.getSharedDoc('shared_notes'), { [tab]: data }, { merge: true }); 
+            } catch(e) { console.error("Save Error:", e); }
+        };
+
+        window.renderStructuredNotes = (tab) => {
+            const listId = `${tab}-list`; 
+            const list = document.getElementById(listId);
+            if(!list) return;
+            
+            const notes = window.structuredNotes[tab] || [];
+            if (notes.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 pt-4 text-xs">No items found.</p>';
+                return;
+            }
+            list.innerHTML = notes.map(n => `
+                <div class="card p-2 mb-2 bg-gray-800 border border-gray-700 rounded">
+                    <div class="font-bold text-indigo-300 cursor-pointer flex justify-between p-1" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <span class="truncate">${n.title}</span><span class="text-gray-500">▼</span>
+                    </div>
+                    <div class="hidden mt-2 pt-2 border-t border-gray-700">
+                        <div class="mb-2 text-right">
+                            <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 border border-red-900 px-2 py-1 rounded bg-red-900/20">Delete</button>
+                        </div>
+                        <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
+                    </div>
+                </div>
+            `).join('');
         };
 
         window.saveGeneratedContent = async (destinationTab) => {
-            if (!window.userId) { alert('Please log in to save.'); window.openLoginModal(); return; }
+            if (!window.userId) { alert('Please log in to a Session to save.'); window.openLoginModal(); return; }
             
             const outputDiv = document.getElementById('ai-output');
             let content = outputDiv.innerHTML.trim();
@@ -1033,7 +1031,9 @@
             
             if(!content || content.includes("Results appear here")) return alert("Nothing to save.");
             
-            const title = (content.replace(/<[^>]*>/g, '').split('\n')[0].substring(0, 30)) || "Generated Note";
+            const div = document.createElement('div'); div.innerHTML = content;
+            const title = (div.textContent || "").split('\n')[0].substring(0, 30) || "Generated Note";
+            
             const newNote = { id: crypto.randomUUID(), title, content, timestamp: new Date().toISOString() };
             
             if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
@@ -1042,85 +1042,118 @@
             await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
             window.switchTab('notes'); window.switchSubTab(destinationTab);
         };
-
-        window.renderStructuredNotes = (tab) => {
-            const list = document.getElementById(`${tab}-list`); if(!list) return;
-            const notes = window.structuredNotes[tab] || [];
-            list.innerHTML = notes.length ? notes.map(n => `
-                <div class="card p-2 mb-2 bg-gray-800 border border-gray-700 rounded">
-                    <div class="font-bold text-indigo-300 cursor-pointer flex justify-between p-1" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                        <span class="truncate">${n.title}</span><span>▼</span>
-                    </div>
-                    <div class="hidden mt-2 pt-2 border-t border-gray-700">
-                        <div class="mb-2 text-right"><button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 border border-red-900 px-2 py-1 rounded">Delete</button></div>
-                        <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
-                    </div>
-                </div>`).join('') : '<p class="text-center text-gray-500 pt-4 text-xs">No items.</p>';
+        
+        window.addNewNote = (tab) => {
+            if(!window.structuredNotes[tab]) window.structuredNotes[tab] = [];
+            window.structuredNotes[tab].unshift({id:crypto.randomUUID(), title:'Manual Note', content:'Edit me...'});
+            window.saveStructuredNotes(tab, window.structuredNotes[tab]);
+            window.renderStructuredNotes(tab);
         };
-        window.addNewNote = (tab) => { if(!window.structuredNotes[tab]) window.structuredNotes[tab]=[]; window.structuredNotes[tab].unshift({id:crypto.randomUUID(), title:'New', content:'...'}); window.saveStructuredNotes(tab, window.structuredNotes[tab]); window.renderStructuredNotes(tab); };
-        window.deleteNote = async (id, tab) => { window.structuredNotes[tab] = window.structuredNotes[tab].filter(n=>n.id!==id); await window.saveStructuredNotes(tab, window.structuredNotes[tab]); window.renderStructuredNotes(tab); };
+        
+        window.deleteNote = async (id, tab) => {
+            window.structuredNotes[tab] = window.structuredNotes[tab].filter(n => n.id !== id);
+            await window.saveStructuredNotes(tab, window.structuredNotes[tab]);
+            window.renderStructuredNotes(tab);
+        };
+        
+        // Map Saver
+        window.saveMapToNotes = async () => {
+            if(!window.userId) { alert("Please log in to save maps."); window.openLoginModal(); return; }
+            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return;
+            const img = `<img src="${canvas.toDataURL()}" style="width:100%; border-radius:8px;">`;
+            const note = { id: crypto.randomUUID(), title: `Map ${new Date().toLocaleTimeString()}`, content: img, timestamp: new Date().toISOString() };
+            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
+            window.structuredNotes.mapNotes.unshift(note);
+            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
+            alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
+        };
 
-        // --- 5. COMBAT TRACKER (Cloud Sync) ---
+        // --- 5. COMBAT TRACKER (Session Isolated) ---
         window.getCombatStorageKey = () => {
+            // Use User ID for key to keep sessions separate
             const uid = window.userId || 'guest_session';
             return `aegis_combat_${uid}`;
         };
-        
+
         window.loadCombatData = () => {
             const key = window.getCombatStorageKey();
             try {
-                // Try local first for speed
                 const raw = localStorage.getItem(key);
                 const data = raw ? JSON.parse(raw) : {};
                 window.combatants = data.combatants || [];
                 window.currentTurnIndex = data.currentTurnIndex || -1;
                 
-                // Status Label
                 const status = document.getElementById('db-status');
                 if(status) {
-                    status.textContent = window.userId ? "Session Active" : "Local Mode";
-                    status.className = window.userId ? "text-xs px-2 py-1 rounded bg-green-900 text-green-100 font-bold" : "text-xs px-2 py-1 rounded bg-gray-700 text-gray-300";
+                    status.textContent = window.userId ? "Ready (Session)" : "Ready (Local)";
+                    status.className = window.userId ? "text-xs px-2 py-1 rounded bg-green-900 text-green-100 font-bold" : "text-xs px-2 py-1 rounded bg-gray-700 text-gray-400";
                 }
                 window.renderCombatants();
-            } catch(e) {}
+            } catch(e) { console.error("Load failed", e); }
         };
 
         window.saveCombatData = () => {
             const key = window.getCombatStorageKey();
-            localStorage.setItem(key, JSON.stringify({ combatants: window.combatants, currentTurnIndex: window.currentTurnIndex }));
+            localStorage.setItem(key, JSON.stringify({ 
+                combatants: window.combatants, 
+                currentTurnIndex: window.currentTurnIndex 
+            }));
             window.renderCombatants();
         };
 
         window.addCombatant = () => {
              const name = document.getElementById('combatant-name').value.trim();
              if(!name) return alert("Enter name");
-             if (!window.combatants) window.combatants = [];
              
+             if (!window.combatants) window.combatants = [];
+
              const hp = parseInt(document.getElementById('combatant-hp').value)||0;
              const init = parseInt(document.getElementById('combatant-init').value)||0;
              const ac = parseInt(document.getElementById('combatant-ac').value)||0;
              const atk = document.getElementById('combatant-atk') ? document.getElementById('combatant-atk').value : "";
 
-             window.combatants.push({ id: crypto.randomUUID(), name, init, maxHp: hp, currentHp: hp, ac, attack: atk, conditions: [] });
+             window.combatants.push({ 
+                 id: crypto.randomUUID(), 
+                 name, init, maxHp: hp, currentHp: hp, ac, attack: atk, conditions: [] 
+             });
+             
              window.saveCombatData();
              document.getElementById('combatant-name').value = '';
+             if(document.getElementById('combatant-atk')) document.getElementById('combatant-atk').value = '';
         };
 
         window.renderCombatants = () => {
-            const list = document.getElementById('initiative-list'); if(!list) return;
+            const list = document.getElementById('initiative-list');
+            if(!list) return;
             const condOpts = ['Blinded', 'Charmed', 'Prone', 'Stunned', 'Unconscious'].map(c=>`<option value="${c}">${c}</option>`).join('');
+
             list.innerHTML = window.combatants.sort((a,b)=>b.init-a.init).map((c, i) => {
-                const badges = (c.conditions||[]).map(con=>`<span onclick="window.removeCondition('${c.id}','${con}')" class="cursor-pointer bg-red-900 px-1 rounded text-[10px] mr-1">${con} x</span>`).join('');
-                const atkShow = c.attack ? `<div class="text-xs text-yellow-400 font-mono mt-1">⚔️ ${c.attack}</div>` : '';
-                const border = (i === window.currentTurnIndex) ? 'border-indigo-500 bg-indigo-900/20' : 'border-gray-600';
-                return `<div class="flex items-start p-2 bg-gray-800 rounded mb-1 border-l-4 ${border}"><div class="w-8 font-bold text-center pt-1">${c.init}</div><div class="flex-1 ml-2"><div class="font-bold text-sm">${c.name} <span class="text-xs text-gray-400">HP:${c.currentHp}/${c.maxHp}</span></div>${atkShow}<div class="mt-1 flex flex-wrap gap-1">${badges}</div><select onchange="window.addCondition('${c.id}',this.value);this.value='';" class="mt-1 bg-gray-900 text-[10px] border border-gray-600 rounded"><option value="">+ Cond</option>${condOpts}</select></div><div class="flex flex-col items-end gap-1"><div class="flex items-center gap-1"><input type="number" id="dmg-${i}" class="w-8 text-black text-xs rounded p-1"><button onclick="window.modHp('${c.id}',${i},-1)" class="text-xs bg-red-700 px-1 rounded">Dmg</button><button onclick="window.modHp('${c.id}',${i},1)" class="text-xs bg-green-700 px-1 rounded">Heal</button></div><button onclick="window.delCombatant('${c.id}')" class="text-xs text-gray-500">Remove</button></div></div>`;
-            }).join('') || '<p class="text-center text-gray-500 pt-4 text-sm">Empty.</p>';
+                const badges = (c.conditions||[]).map(con=>`<span onclick="window.removeCondition('${c.id}','${con}')" class="cursor-pointer bg-red-900 px-1 rounded text-[10px] mr-1 border border-red-700">${con} ×</span>`).join('');
+                const atkShow = c.attack ? `<div class="text-xs text-yellow-400 font-mono mt-0.5">⚔️ ${c.attack}</div>` : '';
+                const borderClass = (i === window.currentTurnIndex) ? 'border-indigo-500 bg-indigo-900/20' : 'border-gray-600';
+
+                return `
+                <div class="flex items-start p-2 bg-gray-800 rounded mb-1 border-l-4 ${borderClass}">
+                    <div class="w-8 font-bold text-center pt-1">${c.init}</div>
+                    <div class="flex-1 ml-2 min-w-0">
+                        <div class="font-bold text-sm text-gray-200 truncate">${c.name} <span class="text-xs text-gray-400 font-normal ml-1">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</span></div>
+                        ${atkShow}
+                        <div class="mt-1 flex flex-wrap gap-1">${badges}</div>
+                        <select onchange="window.addCondition('${c.id}',this.value);this.value='';" class="mt-1 bg-gray-900 text-[10px] border border-gray-600 rounded px-1"><option value="">+ Cond</option>${condOpts}</select>
+                    </div>
+                    <div class="flex flex-col items-end gap-1 ml-1">
+                        <div class="flex items-center gap-1"><input type="number" id="dmg-${i}" class="w-8 text-black text-xs rounded p-1" placeholder="#"><button onclick="window.modHp('${c.id}',${i},-1)" class="text-xs bg-red-900 hover:bg-red-700 text-white px-2 py-1 rounded">Dmg</button><button onclick="window.modHp('${c.id}',${i},1)" class="text-xs bg-green-900 hover:bg-green-700 text-white px-2 py-1 rounded">Heal</button></div>
+                        <button onclick="window.delCombatant('${c.id}')" class="text-xs text-gray-500 hover:text-red-400 underline mt-1">Remove</button>
+                    </div>
+                </div>`;
+            }).join('') || '<p class="text-center text-gray-500 pt-4 text-sm">Battlefield empty.</p>';
             
             const sel = document.getElementById('combatant-selector');
-            if(sel) sel.innerHTML = '<option>Target</option>' + window.combatants.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
+            if(sel) sel.innerHTML = '<option value="" disabled selected>Target</option>' + window.combatants.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
         };
+
         window.delCombatant = (id) => { window.combatants = window.combatants.filter(c => c.id !== id); window.saveCombatData(); };
-        window.modHp = (id, idx, mul) => { const v=parseInt(document.getElementById(`dmg-${idx}`).value); if(!isNaN(v)) { const c=window.combatants.find(x=>x.id===id); if(c){ c.currentHp+=v*mul; window.saveCombatData(); } } };
+        window.modHp = (id, idx, mul) => { const v=parseInt(document.getElementById(`dmg-${idx}`).value); if(!isNaN(v)) { const c=window.combatants.find(x=>x.id===id); if(c){ c.currentHp = Math.max(0, Math.min(c.maxHp, c.currentHp + (v*mul))); window.saveCombatData(); } } };
         window.addCondition = (id, c) => { const ent = window.combatants.find(x=>x.id===id); if(ent && !ent.conditions.includes(c)) { ent.conditions.push(c); window.saveCombatData(); } };
         window.removeCondition = (id, c) => { const ent = window.combatants.find(x=>x.id===id); if(ent) { ent.conditions = ent.conditions.filter(x=>x!==c); window.saveCombatData(); } };
         window.clearCombat = () => { window.combatants = []; window.currentTurnIndex = -1; window.saveCombatData(); };
@@ -1128,95 +1161,7 @@
         window.sortInitiative = () => { window.combatants.sort((a,b) => (b.init||0) - (a.init||0)); window.currentTurnIndex = 0; window.saveCombatData(); };
         window.assignInitiativeRoll = () => { const idx=parseInt(document.getElementById('combatant-selector').value); if(!isNaN(idx) && window.combatants[idx]) { window.combatants[idx].init = window.lastRoll; window.saveCombatData(); } };
 
-        // --- 6. GENERATORS (Full Logic) ---
-        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
-        async function callAI(payload) {
-            let key = window.userApiKey || document.getElementById('user-api-key')?.value.trim();
-            if (!key) { alert("Please enter API Key in Prep tab"); throw new Error("No API Key"); }
-            const res = await fetch(`${API_URL}?key=${key}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-            if (res.ok) return await res.json();
-            throw new Error("API Error");
-        }
-        // Schemas
-        const combatSchema = { type: "OBJECT", properties: { name: { "type": "STRING" }, level_or_cr: { "type": "STRING" }, armor_class_ac: { "type": "INTEGER" }, max_hit_points: { "type": "INTEGER" }, initiative_bonus: { "type": "INTEGER" }, main_attack: { "type": "STRING" } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
-        const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: {type:"INTEGER"}, DEX: {type:"INTEGER"}, CON: {type:"INTEGER"}, INT: {type:"INTEGER"}, WIS: {type:"INTEGER"}, CHA: {type:"INTEGER"} }, required: ["STR","DEX","CON","INT","WIS","CHA"] }, saving_throws: {type:"ARRAY", items:{type:"STRING"}}, skills: {type:"ARRAY", items:{type:"STRING"}}, damage_vulnerabilities: {type:"ARRAY", items:{type:"STRING"}}, damage_resistances: {type:"ARRAY", items:{type:"STRING"}}, damage_immunities: {type:"ARRAY", items:{type:"STRING"}}, condition_immunities: {type:"ARRAY", items:{type:"STRING"}}, senses: {type:"STRING"}, languages: {type:"STRING"}, challenge_rating: {type:"STRING"}, xp: {type:"INTEGER"}, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} } } } }, required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"] };
-
-        window.generateCombatNpc = async () => {
-            const btn = document.getElementById('generate-combat-button'); const out = document.getElementById('ai-output');
-            if(btn) btn.disabled = true; if(out) out.textContent = "Generating...";
-            try {
-                const txt = document.getElementById('npc-type').value; const lvl = document.getElementById('npc-level').value;
-                const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e combat NPC (Level ${lvl}, ${txt}) in JSON with keys: name, armor_class_ac, max_hit_points, initiative_bonus, main_attack.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } });
-                const stats = JSON.parse(data.candidates[0].content.parts[0].text); window.lastGeneratedNpc = stats;
-                out.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div><div class="text-sm">AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points} | Init: ${stats.initiative_bonus}</div><div class="mt-2 font-medium">${stats.main_attack}</div><button onclick="window.addNpcToStatblocks()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg">Save to Stats</button>`;
-            } catch(e) { if(out) out.textContent = "Error: " + e.message; } finally { if(btn) btn.disabled = false; }
-        };
-
-        window.generateMonsterStatblock = async () => {
-             const btn = document.getElementById('generate-monster-button'); const output = document.getElementById('monster-output');
-             btn.disabled = true; output.textContent = "Generating...";
-             try {
-                 const name = document.getElementById('monster-name').value; const cr = document.getElementById('monster-cr').value;
-                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e monster "${name}" (CR ${cr}) JSON.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } });
-                 const stats = JSON.parse(data.candidates[0].content.parts[0].text); window.lastGeneratedMonster = stats;
-                 output.innerHTML = `<div class="dnd-statblock text-left"><div class="dnd-header">${stats.name}</div><div class="italic text-black text-sm">${stats.size} ${stats.type}</div><div class="text-sm text-red-900"><p><strong>AC</strong> ${stats.armor_class}</p><p><strong>HP</strong> ${stats.hit_points}</p></div></div>`;
-                 document.getElementById('save-options-monster').classList.remove('hidden');
-             } catch(e) { output.textContent = "Error: " + e.message; } finally { btn.disabled = false; }
-        };
-        
-        window.generateSettlement = async () => {
-             const btn = document.getElementById('generate-settlement-button'); const outputDiv = document.getElementById('ai-output');
-             btn.disabled = true; outputDiv.textContent = "Generating...";
-             try {
-                 const type = document.getElementById('settlement-type').value; const vibe = document.getElementById('settlement-vibe').value;
-                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D ${type}: ${vibe}. Markdown format.` }] }] });
-                 outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-                 document.getElementById('save-options-creative').classList.remove('hidden');
-             } catch(e) { outputDiv.textContent = "Error: " + e.message; } finally { btn.disabled = false; }
-        };
-        window.generateCreativeIdea = async () => {
-             const btn = document.getElementById('generate-button'); const outputDiv = document.getElementById('ai-output');
-             btn.disabled = true; outputDiv.textContent = "Generating...";
-             try {
-                 const p = document.getElementById('improv-prompt').value;
-                 const data = await callAI({ contents: [{ parts: [{ text: `Generate creative D&D idea: ${p}` }] }] });
-                 outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-                 document.getElementById('save-options-creative').classList.remove('hidden');
-             } catch(e) { outputDiv.textContent = "Error: " + e.message; } finally { btn.disabled = false; }
-        };
-        window.generateLoot = async () => {
-             const source = document.getElementById('loot-source').value; const btn = document.getElementById('generate-loot-button'); const outputDiv = document.getElementById('loot-output');
-             btn.disabled = true;
-             if (source === 'wiki') {
-                 const wikiLootTable = [{ name: "Bag of Holding", url: "https://dnd5e.wikidot.com/wondrous-items:bag-of-holding" }, { name: "Potion of Healing", url: "https://dnd5e.wikidot.com/wondrous-items:potion-of-healing" }];
-                 let html = "<ul class='list-disc list-inside'>";
-                 for(let i=0; i<5; i++) { const item = wikiLootTable[Math.floor(Math.random()*wikiLootTable.length)]; html += `<li><a href="${item.url}" target="_blank" class="text-blue-400 font-bold hover:underline">${item.name}</a></li>`; }
-                 outputDiv.innerHTML = html + "</ul>"; btn.disabled = false; return;
-             }
-             outputDiv.textContent = "Generating...";
-             try {
-                 const lvl = document.getElementById('loot-level').value; const type = document.getElementById('loot-type').value;
-                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D loot list for Level ${lvl} ${type}.` }] }] });
-                 outputDiv.innerText = data.candidates[0].content.parts[0].text;
-             } catch(e) { outputDiv.innerText = "Error: " + e.message; } finally { btn.disabled = false; }
-        };
-        window.saveMapToNotes = async () => {
-            if(!window.userId) { alert("Please log in."); window.openLoginModal(); return; }
-            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return;
-            const img = `<img src="${canvas.toDataURL()}" style="width:100%;">`;
-            const note = { id: crypto.randomUUID(), title: `Map ${new Date().toLocaleTimeString()}`, content: img, timestamp: new Date().toISOString() };
-            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
-            window.structuredNotes.mapNotes.unshift(note);
-            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
-            alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
-        };
-        window.generateDetailedMap = () => {
-            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return; const ctx = canvas.getContext('2d');
-            const w=canvas.width, h=canvas.height; ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,w,h);
-            for(let i=0;i<5;i++){ ctx.fillStyle='#374151'; ctx.fillRect(Math.random()*(w-100), Math.random()*(h-100), 80, 80); }
-        };
-
-        // --- STATBLOCKS & SAVING ---
+        // --- 6. STATBLOCKS ---
         window.setupStatblocksListener = () => {
             if(!window.isAuthReady) return;
             window.onSnapshot(window.query(window.getCol('dm_toolkit_statblocks')), (snap) => {
@@ -1259,6 +1204,7 @@
              if(document.getElementById('combatant-atk')) document.getElementById('combatant-atk').value = d || "";
              window.switchTab('combat');
         };
+        
         window.addNpcToStatblocks = async () => {
             if (!window.userId) { alert('Log in to save.'); return window.openLoginModal(); }
             const s = window.lastGeneratedNpc; if(!s) return alert("No NPC generated.");
@@ -1272,7 +1218,129 @@
         window.saveMonsterToNotes = async () => window.saveGeneratedContent('enemyNotes');
         window.saveCombatNpcToNotes = async (tab) => window.saveGeneratedContent(tab);
 
-        // --- 9. SOUND & DICE ---
+        // --- 7. AI & GENERATORS ---
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+        const combatSchema = { type: "OBJECT", properties: { name: { "type": "STRING" }, level_or_cr: { "type": "STRING" }, armor_class_ac: { "type": "INTEGER" }, max_hit_points: { "type": "INTEGER" }, initiative_bonus: { "type": "INTEGER" }, main_attack: { "type": "STRING" } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
+        const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: {type:"INTEGER"}, DEX: {type:"INTEGER"}, CON: {type:"INTEGER"}, INT: {type:"INTEGER"}, WIS: {type:"INTEGER"}, CHA: {type:"INTEGER"} }, required: ["STR","DEX","CON","INT","WIS","CHA"] }, saving_throws: {type:"ARRAY", items:{type:"STRING"}}, skills: {type:"ARRAY", items:{type:"STRING"}}, damage_vulnerabilities: {type:"ARRAY", items:{type:"STRING"}}, damage_resistances: {type:"ARRAY", items:{type:"STRING"}}, damage_immunities: {type:"ARRAY", items:{type:"STRING"}}, condition_immunities: {type:"ARRAY", items:{type:"STRING"}}, senses: {type:"STRING"}, languages: {type:"STRING"}, challenge_rating: {type:"STRING"}, xp: {type:"INTEGER"}, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} } } } }, required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"] };
+
+        async function callAI(payload) {
+            let key = window.userApiKey || document.getElementById('user-api-key')?.value.trim();
+            if (!key) { alert("Please enter API Key in Prep tab"); throw new Error("No API Key"); }
+            const res = await fetch(`${API_URL}?key=${key}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            if (res.ok) return await res.json();
+            throw new Error("API Error");
+        }
+
+        window.generateCombatNpc = async () => {
+            const btn = document.getElementById('generate-combat-button'); const out = document.getElementById('ai-output');
+            if(btn) btn.disabled = true; if(out) out.textContent = "Generating...";
+            try {
+                const txt = document.getElementById('npc-type').value; const lvl = document.getElementById('npc-level').value;
+                const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e combat NPC (Level ${lvl}, ${txt}) in JSON with keys: name, armor_class_ac, max_hit_points, initiative_bonus, main_attack.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } });
+                const stats = JSON.parse(data.candidates[0].content.parts[0].text); window.lastGeneratedNpc = stats;
+                out.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div><div class="text-sm">AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points} | Init: ${stats.initiative_bonus}</div><div class="mt-2 font-medium">${stats.main_attack}</div><button onclick="window.addNpcToStatblocks()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg">Save to Stats</button>`;
+            } catch(e) { if(out) out.textContent = "Error: " + e.message; } finally { if(btn) btn.disabled = false; }
+        };
+
+        window.generateMonsterStatblock = async () => {
+             const btn = document.getElementById('generate-monster-button'); const output = document.getElementById('monster-output');
+             btn.disabled = true; output.textContent = "Generating...";
+             try {
+                 const name = document.getElementById('monster-name').value; const cr = document.getElementById('monster-cr').value;
+                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e monster "${name}" (CR ${cr}) JSON.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } });
+                 const stats = JSON.parse(data.candidates[0].content.parts[0].text); window.lastGeneratedMonster = stats;
+                 output.innerHTML = `<div class="dnd-statblock text-left"><div class="dnd-header">${stats.name}</div><div class="italic text-black text-sm">${stats.size} ${stats.type}</div><div class="text-sm text-red-900"><p><strong>AC</strong> ${stats.armor_class}</p><p><strong>HP</strong> ${stats.hit_points}</p></div></div>`;
+                 document.getElementById('save-options-monster').classList.remove('hidden');
+             } catch(e) { output.textContent = "Error: " + e.message; } finally { btn.disabled = false; }
+        };
+        window.generateSettlement = async () => {
+             const btn = document.getElementById('generate-settlement-button'); const outputDiv = document.getElementById('ai-output');
+             btn.disabled = true; outputDiv.textContent = "Generating...";
+             try {
+                 const type = document.getElementById('settlement-type').value; const vibe = document.getElementById('settlement-vibe').value;
+                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D ${type}: ${vibe}. Markdown format.` }] }] });
+                 outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+                 document.getElementById('save-options-creative').classList.remove('hidden');
+             } catch(e) { outputDiv.textContent = "Error: " + e.message; } finally { btn.disabled = false; }
+        };
+        window.generateCreativeIdea = async () => {
+             const btn = document.getElementById('generate-button'); const outputDiv = document.getElementById('ai-output');
+             btn.disabled = true; outputDiv.textContent = "Generating...";
+             try {
+                 const p = document.getElementById('improv-prompt').value;
+                 const data = await callAI({ contents: [{ parts: [{ text: `Generate creative D&D idea: ${p}` }] }] });
+                 outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+                 document.getElementById('save-options-creative').classList.remove('hidden');
+             } catch(e) { outputDiv.textContent = "Error: " + e.message; } finally { btn.disabled = false; }
+        };
+        window.generateLoot = async () => {
+             const source = document.getElementById('loot-source').value; const btn = document.getElementById('generate-loot-button'); const outputDiv = document.getElementById('loot-output');
+             btn.disabled = true;
+             if (source === 'wiki') {
+                 const wikiLootTable = [{ name: "Bag of Holding", url: "https://dnd5e.wikidot.com/wondrous-items:bag-of-holding" }, { name: "Potion of Healing", url: "https://dnd5e.wikidot.com/wondrous-items:potion-of-healing" }];
+                 let html = "<ul class='list-disc list-inside'>";
+                 for(let i=0; i<5; i++) { const item = wikiLootTable[Math.floor(Math.random()*wikiLootTable.length)]; html += `<li><a href="${item.url}" target="_blank" class="text-blue-400 font-bold hover:underline">${item.name}</a></li>`; }
+                 outputDiv.innerHTML = html + "</ul>"; btn.disabled = false; return;
+             }
+             outputDiv.textContent = "Generating...";
+             try {
+                 const lvl = document.getElementById('loot-level').value; const type = document.getElementById('loot-type').value;
+                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D loot list for Level ${lvl} ${type}.` }] }] });
+                 outputDiv.innerText = data.candidates[0].content.parts[0].text;
+             } catch(e) { outputDiv.innerText = "Error: " + e.message; } finally { btn.disabled = false; }
+        };
+        window.generateDetailedMap = () => {
+            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return; const ctx = canvas.getContext('2d');
+            const w=canvas.width, h=canvas.height; ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,w,h);
+            for(let i=0;i<5;i++){ ctx.fillStyle='#374151'; ctx.fillRect(Math.random()*(w-100), Math.random()*(h-100), 80, 80); }
+        };
+        window.saveMapToNotes = async () => {
+            if(!window.userId) { alert("Please log in to save maps."); window.openLoginModal(); return; }
+            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return;
+            const img = `<img src="${canvas.toDataURL()}" style="width:100%; border-radius:8px;">`;
+            const note = { id: crypto.randomUUID(), title: `Map ${new Date().toLocaleTimeString()}`, content: img, timestamp: new Date().toISOString() };
+            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
+            window.structuredNotes.mapNotes.unshift(note);
+            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
+            alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
+        };
+
+        // --- 8. UI & INIT ---
+        window.switchTab = (t) => {
+            window.currentTab = t; document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
+            document.getElementById(t).classList.remove('hidden');
+            if(t === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
+                btn.classList.add('text-gray-400', 'border-transparent');
+                const txt = btn.textContent.toLowerCase();
+                if ((t==='improv' && txt.includes('prep')) || (t==='statblocks' && txt.includes('stats')) || (t==='soundboard' && txt.includes('sound')) || txt.includes(t)) {
+                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
+                }
+            });
+        };
+        window.switchSubTab = (t) => { 
+            window.currentSubTab=t; 
+            document.querySelectorAll('.sub-tab-content').forEach(e => e.classList.add('hidden'));
+            document.getElementById(`${t}-sub-content`).classList.remove('hidden');
+            document.querySelectorAll('.sub-tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-gray-400');
+                if (btn.dataset.subtab === t) btn.classList.add('active');
+                else btn.classList.add('text-gray-400');
+            });
+            window.renderStructuredNotes(t);
+        };
+        window.openLoginModal = () => document.getElementById('login-modal').classList.remove('hidden');
+        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
+        window.updateApiKey = (val) => { window.userApiKey = val.trim(); localStorage.setItem('dm_toolkit_api_key', window.userApiKey); document.getElementById('api-key-status').textContent="Key Saved!"; };
+        window.saveApiKey = () => window.updateApiKey(document.getElementById('user-api-key').value);
+        window.toggleTheme = () => { window.isChristmasMode = !window.isChristmasMode; localStorage.setItem('aegis_theme', window.isChristmasMode ? 'christmas' : 'default'); applyTheme(); };
+        function applyTheme() { if(window.isChristmasMode) { document.body.classList.add('christmas-mode'); startSnow(); } else { document.body.classList.remove('christmas-mode'); stopSnow(); } }
+        
+        window.uploadDiceTexture = (input) => { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { const i = new Image(); i.onload=()=>window.customDiceImage=i; i.src=e.target.result; }; r.readAsDataURL(input.files[0]); } };
+        window.resetDiceTexture = () => { window.customDiceImage = null; document.getElementById('dice-texture-input').value=''; };
+
+        // --- Soundboard ---
         const ac = new (window.AudioContext||window.webkitAudioContext)();
         const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
         const unlockAudio = () => { if (ac.state === 'suspended') ac.resume(); };
@@ -1289,8 +1357,7 @@
         };
         window.toggleAmbience = (t) => { if(ac.state==='suspended') ac.resume(); };
 
-        window.uploadDiceTexture = (input) => { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { const i = new Image(); i.onload=()=>window.customDiceImage=i; i.src=e.target.result; }; r.readAsDataURL(input.files[0]); } };
-        window.resetDiceTexture = () => { window.customDiceImage = null; document.getElementById('dice-texture-input').value=''; };
+        // --- Dice ---
         (function() {
             const canvas = document.getElementById('dice-canvas'); if(!canvas) return; const ctx = canvas.getContext('2d'); let dice=[];
             function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;} window.addEventListener('resize', resize); resize();
@@ -1307,10 +1374,11 @@
         document.addEventListener('DOMContentLoaded', () => {
              if(window.userApiKey) document.getElementById('user-api-key').value = window.userApiKey;
              applyTheme();
+             document.getElementById('master-volume')?.addEventListener('input', (e)=>masterGain.gain.value=e.target.value);
              window.loadCombatData();
              window.switchTab('improv');
         });
-
+        
         // Snow
         let snowInterval; const snowCanvas = document.getElementById('snow-canvas'); const sCtx = snowCanvas ? snowCanvas.getContext('2d') : null;
         function startSnow() { if(!snowCanvas) return; snowCanvas.width=window.innerWidth; snowCanvas.height=window.innerHeight; let flakes=Array(100).fill().map(()=>({x:Math.random()*snowCanvas.width,y:Math.random()*snowCanvas.height,s:Math.random()+0.5})); snowInterval=setInterval(()=>{ sCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); sCtx.fillStyle='rgba(255,255,255,0.5)'; sCtx.beginPath(); flakes.forEach(f=>{sCtx.moveTo(f.x,f.y);sCtx.arc(f.x,f.y,2,0,Math.PI*2); f.y+=f.s; if(f.y>snowCanvas.height)f.y=0;}); sCtx.fill(); }, 50); }
