@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -857,282 +856,590 @@
     <!-- Snow Visuals Canvas -->
     <canvas id="snow-canvas"></canvas>
 
-    <!-- 2. APP LOGIC (Golden Master: Full Features + Session Privacy) -->
     <script>
-        // --- 1. GLOBAL STATE ---
-        window.userId = null;
-        window.isAuthReady = false;
-        window.currentTab = 'improv';
-        window.currentSubTab = 'prepNotes';
-        window.combatants = [];
-        window.currentTurnIndex = -1;
-        window.lastRoll = 0;
-        window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
-        window.userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
-        window.isChristmasMode = localStorage.getItem('aegis_theme') === 'christmas';
-        window.customDiceColor = null; 
-        window.customDiceImage = null;
-        window.lastGeneratedNpc = null;
-        window.lastGeneratedMonster = null;
+        // --- Global State ---
+        let currentTab = 'improv', currentSubTab = 'prepNotes', savedStatblocks = [], lastGeneratedNpc = null, lastGeneratedMonster = null, combatants = [], currentTurnIndex = -1, lastRoll = 0;
+        let structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+        let userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
+        let isChristmasMode = localStorage.getItem('aegis_theme') === 'christmas';
 
-        // --- 2. AUTHENTICATION & SESSION HANDLING ---
-        window.openLoginModal = () => document.getElementById('login-modal').classList.remove('hidden');
-        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
-        
-        window.handleSessionLogin = async () => {
-            const name = document.getElementById('session-name-input').value.trim();
-            const pass = document.getElementById('session-pass-input').value.trim();
-            const status = document.getElementById('login-status');
-            
-            if (!name || !pass) { if(status) status.textContent = "Enter Name & Password"; return; }
-            const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
-            
-            if(status) status.textContent = "Connecting...";
-            
-            try {
-                await window.signInWithEmailAndPassword(window.auth, email, pass);
-                window.closeLoginModal();
-            } catch (e) {
-                if(e.code.includes('user-not-found') || e.code.includes('invalid-credential')) {
-                    try { 
-                        await window.createUserWithEmailAndPassword(window.auth, email, pass); 
-                        window.closeLoginModal(); 
-                    } catch(regErr) { 
-                        if(status) status.textContent = "Registration Error: " + regErr.message; 
-                    }
-                } else if(status) status.textContent = "Error: " + e.message;
-            }
+        // --- UI Helpers ---
+        window.toggleTheme = function() {
+            isChristmasMode = !isChristmasMode;
+            localStorage.setItem('aegis_theme', isChristmasMode ? 'christmas' : 'default');
+            applyTheme();
         };
 
-        window.logoutUser = async () => { 
-            if(window.auth) await window.signOut(window.auth); 
-            window.location.reload(); 
-        };
-
-        window.auth.onAuthStateChanged((user) => {
-            const loginBtn = document.getElementById('login-btn');
-            const profile = document.getElementById('user-profile');
-            
-            if (user) {
-                // Logged In: Enable Private Mode
-                window.userId = user.uid;
-                window.isAuthReady = true;
-                
-                // UI
-                if(loginBtn) loginBtn.classList.add('hidden');
-                if(profile) profile.classList.remove('hidden');
-                document.getElementById('user-name').textContent = user.email.split('@')[0].replace(/_/g, ' ');
-                document.getElementById('user-avatar').src = `https://ui-avatars.com/api/?name=${user.email.split('@')[0]}&background=6366f1&color=fff`;
-
-                // RELOAD DATA FOR THIS SESSION ID
-                window.setupNotesListener(); 
-                window.setupStatblocksListener();
-                window.loadCombatData(); 
+        function applyTheme() {
+            if (isChristmasMode) {
+                document.body.classList.add('christmas-mode');
+                startSnow();
             } else {
-                // Logged Out: Guest Mode
-                window.userId = null;
-                window.isAuthReady = false;
-                if(loginBtn) loginBtn.classList.remove('hidden');
-                if(profile) profile.classList.add('hidden');
-                
-                // Load Local Guest Data
-                window.loadCombatData();
+                document.body.classList.remove('christmas-mode');
+                stopSnow();
             }
-        });
+        }
 
-        // --- 3. DATABASE HELPERS (Private Paths) ---
-        window.getCol = (name) => {
-            if (!window.userId) return null; 
-            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
-        };
-        window.getSharedDoc = (name) => {
-            if (!window.userId) return null;
-            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
-        };
-        window.getDocRef = (col, id) => {
-            if (!window.userId) return null;
-            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
-        };
+        // --- Snow Effect Engine ---
+        let snowInterval;
+        const snowCanvas = document.getElementById('snow-canvas');
+        const snowCtx = snowCanvas ? snowCanvas.getContext('2d') : null;
+        let snowflakes = [];
 
-        // --- 4. COMBAT TRACKER (Full Logic) ---
-        window.getCombatStorageKey = () => {
-            const uid = window.userId || 'guest_session';
-            return `aegis_combat_${uid}`;
-        };
-
-        window.loadCombatData = () => {
-            const key = window.getCombatStorageKey();
-            try {
-                const raw = localStorage.getItem(key);
-                const data = raw ? JSON.parse(raw) : {};
-                window.combatants = data.combatants || [];
-                window.currentTurnIndex = data.currentTurnIndex || -1;
-                
-                const status = document.getElementById('db-status');
-                if(status) {
-                    status.textContent = window.userId ? "Ready (Session)" : "Ready (Local)";
-                    status.className = window.userId ? "text-xs px-2 py-1 rounded bg-green-900 text-green-100 border border-green-700 font-bold" : "text-xs px-2 py-1 rounded bg-gray-700 text-gray-400";
-                }
-                window.renderCombatants();
-            } catch(e) { console.error("Load failed", e); }
-        };
-
-        window.saveCombatData = () => {
-            const key = window.getCombatStorageKey();
-            localStorage.setItem(key, JSON.stringify({ 
-                combatants: window.combatants, 
-                currentTurnIndex: window.currentTurnIndex 
-            }));
-            window.renderCombatants();
-        };
-
-        window.addCombatant = () => {
-             const name = document.getElementById('combatant-name').value.trim();
-             if(!name) return alert("Enter name");
-             
-             if (!window.combatants) window.combatants = [];
-
-             const hp = parseInt(document.getElementById('combatant-hp').value)||0;
-             const init = parseInt(document.getElementById('combatant-init').value)||0;
-             const ac = parseInt(document.getElementById('combatant-ac').value)||0;
-             const atk = document.getElementById('combatant-atk') ? document.getElementById('combatant-atk').value : "";
-
-             window.combatants.push({ 
-                 id: crypto.randomUUID(), 
-                 name, init, maxHp: hp, currentHp: hp, ac, attack: atk, conditions: [] 
-             });
-             
-             window.saveCombatData();
-             document.getElementById('combatant-name').value = '';
-             if(document.getElementById('combatant-atk')) document.getElementById('combatant-atk').value = '';
-        };
-
-        window.renderCombatants = () => {
-            const list = document.getElementById('initiative-list');
-            if(!list) return;
-            const condOpts = ['Blinded', 'Charmed', 'Prone', 'Stunned', 'Unconscious'].map(c=>`<option value="${c}">${c}</option>`).join('');
-
-            list.innerHTML = window.combatants.sort((a,b)=>b.init-a.init).map((c, i) => {
-                const badges = (c.conditions||[]).map(con=>`<span onclick="window.removeCondition('${c.id}','${con}')" class="cursor-pointer bg-red-900 px-1 rounded text-[10px] mr-1 border border-red-700">${con} ×</span>`).join('');
-                const atkShow = c.attack ? `<div class="text-xs text-yellow-400 font-mono mt-0.5">⚔️ ${c.attack}</div>` : '';
-                const borderClass = (i === window.currentTurnIndex) ? 'border-indigo-500 bg-indigo-900/20' : 'border-gray-600';
-
-                return `
-                <div class="flex items-start p-2 bg-gray-800 rounded mb-1 border-l-4 ${borderClass}">
-                    <div class="w-8 font-bold text-center pt-1">${c.init}</div>
-                    <div class="flex-1 ml-2 min-w-0">
-                        <div class="font-bold text-sm text-gray-200 truncate">${c.name} <span class="text-xs text-gray-400 font-normal ml-1">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</span></div>
-                        ${atkShow}
-                        <div class="mt-1 flex flex-wrap gap-1">${badges}</div>
-                        <select onchange="window.addCondition('${c.id}',this.value);this.value='';" class="mt-1 bg-gray-900 text-[10px] border border-gray-600 rounded px-1"><option value="">+ Cond</option>${condOpts}</select>
-                    </div>
-                    <div class="flex flex-col items-end gap-1 ml-1">
-                        <div class="flex items-center gap-1"><input type="number" id="dmg-${i}" class="w-8 text-black text-xs rounded p-1" placeholder="#"><button onclick="window.modHp('${c.id}',${i},-1)" class="text-xs bg-red-900 hover:bg-red-700 text-white px-2 py-1 rounded">Dmg</button><button onclick="window.modHp('${c.id}',${i},1)" class="text-xs bg-green-900 hover:bg-green-700 text-white px-2 py-1 rounded">Heal</button></div>
-                        <button onclick="window.delCombatant('${c.id}')" class="text-xs text-gray-500 hover:text-red-400 underline mt-1">Remove</button>
-                    </div>
-                </div>`;
-            }).join('') || '<p class="text-center text-gray-500 pt-4 text-sm">Battlefield empty.</p>';
+        function startSnow() {
+            if (!snowCanvas || snowInterval) return;
+            snowCanvas.width = window.innerWidth;
+            snowCanvas.height = window.innerHeight;
             
-            const sel = document.getElementById('combatant-selector');
-            if(sel) sel.innerHTML = '<option value="" disabled selected>Target</option>' + window.combatants.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
-        };
-        
-        window.delCombatant = (id) => { window.combatants = window.combatants.filter(c => c.id !== id); window.saveCombatData(); };
-        window.modHp = (id, idx, mul) => { const v=parseInt(document.getElementById(`dmg-${idx}`).value); if(!isNaN(v)) { const c=window.combatants.find(x=>x.id===id); if(c){ c.currentHp = Math.max(0, Math.min(c.maxHp, c.currentHp + (v*mul))); window.saveCombatData(); } } };
-        window.addCondition = (id, c) => { const ent = window.combatants.find(x=>x.id===id); if(ent && !ent.conditions.includes(c)) { ent.conditions.push(c); window.saveCombatData(); } };
-        window.removeCondition = (id, c) => { const ent = window.combatants.find(x=>x.id===id); if(ent) { ent.conditions = ent.conditions.filter(x=>x!==c); window.saveCombatData(); } };
-        window.clearCombat = () => { window.combatants = []; window.currentTurnIndex = -1; window.saveCombatData(); };
-        window.nextTurn = () => { if(window.combatants.length) { window.currentTurnIndex = (window.currentTurnIndex + 1) % window.combatants.length; window.saveCombatData(); } };
-        window.sortInitiative = () => { window.combatants.sort((a,b) => (b.init||0) - (a.init||0)); window.currentTurnIndex = 0; window.saveCombatData(); };
+            // Create flakes
+            snowflakes = [];
+            for (let i = 0; i < 100; i++) {
+                snowflakes.push({
+                    x: Math.random() * snowCanvas.width,
+                    y: Math.random() * snowCanvas.height,
+                    r: Math.random() * 3 + 1,
+                    speed: Math.random() * 0.5 + 0.2 // Very slow speed (0.2 to 0.7 pixels per frame)
+                });
+            }
 
-        // --- 5. NOTES & STATBLOCKS ---
-        window.setupNotesListener = () => {
-            if(!window.isAuthReady) return;
-            window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
-                if (doc.exists()) {
-                    const d = doc.data();
-                    window.structuredNotes = {
-                        prepNotes: d.structuredPrepNotes || d.prepNotes || [],
-                        enemyNotes: d.structuredEnemyNotes || d.enemyNotes || [],
-                        npcNotes: d.structuredNpcNotes || d.npcNotes || [],
-                        lootNotes: d.structuredLootNotes || d.lootNotes || [],
-                        mapNotes: d.structuredMapNotes || d.mapNotes || []
-                    };
+            function drawSnow() {
+                if (!snowCtx) return;
+                snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+                snowCtx.fillStyle = "rgba(255, 255, 255, 0.6)";
+                snowCtx.beginPath();
+                for (let i = 0; i < snowflakes.length; i++) {
+                    let f = snowflakes[i];
+                    snowCtx.moveTo(f.x, f.y);
+                    snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2, true);
                 }
-                if (window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+                snowCtx.fill();
+                moveSnow();
+            }
+
+            let angle = 0;
+            function moveSnow() {
+                angle += 0.005; // Slow sway
+                for (let i = 0; i < snowflakes.length; i++) {
+                    let f = snowflakes[i];
+                    
+                    // Fall down slowly
+                    f.y += f.speed;
+                    
+                    // Sway slightly side to side
+                    f.x += Math.sin(angle + f.y/50) * 0.2;
+
+                    // Wrap around if bottom reached
+                    if (f.y > snowCanvas.height) {
+                        f.y = -10;
+                        f.x = Math.random() * snowCanvas.width;
+                    }
+                    // Wrap sides
+                    if (f.x > snowCanvas.width + 5) f.x = -5;
+                    if (f.x < -5) f.x = snowCanvas.width + 5;
+                }
+            }
+            
+            // Run at ~30fps for a relaxed feel
+            snowInterval = setInterval(drawSnow, 50);
+        }
+
+        function stopSnow() {
+            if (snowInterval) {
+                clearInterval(snowInterval);
+                snowInterval = null;
+            }
+            if (snowCtx) snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+        }
+
+        window.switchTab = function(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
+                btn.classList.add('text-gray-400', 'border-transparent');
+                // Match button text to tab ID (simple heuristic)
+                const text = btn.textContent.toLowerCase();
+                if (text.includes(tabId) || (tabId === 'improv' && text.includes('prep'))) {
+                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
+                }
             });
+            if (tabId === 'notes') switchSubTab(currentSubTab);
         };
+
+        window.switchSubTab = function(tabId) {
+            currentSubTab = tabId;
+            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`${tabId}-sub-content`).classList.remove('hidden');
+            document.querySelectorAll('.sub-tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-gray-400');
+                if (btn.dataset.subtab === tabId) btn.classList.add('active');
+                else btn.classList.add('text-gray-400');
+            });
+            renderStructuredNotes(currentSubTab);
+        };
+
+        window.updateApiKey = function(val) {
+            userApiKey = val.trim();
+            localStorage.setItem('dm_toolkit_api_key', userApiKey);
+            const status = document.getElementById('api-key-status');
+            if(userApiKey.length > 5) { status.textContent = "Key saved!"; status.className="mt-2 text-xs text-green-400"; }
+            else { status.textContent = "Key empty"; status.className="mt-2 text-xs text-red-400"; }
+        };
+
+        window.saveApiKey = function() {
+            // Wrapper to trigger visual feedback on save button click
+            const val = document.getElementById('user-api-key').value;
+            window.updateApiKey(val);
+            // Replace alert with modal or inline message in a real app
+            // alert("API Key Saved!"); 
+            const status = document.getElementById('api-key-status');
+            if (userApiKey.length > 5) {
+                status.textContent = "API Key Saved!";
+                status.className = "mt-2 text-xs text-green-400";
+            } else {
+                 status.textContent = "API Key Cleared/Empty.";
+                 status.className = "mt-2 text-xs text-red-400";
+            }
+        };
+
+        // --- Firebase Helpers ---
+        // Access shared/public data for the current app
+        const getCol = (name) => window.collection(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', 'public', 'data', name);
+        const getDocRef = (col, id) => window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', 'public', 'data', col, id);
+        const getSharedDoc = (name) => window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', 'public', 'data', 'dm_toolkit_data', name);
 
         window.saveStructuredNotes = async (tab, data) => {
             if(!window.isAuthReady) return;
             const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
-            try { await window.setDoc(window.getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error(e); }
+            try { await window.setDoc(getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error(e); }
         };
 
-        window.renderStructuredNotes = (tab) => {
-            const listId = `${tab}-list`; 
-            const list = document.getElementById(listId);
-            if(!list) return;
-            
-            const notes = window.structuredNotes[tab] || [];
-            if (notes.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 pt-4 text-xs">No items.</p>';
-                return;
-            }
-            list.innerHTML = notes.map(n => `
-                <div class="card p-2 mb-2 bg-gray-800 border border-gray-700">
-                    <div class="font-bold text-indigo-300 cursor-pointer flex justify-between" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                        <span class="truncate">${n.title}</span><span>▼</span>
-                    </div>
-                    <div class="hidden mt-2 pt-2 border-t border-gray-700">
-                        <div class="mb-2 text-right">
-                            <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-[10px] text-red-400 border border-red-900 px-2 py-1 rounded bg-red-900/20">Delete</button>
-                        </div>
-                        <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
-                    </div>
-                </div>
-            `).join('');
-        };
-        
-        window.addNewNote = (tab) => {
-            if(!window.structuredNotes[tab]) window.structuredNotes[tab] = [];
-            window.structuredNotes[tab].unshift({id:crypto.randomUUID(), title:'Manual Note', content:'Edit me...'});
-            window.saveStructuredNotes(tab, window.structuredNotes[tab]);
-            window.renderStructuredNotes(tab);
-        };
-        window.deleteNote = async (id, tab) => {
-            window.structuredNotes[tab] = window.structuredNotes[tab].filter(n => n.id !== id);
-            await window.saveStructuredNotes(tab, window.structuredNotes[tab]);
-            window.renderStructuredNotes(tab);
-        };
-
-        window.setupStatblocksListener = () => {
+        window.setupNotesListener = () => {
             if(!window.isAuthReady) return;
-            window.onSnapshot(window.query(window.getCol('dm_toolkit_statblocks')), (snap) => {
-                window.savedStatblocks = []; 
-                snap.forEach(d => window.savedStatblocks.push({id: d.id, ...d.data()}));
-                window.renderStatblocks();
+            window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    structuredNotes.prepNotes = d.structuredPrepNotes || [];
+                    structuredNotes.enemyNotes = d.structuredEnemyNotes || [];
+                    structuredNotes.npcNotes = d.structuredNpcNotes || [];
+                    structuredNotes.lootNotes = d.structuredLootNotes || [];
+                    if(currentTab==='notes') renderStructuredNotes(currentSubTab);
+                }
             });
         };
 
-        window.renderStatblocks = () => {
+        function renderStructuredNotes(tab) {
+            const list = document.getElementById(`${tab}-list`);
+            if(!list) return;
+            list.innerHTML = structuredNotes[tab].length ? '' : '<p class="text-center text-gray-500 pt-8">No notes.</p>';
+            structuredNotes[tab].forEach(n => {
+                const div = document.createElement('div'); div.className = 'note-item card p-0 rounded-lg shadow-md'; div.id = `note-${n.id}`;
+                // Use innerHTML content as raw HTML, which is necessary if we save rich HTML blocks (like the statblocks)
+                div.innerHTML = `<div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')"><span class="font-bold text-indigo-300 truncate">${n.title}</span><span class="text-gray-400">▼</span></div>
+                <div class="collapsible-content" id="content-${n.id}">
+                    <div class="flex justify-end p-2 gap-2 border-b border-gray-700 mb-2">
+                        <button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold">Edit</button>
+                        <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold">Delete</button>
+                    </div>
+                    <div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div>
+                </div>`;
+                list.appendChild(div);
+            });
+        }
+
+        window.toggleCollapse = (id) => {
+            const el = document.getElementById(`content-${id}`);
+            if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; }
+        };
+
+        window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+        window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+        
+        // Note: When loading content into the textarea, we use textContent to strip HTML, which is correct for manual editing.
+        // For rendering, we use innerHTML (see renderStructuredNotes)
+        window.editNote = (id, tab) => {
+            const n = structuredNotes[tab].find(x => x.id === id);
+            if(!n) return;
+            document.getElementById('modal-note-id').value = id; document.getElementById('modal-tab-name').value = tab;
+            document.getElementById('modal-title').value = n.title; 
+            
+            // To edit, we should only expose the plain text content. If the content contains rich HTML (like the D&D blocks), the user should use the monster tab for that structure.
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = n.content;
+            document.getElementById('modal-content').value = tempDiv.textContent.trim(); 
+            
+            document.getElementById('edit-modal').classList.remove('hidden');
+        };
+        window.saveEditedNote = () => {
+            const id = document.getElementById('modal-note-id').value, tab = document.getElementById('modal-tab-name').value;
+            const idx = structuredNotes[tab].findIndex(x => x.id === id);
+            if(idx > -1) {
+                structuredNotes[tab][idx].title = document.getElementById('modal-title').value;
+                structuredNotes[tab][idx].content = document.getElementById('modal-content').value;
+                window.saveStructuredNotes(tab, structuredNotes[tab]);
+            }
+            document.getElementById('edit-modal').classList.add('hidden');
+        };
+        window.closeEditModal = () => document.getElementById('edit-modal').classList.add('hidden');
+
+        // --- Combat Logic ---
+        window.setupCombatDataListeners = () => {
+            if(!window.isAuthReady) return;
+            const status = document.getElementById('db-status');
+            window.onSnapshot(window.query(getCol('shared_combatants')), (snap) => {
+                combatants = []; snap.forEach(d => combatants.push({id: d.id, ...d.data()}));
+                combatants.sort((a,b) => (b.init||0) - (a.init||0));
+                renderCombatants();
+                if(status) { status.textContent = "Connected"; status.className = "text-xs px-2 py-1 rounded bg-gray-700 text-green-400"; }
+            });
+            window.onSnapshot(getSharedDoc('shared_combat_state'), (doc) => {
+                currentTurnIndex = doc.exists() ? (doc.data().currentTurnIndex || 0) : -1;
+                renderCombatants();
+            });
+        };
+
+        // Helper for Conditions
+        const dndConditions = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious', 'Exhaustion', 'Concentrating'];
+
+        window.addCondition = async (id, cond) => {
+            if (!cond) return;
+            const c = combatants.find(x => x.id === id);
+            if (!c) return;
+            const current = c.conditions || [];
+            if (current.includes(cond)) return; // No duplicates
+            
+            // We read local, modify, then push to DB (simpler without needing new imports)
+            const updated = [...current, cond];
+            await window.updateDoc(getDocRef('shared_combatants', id), { conditions: updated });
+        };
+
+        window.removeCondition = async (id, cond) => {
+            const c = combatants.find(x => x.id === id);
+            if (!c) return;
+            const current = c.conditions || [];
+            const updated = current.filter(x => x !== cond);
+            await window.updateDoc(getDocRef('shared_combatants', id), { conditions: updated });
+        };
+
+        function renderCombatants() {
+            const list = document.getElementById('initiative-list');
+            if(!list) return;
+            list.innerHTML = combatants.length ? '' : '<p class="text-center text-gray-500 pt-8">No combatants.</p>';
+            
+            combatants.forEach((c, idx) => {
+                const active = idx === currentTurnIndex ? 'bg-indigo-700 glow-shadow' : 'bg-gray-700';
+                
+                // Generate Condition Badges
+                const activeConditions = c.conditions || [];
+                const conditionBadges = activeConditions.map(cond => 
+                    `<span onclick="removeCondition('${c.id}', '${cond}')" class="inline-block cursor-pointer bg-red-900/80 hover:bg-red-800 text-red-100 text-[10px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 select-none" title="Remove ${cond}">${cond} &times;</span>`
+                ).join('');
+
+                // Generate Condition Options
+                const conditionOptions = dndConditions.map(cond => `<option value="${cond}">${cond}</option>`).join('');
+
+                const div = document.createElement('div'); 
+                div.className = `flex items-start space-x-2 p-3 rounded-lg transition ${active}`;
+                
+                div.innerHTML = `
+                    <div class="text-lg font-bold w-6 text-center text-white pt-1">${c.init}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-sm text-white truncate">${c.name}</div>
+                        <div class="text-xs text-gray-300">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</div>
+                        
+                        <!-- Conditions Section -->
+                        <div class="mt-2">
+                            <div class="flex flex-wrap gap-1 mb-1">${conditionBadges}</div>
+                            <select onchange="addCondition('${c.id}', this.value); this.value='';" class="bg-gray-800 text-[10px] text-gray-400 border border-gray-600 rounded px-1 py-0.5 focus:outline-none focus:border-indigo-500">
+                                <option value="">+ Condition</option>
+                                ${conditionOptions}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col items-end gap-2">
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="dmg-${idx}" class="w-10 p-1 text-xs rounded text-black" placeholder="Amt">
+                            <button onclick="modHp('${c.id}', ${idx}, 1)" class="bg-green-600 hover:bg-green-500 px-2 py-1 rounded text-xs font-bold">Heal</button>
+                            <button onclick="modHp('${c.id}', ${idx}, -1)" class="bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-xs font-bold">Dmg</button>
+                        </div>
+                        <button onclick="delCombatant('${c.id}')" class="text-gray-400 hover:text-red-400 text-xs underline">Remove</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+            
+            // Update Roller
+            const sel = document.getElementById('combatant-selector');
+            if(sel) { sel.innerHTML = '<option value="" disabled selected>Target</option>'; combatants.forEach((c,i) => sel.innerHTML += `<option value="${i}">${c.name}</option>`); }
+            const btn = document.getElementById('assign-roll-button'); if(btn) btn.disabled = combatants.length === 0 || lastRoll === 0;
+        }
+
+        window.addCombatant = async () => {
+            if(!window.isAuthReady) { console.error("Database not ready."); return; }
+            const name = document.getElementById('combatant-name').value.trim();
+            if(!name) return;
+            const init = parseInt(document.getElementById('combatant-init').value)||0;
+            const hp = parseInt(document.getElementById('combatant-hp').value)||0;
+            const ac = parseInt(document.getElementById('combatant-ac').value)||0;
+            await window.addDoc(getCol('shared_combatants'), { name, init, maxHp: hp, currentHp: hp, ac, initModifier: init });
+            document.getElementById('combatant-name').value = '';
+        };
+        
+        window.modHp = async (id, idx, mul) => {
+            const val = parseInt(document.getElementById(`dmg-${idx}`).value);
+            if(isNaN(val)) return;
+            const c = combatants[idx];
+            const newHp = Math.max(0, Math.min(c.maxHp, c.currentHp + (val * mul)));
+            await window.updateDoc(getDocRef('shared_combatants', id), { currentHp: newHp });
+            document.getElementById(`dmg-${idx}`).value = '';
+        };
+
+        window.delCombatant = async (id) => await window.deleteDoc(getDocRef('shared_combatants', id));
+        window.clearCombat = async () => {
+             const batch = window.writeBatch(window.db);
+             combatants.forEach(c => batch.delete(getDocRef('shared_combatants', c.id)));
+             batch.delete(getSharedDoc('shared_combat_state'));
+             await batch.commit();
+        };
+        window.nextTurn = async () => {
+             if(!combatants.length) return;
+             const next = (currentTurnIndex + 1) % combatants.length;
+             await window.setDoc(getSharedDoc('shared_combat_state'), { currentTurnIndex: next });
+        };
+        window.sortInitiative = async () => {
+             await window.setDoc(getSharedDoc('shared_combat_state'), { currentTurnIndex: 0 });
+        };
+        
+        // --- Dice Roller ---
+        window.rollD20 = function() {
+            lastRoll = Math.floor(Math.random() * 20) + 1;
+            document.getElementById('last-roll-display').textContent = lastRoll;
+            const btn = document.getElementById('assign-roll-button');
+            if(btn) btn.disabled = combatants.length === 0 || lastRoll === 0;
+        }
+        
+        window.assignInitiativeRoll = async function() {
+            const selector = document.getElementById('combatant-selector');
+            const selectedIndex = parseInt(selector.value, 10);
+            if (isNaN(selectedIndex) || selectedIndex < 0 || lastRoll === 0) return;
+            
+            const c = combatants[selectedIndex];
+            const modifier = c.initModifier || 0; 
+            const newInitiative = lastRoll + modifier;
+            
+            try { 
+                await window.updateDoc(getDocRef('shared_combatants', c.id), { init: newInitiative }); 
+            } catch (error) { console.error(error); }
+            
+            lastRoll = 0;
+            document.getElementById('last-roll-display').textContent = '?';
+            selector.value = '';
+            document.getElementById('assign-roll-button').disabled = true;
+        }
+        
+        // --- Helper for Quick Rolls ---
+        window.rollSimple = function(sides) {
+            document.getElementById('dice-num').value = 1;
+            document.getElementById('dice-type').value = sides;
+            document.getElementById('dice-mod').value = 0;
+            window.rollCustomDice();
+        }
+
+        window.rollCustomDice = function() {
+            const numDiceInput = document.getElementById('dice-num');
+            const diceTypeInput = document.getElementById('dice-type');
+            const modInput = document.getElementById('dice-mod');
+            const resultDisplay = document.getElementById('dice-roll-result');
+            const detailsDisplay = document.getElementById('dice-roll-details');
+
+            const numDice = parseInt(numDiceInput.value, 10) || 1;
+            const diceType = parseInt(diceTypeInput.value, 10) || 20;
+            const modifier = parseInt(modInput.value, 10) || 0;
+
+            if (numDice <= 0) {
+                resultDisplay.textContent = 'Error';
+                detailsDisplay.textContent = 'Count must be > 0';
+                return;
+            }
+
+            let totalRoll = 0;
+            const rolls = [];
+            let critString = ""; // For nat 20/1 effects if needed visually
+
+            for (let i = 0; i < numDice; i++) {
+                const roll = Math.floor(Math.random() * diceType) + 1;
+                rolls.push(roll);
+                totalRoll += roll;
+            }
+
+            const finalTotal = totalRoll + modifier;
+            const modString = modifier > 0 ? `+${modifier}` : (modifier < 0 ? `${modifier}` : '');
+
+            // Visual flair for result
+            resultDisplay.textContent = finalTotal;
+            resultDisplay.className = "text-2xl font-bold text-white animate-pulse"; // Reset animation
+            
+            // Remove animation class after delay so it can re-trigger
+            setTimeout(() => {
+                 resultDisplay.className = "text-2xl font-bold text-white";
+            }, 200);
+            
+            let detailsText = `[${rolls.join(', ')}]`;
+            if (modifier !== 0) detailsText += ` ${modString}`;
+            detailsDisplay.textContent = `${numDice}d${diceType}${modString}: ${detailsText}`;
+
+            // TRIGGER VISUALS
+            if (window.throwDiceVisuals) {
+                window.throwDiceVisuals(rolls, diceType);
+            }
+        }; // <--- Fixed Semicolon
+
+// --- DICE VISUALS (Colors, Textures & Spin Fix) ---
+        (function() {
+            const canvas = document.getElementById('dice-canvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let dice = [];
+            
+            // Global to hold the uploaded image
+            window.customDiceImage = null;
+
+            // Function to handle file upload
+            window.uploadDiceTexture = function(input) {
+                if (input.files && input.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() { window.customDiceImage = img; };
+                        img.src = e.target.result;
+                    }
+                    reader.readAsDataURL(input.files[0]);
+                }
+            };
+
+            function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+            window.addEventListener('resize', resize); resize();
+
+            class VisualDie {
+                constructor(val, type) { 
+                    this.val = val; this.type = type;
+                    this.x = canvas.width/2; 
+                    this.y = canvas.height + 30; 
+                    this.vx = (Math.random()-0.5)*20; 
+                    this.vy = -(Math.random() * 15 + 20); 
+                    this.angle = 0; this.vAngle = 0.2;
+                    
+                    // Color fallback
+                    const picker = document.getElementById('dice-color-picker');
+                    this.color = picker ? picker.value : '#6366f1';
+                }
+                
+                update() { 
+                    this.vy += 1; this.x += this.vx; this.y += this.vy; this.angle += this.vAngle;
+                    
+                    // Floor Collision
+                    if(this.y > canvas.height - 50) { 
+                        this.y = canvas.height - 50; 
+                        this.vy *= -0.6; 
+                        this.vx *= 0.9; 
+
+                        // If moving very slowly, stop spinning completely
+                        if(Math.abs(this.vx) < 0.5 && Math.abs(this.vy) < 1) {
+                            this.vAngle = 0;
+                        }
+                    } 
+                    
+                    // Wall Collision
+                    if(this.x < 20 || this.x > canvas.width - 20) this.vx *= -0.8;
+                }
+                
+                draw() { 
+                    ctx.save(); 
+                    ctx.translate(this.x, this.y); 
+                    ctx.rotate(this.angle);
+                    
+                    ctx.beginPath();
+                    // Draw Shape Path
+                    if(this.type === 4) { ctx.moveTo(0,-20); ctx.lineTo(20,15); ctx.lineTo(-20,15); } 
+                    else if(this.type === 6) { ctx.rect(-15,-15,30,30); } 
+                    else if(this.type === 8 || this.type === 10) { ctx.moveTo(0,-25); ctx.lineTo(15,0); ctx.lineTo(0,25); ctx.lineTo(-15,0); } 
+                    else if(this.type === 12) { for(let i=0;i<5;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/5-Math.PI/2), 22*Math.sin(i*2*Math.PI/5-Math.PI/2)); } 
+                    else { for(let i=0;i<6;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/6), 22*Math.sin(i*2*Math.PI/6)); } 
+                    ctx.closePath();
+                    
+                    // FILL LOGIC: Use Image if exists, otherwise Color
+                    if (window.customDiceImage) {
+                        ctx.save();
+                        ctx.clip(); // Clip image to the shape defined above
+                        // Draw image centered and scaled to cover the die
+                        ctx.drawImage(window.customDiceImage, -25, -25, 50, 50);
+                        ctx.restore();
+                    } else {
+                        ctx.fillStyle = this.color;
+                        ctx.fill();
+                    }
+
+                    // Border & Text
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = 'white'; 
+                    ctx.shadowColor = 'black';
+                    ctx.shadowBlur = 4;
+                    ctx.font = 'bold 14px Arial'; 
+                    ctx.textAlign = 'center'; 
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.val, 0, 2); 
+                    
+                    ctx.restore();
+                }
+            }
+
+            function animate() {
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                dice.forEach(d => { d.update(); d.draw(); });
+                requestAnimationFrame(animate);
+            }
+            animate();
+
+            window.throwDiceVisuals = (rolls, type) => {
+                dice = rolls.map(r => new VisualDie(r, type));
+                setTimeout(() => {
+                    dice = [];
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }, 3500);
+            };
+        })();
+
+        // --- Statblocks ---
+        window.setupStatblocksListener = () => {
+            if(!window.isAuthReady) return;
+            window.onSnapshot(window.query(getCol('dm_toolkit_statblocks')), (snap) => {
+                savedStatblocks = []; snap.forEach(d => savedStatblocks.push({id: d.id, ...d.data()}));
+                savedStatblocks.sort((a,b) => a.name.localeCompare(b.name));
+                renderStatblocks();
+            });
+        };
+        function renderStatblocks() {
              const list = document.getElementById('statblocks-list'); if(!list) return;
-             list.innerHTML = window.savedStatblocks.length ? '' : '<p class="text-center text-gray-500">No stats saved.</p>';
-             window.savedStatblocks.forEach(s => {
+             list.innerHTML = savedStatblocks.length ? '' : '<p class="text-center text-gray-500">No stats.</p>';
+             savedStatblocks.forEach(s => {
                  const div = document.createElement('div'); div.className = 'card p-2 mb-2 bg-gray-800';
+                 // Safe string escape for function call
                  const safeName = s.name.replace(/'/g, "\\'");
-                 const safeDmg = (s.dmg || "").replace(/'/g, "\\'");
-                 div.innerHTML = `<div class="flex justify-between font-bold text-indigo-300"><span>${s.name}</span><div class="gap-2 flex"><button onclick="window.delStat('${s.id}')" class="text-xs text-red-400">Del</button></div></div>
-                 <div class="text-xs text-gray-300 grid grid-cols-2 gap-1 mt-1"><span>HP: ${s.hp}</span><span>AC: ${s.ac}</span></div>
+                 div.innerHTML = `<div class="flex justify-between font-bold text-indigo-300"><span>${s.name}</span><div class="gap-2 flex"><button onclick="editStatblock('${s.id}')" class="text-xs text-blue-400">Edit</button><button onclick="delStat('${s.id}')" class="text-xs text-red-400">Del</button></div></div>
+                 <div class="text-xs text-gray-300 grid grid-cols-2 gap-1 mt-1"><span>HP: ${s.hp}</span><span>AC: ${s.ac}</span><span>Hit: ${s.toHit}</span><span>Init: ${s.initMod}</span></div>
                  <div class="text-xs text-yellow-500 mt-1 truncate">${s.dmg}</div>
-                 <button onclick="window.importStat('${safeName}', ${s.hp}, ${s.initMod}, ${s.ac}, '${safeDmg}')" class="w-full bg-purple-900 hover:bg-purple-700 text-xs rounded mt-2 py-1 transition">Add to Tracker</button>`;
+                 <button onclick="importStat('${safeName}', ${s.hp}, ${s.initMod}, ${s.ac})" class="w-full bg-purple-900 text-xs rounded mt-2 py-1">Add to Tracker</button>`;
                  list.appendChild(div);
              });
-        };
+        }
         window.saveStatblock = async () => {
-             if (!window.userId) { alert('Please log in to save.'); return window.openLoginModal(); }
              const name = document.getElementById('stat-name').value.trim(); if(!name) return;
-             await window.addDoc(window.getCol('dm_toolkit_statblocks'), {
+             await window.addDoc(getCol('dm_toolkit_statblocks'), {
                  name, hp: parseInt(document.getElementById('stat-hp').value)||0,
                  ac: parseInt(document.getElementById('stat-ac').value)||0,
                  toHit: parseInt(document.getElementById('stat-tohit').value)||0,
@@ -1141,180 +1448,1052 @@
                  timestamp: new Date().toISOString()
              });
              document.getElementById('stat-name').value = '';
-             alert("Saved!");
         };
-        window.delStat = async (id) => await window.deleteDoc(window.getDocRef('dm_toolkit_statblocks', id));
-        window.importStat = (n, h, i, a, d) => {
-             document.getElementById('combatant-name').value = n; document.getElementById('combatant-hp').value = h;
-             document.getElementById('combatant-init').value = i; document.getElementById('combatant-ac').value = a;
-             if(document.getElementById('combatant-atk')) document.getElementById('combatant-atk').value = d || "";
-             window.switchTab('combat');
+        window.delStat = async (id) => await window.deleteDoc(getDocRef('dm_toolkit_statblocks', id));
+        window.importStat = (n, h, i, a) => {
+             document.getElementById('combatant-name').value = n; 
+             document.getElementById('combatant-hp').value = h;
+             document.getElementById('combatant-init').value = i; 
+             document.getElementById('combatant-ac').value = a;
+             switchTab('combat');
+        };
+        
+        // Statblock Edit Modal Functions
+        window.editStatblock = (id) => {
+            const s = savedStatblocks.find(x => x.id === id);
+            if (!s) return;
+            document.getElementById('modal-statblock-id').value = id;
+            document.getElementById('modal-stat-name').value = s.name;
+            document.getElementById('modal-stat-hp').value = s.hp;
+            document.getElementById('modal-stat-ac').value = s.ac;
+            document.getElementById('modal-stat-tohit').value = s.toHit;
+            document.getElementById('modal-stat-init-mod').value = s.initMod;
+            document.getElementById('modal-stat-dmg').value = s.dmg;
+            document.getElementById('edit-statblock-modal').classList.remove('hidden');
         };
 
-        // --- 6. AI & GENERATORS (Restored Full Logic) ---
+        window.closeStatblockEditModal = () => document.getElementById('edit-statblock-modal').classList.add('hidden');
+
+        window.saveEditedStatblock = async () => {
+            const id = document.getElementById('modal-statblock-id').value;
+            if (!id) return;
+            
+            try {
+                await window.updateDoc(getDocRef('dm_toolkit_statblocks', id), {
+                    name: document.getElementById('modal-stat-name').value.trim(),
+                    hp: parseInt(document.getElementById('modal-stat-hp').value) || 0,
+                    ac: parseInt(document.getElementById('modal-stat-ac').value) || 0,
+                    toHit: parseInt(document.getElementById('modal-stat-tohit').value) || 0,
+                    initMod: parseInt(document.getElementById('modal-stat-init-mod').value) || 0,
+                    dmg: document.getElementById('modal-stat-dmg').value.trim(),
+                });
+                closeStatblockEditModal();
+            } catch (error) {
+                console.error("Error updating statblock:", error);
+            }
+        };
+
+
+        // --- AI & API ---
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
-        const combatSchema = { type: "OBJECT", properties: { name: { "type": "STRING" }, level_or_cr: { "type": "STRING" }, armor_class_ac: { "type": "INTEGER" }, max_hit_points: { "type": "INTEGER" }, initiative_bonus: { "type": "INTEGER" }, main_attack: { "type": "STRING" } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
-        const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: {type:"INTEGER"}, DEX: {type:"INTEGER"}, CON: {type:"INTEGER"}, INT: {type:"INTEGER"}, WIS: {type:"INTEGER"}, CHA: {type:"INTEGER"} }, required: ["STR","DEX","CON","INT","WIS","CHA"] }, saving_throws: {type:"ARRAY", items:{type:"STRING"}}, skills: {type:"ARRAY", items:{type:"STRING"}}, damage_vulnerabilities: {type:"ARRAY", items:{type:"STRING"}}, damage_resistances: {type:"ARRAY", items:{type:"STRING"}}, damage_immunities: {type:"ARRAY", items:{type:"STRING"}}, condition_immunities: {type:"ARRAY", items:{type:"STRING"}}, senses: {type:"STRING"}, languages: {type:"STRING"}, challenge_rating: {type:"STRING"}, xp: {type:"INTEGER"}, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} } } } }, required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"] };
+        const IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict';
+        
+        const combatSchema = {
+            type: "OBJECT",
+            properties: {
+                name: { "type": "STRING", "description": "A creative and appropriate name for the NPC." },
+                level_or_cr: { "type": "STRING", "description": "The requested level or challenge rating." },
+                armor_class_ac: { "type": "INTEGER", "description": "The NPC's calculated Armor Class (AC)." },
+                max_hit_points: { "type": "INTEGER", "description": "The NPC's maximum Hit Points (HP)." },
+                initiative_bonus: { "type": "INTEGER", "description": "The modifier (DEX bonus) added to the d20 roll for initiative." },
+                main_attack: { "type": "STRING", "description": "The NPC's primary attack description including attack roll modifier and damage." }
+            },
+            required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"]
+        };
 
-        async function callAI(payload) {
-            let key = window.userApiKey || document.getElementById('user-api-key')?.value.trim();
-            if (!key) { alert("Please enter API Key in Prep tab"); throw new Error("No API Key"); }
-            const res = await fetch(`${API_URL}?key=${key}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-            if (res.ok) return await res.json();
-            throw new Error("API Error");
+        const monsterSchema = {
+            type: "OBJECT",
+            properties: {
+                name: { type: "STRING", description: "The monster's name." },
+                size: { type: "STRING", description: "Size (e.g., Medium, Large)." },
+                type: { type: "STRING", description: "Type (e.g., humanoid, beast, monstrosity)." },
+                alignment: { type: "STRING", description: "Alignment (e.g., chaotic evil, unaligned)." },
+                armor_class: { type: "INTEGER", description: "Armor Class (AC)." },
+                ac_type: { type: "STRING", description: "Type of AC (e.g., 'natural armor', 'plate mail')." },
+                hit_points: { type: "INTEGER", description: "Average Hit Points." },
+                hit_dice: { type: "STRING", description: "Hit Dice formula (e.g., '10d8 + 40')." },
+                speed: { type: "STRING", description: "All movement speeds (e.g., '30 ft., fly 60 ft.')." },
+                ability_scores: {
+                    type: "OBJECT",
+                    properties: {
+                        STR: { type: "INTEGER" },
+                        DEX: { type: "INTEGER" },
+                        CON: { type: "INTEGER" },
+                        INT: { type: "INTEGER" },
+                        WIS: { type: "INTEGER" },
+                        CHA: { type: "INTEGER" }
+                    },
+                    required: ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+                },
+                saving_throws: { type: "ARRAY", items: { type: "STRING" } },
+                skills: { type: "ARRAY", items: { type: "STRING" } },
+                damage_vulnerabilities: { type: "ARRAY", items: { type: "STRING" } },
+                damage_resistances: { type: "ARRAY", items: { type: "STRING" } },
+                damage_immunities: { type: "ARRAY", items: { type: "STRING" } },
+                condition_immunities: { type: "ARRAY", items: { type: "STRING" } },
+                senses: { type: "STRING", description: "Senses (e.g., 'darkvision 60 ft., passive Perception 14')." },
+                languages: { type: "STRING", description: "Languages known (e.g., 'Common, Giant')." },
+                challenge_rating: { type: "STRING", description: "Challenge Rating (CR) (e.g., '5')." },
+                xp: { type: "INTEGER", description: "Experience Points (XP) for the CR." },
+                abilities: { 
+                    type: "ARRAY", 
+                    items: { 
+                        type: "OBJECT", 
+                        properties: { 
+                            name: { type: "STRING" }, 
+                            description: { type: "STRING" } 
+                        },
+                        required: ["name", "description"]
+                    },
+                    description: "Special abilities (e.g., 'Pack Tactics', 'Magic Resistance'). Keep descriptions extremely concise and mechanical. Do not include flavor text." 
+                },
+                actions: { 
+                    type: "ARRAY", 
+                    items: { 
+                        type: "OBJECT", 
+                        properties: { name: { type: "STRING" }, description: { type: "STRING" } },
+                        required: ["name", "description"]
+                    },
+                    description: "Actions the monster can take. Keep descriptions extremely concise and mechanical (e.g. 'Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) slashing damage.'). Do not include flavor text." 
+                },
+                legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } }
+            },
+            required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"]
+        };
+
+        async function callAI(url, payload) {
+            // Fallback: Check the input field directly if the variable seems empty
+            let key = userApiKey;
+            if (!key || key === "") {
+                const inputEl = document.getElementById('user-api-key');
+                if (inputEl && inputEl.value) {
+                    key = inputEl.value.trim();
+                    // Update global state while we're at it
+                    userApiKey = key;
+                    localStorage.setItem('dm_toolkit_api_key', key);
+                }
+            }
+
+            const checkKey = key || "PASTE_KEY";
+            if(!checkKey || checkKey.includes("PASTE")) { 
+                // Using console.error instead of alert as per general instruction
+                console.error("Please paste your API Key in the Prep tab!"); 
+                throw new Error("No Key: Please paste your API Key in the Prep tab to use AI features."); 
+            }
+            
+            let res;
+            // Exponential backoff retry logic (simplified)
+            for (let i = 0; i < 3; i++) {
+                try {
+                    res = await fetch(`${url}?key=${key}`, { 
+                        method: 'POST', 
+                        headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify(payload) 
+                    });
+                    
+                    if (res.ok) return await res.json();
+                    
+                    // STOP RETRYING if the error is 400 (Bad Request / Invalid Key)
+                    if (res.status === 400) {
+                        const errText = await res.text();
+                        console.error("API 400 Error:", errText);
+                        alert("Invalid API Key. Please go to the 'Prep' tab and update your Google Gemini API Key.");
+                        throw new Error("Invalid API Key (400). Check Prep tab.");
+                    }
+
+                    // If not OK, check if it's a rate limit error (429) or temporary (5xx)
+                    if (res.status === 429 || res.status >= 500) {
+                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue; // Retry
+                    }
+                    throw new Error(`API returned status ${res.status}: ${await res.text()}`);
+
+                } catch (error) {
+                    if (i === 2 || error.message.includes("Invalid API Key")) throw error; // Re-throw immediately if invalid key
+                    // If network error, still try to retry with backoff
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        
+        window.generateCombatNpc = async () => {
+            const btn = document.getElementById('generate-combat-button'); btn.disabled = true;
+            const outputDiv = document.getElementById('ai-output');
+            outputDiv.textContent = "Generating combat stats...";
+            
+            try {
+                const txt = document.getElementById('npc-type').value; 
+                const lvl = document.getElementById('npc-level').value;
+                const prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON matching the schema provided.`;
+                
+                const payload = { 
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: combatSchema
+                    }
+                };
+
+                const data = await callAI(API_URL, payload);
+                const stats = JSON.parse(data.candidates[0].content.parts[0].text);
+                lastGeneratedNpc = stats;
+                
+                // Render Detailed UI
+                outputDiv.innerHTML = `
+                    <div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div>
+                    <div class="text-gray-300 text-sm mb-4">Level/CR: <span class="font-medium text-white">${stats.level_or_cr}</span></div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                            <div class="text-xs text-gray-400 uppercase">Armor Class</div>
+                            <div class="font-bold text-2xl text-blue-300">${stats.armor_class_ac}</div>
+                        </div>
+                        <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                            <div class="text-xs text-gray-400 uppercase">Hit Points</div>
+                            <div class="font-bold text-2xl text-green-300">${stats.max_hit_points}</div>
+                        </div>
+                        <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
+                             <div class="text-xs text-gray-400 uppercase">Initiative</div>
+                             <div class="font-bold text-xl text-yellow-300">${stats.initiative_bonus >= 0 ? '+' : ''}${stats.initiative_bonus}</div>
+                        </div>
+                        <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
+                             <div class="text-xs text-gray-400 uppercase">Main Attack</div>
+                             <div class="font-medium text-white mt-1">${stats.main_attack}</div>
+                        </div>
+                    </div>
+                    <button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg transition flex items-center justify-center gap-2">
+                        <span>💾</span> Add to Statblocks
+                    </button>
+                    <div class="mt-4 pt-4 border-t border-gray-700 grid grid-cols-3 gap-2">
+                             <button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 hover:bg-gray-500 py-1 rounded text-xs text-gray-200">Save Note</button>
+                             <button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 hover:bg-yellow-700 py-1 rounded text-xs text-yellow-100">Save Enemy</button>
+                             <button onclick="saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 hover:bg-blue-700 py-1 rounded text-xs text-blue-100">Save NPC</button>
+                    </div>
+                `;
+            } catch(e) { console.error(e); outputDiv.textContent = "Error: " + e.message; }
+            finally {
+                document.getElementById('combat-loading-spinner').classList.add('hidden');
+                btn.disabled = false;
+            }
+        };
+
+        window.addNpcToStatblocks = async function() {
+            if (!window.isAuthReady) { console.error('Database not ready.'); return; }
+            if (!lastGeneratedNpc) { console.error('No NPC generated yet.'); return; }
+
+            const npc = lastGeneratedNpc;
+            let toHit = 0;
+            if (npc.main_attack) {
+                const match = npc.main_attack.match(/(\+|\-)\d+/);
+                if (match) toHit = parseInt(match[0], 10);
+                else toHit = npc.initiative_bonus || 0;
+            }
+
+            try {
+                await window.addDoc(getCol('dm_toolkit_statblocks'), {
+                    name: npc.name,
+                    hp: npc.max_hit_points,
+                    ac: npc.armor_class_ac,
+                    toHit: toHit,
+                    initMod: npc.initiative_bonus,
+                    dmg: npc.main_attack || "Attack",
+                    timestamp: new Date().toISOString()
+                });
+                console.log(`${npc.name} added to Statblocks!`);
+            } catch (error) {
+                console.error("Error saving NPC:", error);
+            }
         }
 
-        window.generateCombatNpc = async () => {
-            const btn = document.getElementById('generate-combat-button'); const out = document.getElementById('ai-output');
-            if(btn) btn.disabled = true; if(out) out.textContent = "Generating...";
+        window.addMonsterToStatblocks = async function() {
+            if (!window.isAuthReady) { console.error('Database not ready.'); return; }
+            if (!lastGeneratedMonster) { console.error('No Monster generated yet.'); return; }
+
+            const m = lastGeneratedMonster;
+            const dexScore = m.ability_scores?.DEX || 10;
+            const initMod = Math.floor((dexScore - 10) / 2);
+
+            let primaryAttack = "Slam";
+            let toHit = 0;
+
+            if (m.actions && m.actions.length > 0) {
+                const attackAction = m.actions.find(a => a.description.toLowerCase().includes("to hit")) || m.actions[0];
+                
+                primaryAttack = attackAction.name;
+                
+                const hitMatch = attackAction.description.match(/\+(\d+)\s+to\s+hit/);
+                if (hitMatch) {
+                    toHit = parseInt(hitMatch[1], 10);
+                }
+                
+                const dmgMatch = attackAction.description.match(/Hit:.*?(\d+\s*\(.*?\).*?damage)/i);
+                if (dmgMatch) {
+                    primaryAttack += `: ${dmgMatch[1]}`; 
+                } else {
+                    primaryAttack += " (See Notes)";
+                }
+            }
+
             try {
-                const txt = document.getElementById('npc-type').value; const lvl = document.getElementById('npc-level').value;
-                const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e combat NPC (Level ${lvl}, ${txt}) in JSON with keys: name, armor_class_ac, max_hit_points, initiative_bonus, main_attack.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } });
-                const stats = JSON.parse(data.candidates[0].content.parts[0].text); 
-                window.lastGeneratedNpc = stats;
-                if(out) out.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div><div class="text-sm">AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points} | Init: ${stats.initiative_bonus}</div><div class="mt-2 font-medium">${stats.main_attack}</div><button onclick="window.addNpcToStatblocks()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg">Save to Stats</button>`;
-            } catch(e) { if(out) out.textContent = "Error: " + e.message; }
-            finally { if(btn) btn.disabled = false; }
+                await window.addDoc(getCol('dm_toolkit_statblocks'), {
+                    name: m.name,
+                    hp: m.hit_points,
+                    ac: m.armor_class,
+                    toHit: toHit,
+                    initMod: initMod,
+                    dmg: primaryAttack,
+                    timestamp: new Date().toISOString()
+                });
+                console.log(`${m.name} added to Statblocks!`);
+            } catch (error) {
+                console.error("Error saving Monster:", error);
+            }
+        }
+
+        window.saveMonsterToNotes = async function() {
+            if (!window.isAuthReady) { console.error("Database not ready."); return; }
+            if (!lastGeneratedMonster) { console.error("No Monster to save."); return; }
+            
+            const content = document.getElementById('monster-output').innerHTML;
+            
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: `${lastGeneratedMonster.name} (CR ${lastGeneratedMonster.challenge_rating})`,
+                content: content, // Save the rich HTML content
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes['enemyNotes'].unshift(newNote);
+            await window.saveStructuredNotes('enemyNotes', structuredNotes['enemyNotes']);
+            console.log("Saved to Enemy Notes!");
+            
+            window.switchTab('notes');
+            window.switchSubTab('enemyNotes');
+        }
+        
+        window.saveCombatNpcToNotes = async function(tab) {
+            if (!window.isAuthReady) { console.error("Database not ready."); return; }
+            if (!lastGeneratedNpc) { console.error("No NPC to save."); return; }
+            
+            const content = document.getElementById('ai-output').innerHTML;
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: `${lastGeneratedNpc.name} (CR ${lastGeneratedNpc.level_or_cr})`,
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes[tab].unshift(newNote);
+            await window.saveStructuredNotes(tab, structuredNotes[tab]);
+            console.log("Saved to " + tab + "!");
+            
+            window.switchTab('notes');
+            window.switchSubTab(tab);
+        }
+
+
+        window.generateLoot = async () => {
+             const btn = document.getElementById('generate-loot-button'); 
+             const spinner = document.getElementById('loot-loading-spinner');
+             const outputDiv = document.getElementById('loot-output');
+             btn.disabled = true;
+             spinner.classList.remove('hidden');
+             outputDiv.textContent = "Generating loot list...";
+
+             try {
+                 const lvl = document.getElementById('loot-level').value; const type = document.getElementById('loot-type').value;
+                 const prompt = `Generate D&D 5e loot for Level ${lvl} ${type} as a concise, formatted markdown list.`;
+                 const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+                 outputDiv.innerText = data.candidates[0].content.parts[0].text;
+             } catch(e) { outputDiv.innerText = "Error: " + e.message; }
+             finally {
+                 btn.disabled = false;
+                 spinner.classList.add('hidden');
+             }
+        };
+        
+        // Other generators follow same pattern
+        window.generateCreativeIdea = async () => {
+             const btn = document.getElementById('generate-button');
+             const spinner = document.getElementById('creative-loading-spinner');
+             const outputDiv = document.getElementById('ai-output');
+             btn.disabled = true;
+             spinner.classList.remove('hidden');
+             outputDiv.textContent = "Generating creative idea...";
+
+             try {
+                 const p = document.getElementById('improv-prompt').value;
+                 const prompt = `Generate a creative D&D idea based on: "${p}". Start with a catchy title using markdown header format (e.g. ## The Whispering Stone). Then provide the details.`;
+                 const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+                 outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>'); // Preserve line breaks visually
+                 document.getElementById('save-options-creative').classList.remove('hidden');
+             } catch(e) { console.error(e); outputDiv.textContent = "Error: " + e.message; }
+             finally {
+                 btn.disabled = false;
+                 spinner.classList.add('hidden');
+             }
+        };
+        
+        window.generateSettlement = async () => {
+             const btn = document.getElementById('generate-settlement-button'); 
+             const spinner = document.getElementById('settlement-loading-spinner');
+             const outputDiv = document.getElementById('ai-output'); // Use outputDiv for text output
+             btn.disabled = true;
+             spinner.classList.remove('hidden');
+             outputDiv.textContent = "Generating settlement details...";
+
+             try {
+                 const type = document.getElementById('settlement-type').value;
+                 const vibe = document.getElementById('settlement-vibe').value;
+                 const prompt = `Generate details for a D&D ${type}: ${vibe}. Include sections for Ruler/Leader, Key Locations, and Current Conflict/Quests. Use clear markdown headers.`;
+                 const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+                 outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>'); // Preserve line breaks visually
+                 document.getElementById('save-options-creative').classList.remove('hidden'); // Show save buttons
+             } catch(e) { outputDiv.textContent = "Error: " + e.message; }
+             finally {
+                 btn.disabled = false;
+                 spinner.classList.add('hidden');
+             }
         };
 
         window.generateMonsterStatblock = async () => {
-             const btn = document.getElementById('generate-monster-button'); const output = document.getElementById('monster-output');
-             btn.disabled = true; output.textContent = "Generating...";
+             const btn = document.getElementById('generate-monster-button');
+             const spinner = document.getElementById('monster-loading-spinner');
+             const output = document.getElementById('monster-output');
+             
+             btn.disabled = true;
+             spinner.classList.remove('hidden');
+             output.textContent = "Generating monster stats..."; 
+             
              try {
-                 const name = document.getElementById('monster-name').value; const cr = document.getElementById('monster-cr').value;
-                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D 5e monster "${name}" (CR ${cr}) JSON.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } });
-                 const stats = JSON.parse(data.candidates[0].content.parts[0].text); 
-                 window.lastGeneratedMonster = stats;
-                 output.innerHTML = `<div class="dnd-statblock text-left"><div class="dnd-header">${stats.name}</div><div class="italic text-black text-sm">${stats.size} ${stats.type}</div><div class="text-sm text-red-900"><p><strong>AC</strong> ${stats.armor_class}</p><p><strong>HP</strong> ${stats.hit_points}</p></div></div>`;
+                 const name = document.getElementById('monster-name').value;
+                 const cr = document.getElementById('monster-cr').value; 
+                 const prompt = `You are an expert D&D 5e Monster Designer. Your task is to generate a complete and balanced monster stat block based on the user's provided name and Challenge Rating (CR). You MUST return the data exactly according to the JSON schema provided. 
+ 
+ CRITICAL INSTRUCTION FOR ACTIONS & ABILITIES: Keep descriptions extremely concise and mechanical. 
+ - For Abilities: "Magic Resistance. The monster has advantage on saving throws against spells and other magical effects." (Keep it that short).
+ - For Multiattack: "Makes [number] attacks: [number] with [attack name] and [number] with [attack name]."
+ - For Attacks: "Melee Weapon Attack: +[X] to hit, reach [X] ft., one target. Hit: [X] ([dice]) [type] damage." 
+ - Do not include flavor text or lengthy descriptions of how the attack looks. Only the mechanics.`;
+                 
+                 const payload = { 
+                     contents: [{ parts: [{ text: prompt + ` Generate a full monster stat block for a "${name}" with CR "${cr}"` }] }],
+                     generationConfig: {
+                         responseMimeType: "application/json",
+                         responseSchema: monsterSchema
+                     }
+                 };
+                 
+                 const data = await callAI(API_URL, payload);
+                 let json = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
+                 const stats = JSON.parse(json);
+                 lastGeneratedMonster = stats;
+                 
+                 const getMod = (score) => Math.floor((score - 10) / 2);
+                 const formatMod = (score) => { const m = getMod(score); return m >= 0 ? `+${m}` : m; };
+                 
+                 // Render Monster Block with D&D Styling
+                 output.innerHTML = `
+                     <div class="dnd-statblock text-left">
+                         <div class="dnd-header">${stats.name}</div>
+                         <div class="italic text-black text-sm">${stats.size} ${stats.type}, ${stats.alignment}</div>
+                         <div class="tapered-rule"></div>
+                         <div class="text-sm text-red-900">
+                             <p class="dnd-property-line"><strong>Armor Class</strong> ${stats.armor_class} (${stats.ac_type || ''})</p>
+                             <p class="dnd-property-line"><strong>Hit Points</strong> ${stats.hit_points} (${stats.hit_dice})</p>
+                             <p class="dnd-property-line"><strong>Speed</strong> ${stats.speed}</p>
+                         </div>
+                         <div class="tapered-rule"></div>
+                         <div class="grid grid-cols-6 gap-1 text-center text-red-900 text-xs sm:text-sm">
+                              <div><div class="font-bold">STR</div><div>${stats.ability_scores.STR} (${formatMod(stats.ability_scores.STR)})</div></div>
+                              <div><div class="font-bold">DEX</div><div>${stats.ability_scores.DEX} (${formatMod(stats.ability_scores.DEX)})</div></div>
+                              <div><div class="font-bold">CON</div><div>${stats.ability_scores.CON} (${formatMod(stats.ability_scores.CON)})</div></div>
+                              <div><div class="font-bold">INT</div><div>${stats.ability_scores.INT} (${formatMod(stats.ability_scores.INT)})</div></div>
+                              <div><div class="font-bold">WIS</div><div>${stats.ability_scores.WIS} (${formatMod(stats.ability_scores.WIS)})</div></div>
+                              <div><div class="font-bold">CHA</div><div>${stats.ability_scores.CHA} (${formatMod(stats.ability_scores.CHA)})</div></div>
+                         </div>
+                         <div class="tapered-rule"></div>
+                         <div class="text-sm text-red-900 space-y-1">
+                             ${stats.saving_throws && stats.saving_throws.length ? `<p class="dnd-property-line"><strong>Saving Throws</strong> ${stats.saving_throws.join(', ')}</p>` : ''}
+                             ${stats.skills && stats.skills.length ? `<p class="dnd-property-line"><strong>Skills</strong> ${stats.skills.join(', ')}</p>` : ''}
+                             ${stats.damage_vulnerabilities && stats.damage_vulnerabilities.length ? `<p class="dnd-property-line"><strong>Damage Vulnerabilities</strong> ${stats.damage_vulnerabilities.join(', ')}</p>` : ''}
+                             ${stats.damage_resistances && stats.damage_resistances.length ? `<p class="dnd-property-line"><strong>Damage Resistances</strong> ${stats.damage_resistances.join(', ')}</p>` : ''}
+                             ${stats.damage_immunities && stats.damage_immunities.length ? `<p class="dnd-property-line"><strong>Damage Immunities</strong> ${stats.damage_immunities.join(', ')}</p>` : ''}
+                             ${stats.condition_immunities && stats.condition_immunities.length ? `<p class="dnd-property-line"><strong>Condition Immunities</strong> ${stats.condition_immunities.join(', ')}</p>` : ''}
+                             <p class="dnd-property-line"><strong>Senses</strong> ${stats.senses}</p>
+                             <p class="dnd-property-line"><strong>Languages</strong> ${stats.languages}</p>
+                             <p class="dnd-property-line"><strong>Challenge</strong> ${stats.challenge_rating} (${stats.xp} XP)</p>
+                         </div>
+                         <div class="tapered-rule"></div>
+                         
+                         <div class="text-sm text-black space-y-2 mt-2">
+                             ${stats.abilities ? stats.abilities.map(a => `<div class="leading-snug"><strong class="italic text-red-900">${a.name}.</strong> ${a.description}</div>`).join('') : ''}
+                         </div>
+
+                         ${stats.actions && stats.actions.length ? `
+                             <div class="dnd-section-title">Actions</div>
+                             <div class="text-sm text-black space-y-2">
+                                 ${stats.actions.map(a => `<div class="leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> ${a.description}</div>`).join('')}
+                             </div>
+                         ` : ''}
+
+                         ${stats.legendary_actions && stats.legendary_actions.length ? `
+                             <div class="dnd-section-title">Legendary Actions</div>
+                             <div class="text-sm text-black space-y-2">
+                                 <p class="italic">The monster can take 3 legendary actions, choosing from the options below. Only one legendary action option can be used at a time and only at the end of another creature's turn. The monster regains spent legendary actions at the start of its turn.</p>
+                                 ${stats.legendary_actions.map(a => `<div class="leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> ${a.description}</div>`).join('')}
+                             </div>
+                         ` : ''}
+                     </div>
+                 `;
+                 
                  document.getElementById('save-options-monster').classList.remove('hidden');
-             } catch(e) { output.textContent = "Error: " + e.message; } finally { btn.disabled = false; }
-        };
-
-        window.generateSettlement = async () => {
-             const btn = document.getElementById('generate-settlement-button'); const outputDiv = document.getElementById('ai-output');
-             btn.disabled = true; outputDiv.textContent = "Generating...";
-             try {
-                 const type = document.getElementById('settlement-type').value; const vibe = document.getElementById('settlement-vibe').value;
-                 const data = await callAI({ contents: [{ parts: [{ text: `Generate D&D ${type}: ${vibe}. Markdown format.` }] }] });
-                 outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-                 document.getElementById('save-options-creative').classList.remove('hidden');
-             } catch(e) { outputDiv.textContent = "Error: " + e.message; } finally { btn.disabled = false; }
+             } catch(e) { 
+                 output.innerText = "Error generating: " + e.message; 
+                 console.error(e); 
+             } finally {
+                 btn.disabled = false;
+                 spinner.classList.add('hidden');
+             }
         };
         
-        window.saveGeneratedContent = async (destinationTab) => {
-            if (!window.userId) { alert('Please log in to a Session to save.'); window.openLoginModal(); return; }
-            const outputDiv = document.getElementById('ai-output');
-            let content = outputDiv.innerHTML.trim();
-            if(window.currentTab === 'loot') {
-                const loot = document.getElementById('loot-output');
-                if(loot) content = loot.innerText.trim();
+        // --- Helper Function for Title Generation ---
+        function generateTitleFromContent(content) {
+            // Check for Rich HTML Title (like the h1 in the DND statblock if used as content)
+            const htmlTitleMatch = content.match(/<div class="dnd-header">(.*?)<\/div>/);
+            if (htmlTitleMatch) {
+                return htmlTitleMatch[1].trim();
             }
-            if(!content || content.includes("Results appear here")) return alert("Nothing to save.");
-            const title = (content.replace(/<[^>]*>/g, '').split('\n')[0].substring(0, 30)) || "New Note";
-            const newNote = { id: crypto.randomUUID(), title, content, timestamp: new Date().toISOString() };
-            if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
-            window.structuredNotes[destinationTab].unshift(newNote);
-            await window.saveStructuredNotes(destinationTab, window.structuredNotes[destinationTab]);
-            window.switchTab('notes'); window.switchSubTab(destinationTab);
-        };
 
-        // --- 7. SOUNDBOARD (Fixed) ---
-        const ac = new (window.AudioContext||window.webkitAudioContext)();
-        const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
-        let ambNodes = []; let ambType = null;
-        const noiseBuf = ac.createBuffer(1, 22050, 22050);
-        for(let i=0;i<22050;i++) noiseBuf.getChannelData(0)[i]=Math.random()*2-1;
-
-        window.playTone = function(type) {
-            if(ac.state==='suspended') ac.resume();
-            const now=ac.currentTime;
-            const mkOsc = (wave, freq, start, dur, vol=0.2) => { const o=ac.createOscillator(); const g=ac.createGain(); o.type=wave; o.frequency.value=freq; o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(vol,start); g.gain.exponentialRampToValueAtTime(0.001,start+dur); o.start(start); o.stop(start+dur); return {o,g}; };
-
-            if (type === 'wolf') { const o=ac.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(400,now); o.frequency.linearRampToValueAtTime(600,now+0.5); o.frequency.linearRampToValueAtTime(300,now+2.5); const g=ac.createGain(); o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.2,now+0.5); g.gain.linearRampToValueAtTime(0,now+2.5); o.start(now); o.stop(now+2.5); }
-            else if (type === 'bear') { const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=50; const f=ac.createBiquadFilter(); f.frequency.setValueAtTime(100,now); f.frequency.linearRampToValueAtTime(600,now+0.2); f.frequency.linearRampToValueAtTime(100,now+1.0); const g=ac.createGain(); o.connect(f); f.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.4,now+0.1); g.gain.linearRampToValueAtTime(0,now+1.0); o.start(now); o.stop(now+1.0); }
-            else if (type === 'horse') { const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.setValueAtTime(1200,now); o.frequency.exponentialRampToValueAtTime(600,now+0.6); const l=ac.createOscillator(); l.frequency.value=15; const lg=ac.createGain(); lg.gain.value=100; l.connect(lg); lg.connect(o.frequency); const g=ac.createGain(); o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.2,now+0.1); g.gain.exponentialRampToValueAtTime(0.01,now+0.6); o.start(now); l.start(now); o.stop(now+0.6); l.stop(now+0.6); }
-            else if (type === 'cat') { const o=ac.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(600,now); o.frequency.linearRampToValueAtTime(900,now+0.2); o.frequency.linearRampToValueAtTime(500,now+0.6); const g=ac.createGain(); o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.1,now+0.1); g.gain.linearRampToValueAtTime(0,now+0.6); o.start(now); o.stop(now+0.6); }
-            else if (type === 'owl') { mkOsc('sine',400,now,0.3,0.2); mkOsc('sine',350,now+0.3,0.4,0.2); }
-            else if (type === 'bird') { const o=ac.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(2000,now); o.frequency.exponentialRampToValueAtTime(1000,now+0.1); const g=ac.createGain(); o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.1,now+0.01); g.gain.linearRampToValueAtTime(0,now+0.1); o.start(now); o.stop(now+0.1); }
-            else if (type === 'snake') { const n=ac.createBufferSource(); n.buffer=noiseBuf; const f=ac.createBiquadFilter(); f.type='highpass'; f.frequency.value=3000; const g=ac.createGain(); n.connect(f); f.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.15,now+0.5); g.gain.linearRampToValueAtTime(0,now+2.0); n.start(now); n.stop(now+2.0); }
-            else if (type === 'insect') { for(let i=0;i<4;i++) mkOsc('sawtooth',4500,now+(i*0.02),0.03,0.05); }
-            else if (type === 'success') { mkOsc('triangle',523,now,0.5,0.3); mkOsc('triangle',659,now+0.1,0.5,0.3); mkOsc('triangle',783,now+0.2,1.0,0.3); }
-            else if (type === 'critical') { mkOsc('square',523,now,0.2,0.1); mkOsc('square',1046,now+0.05,0.2,0.1); mkOsc('square',1567,now+0.1,0.6,0.1); }
-            else if (type === 'combat_start') { const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=60; const f=ac.createBiquadFilter(); f.frequency.setValueAtTime(200,now); f.frequency.linearRampToValueAtTime(1500,now+0.2); const g=ac.createGain(); o.connect(f); f.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.4,now+0.2); g.gain.exponentialRampToValueAtTime(0.001,now+2); o.start(now); o.stop(now+2); }
-            else { mkOsc('sawtooth',150,now,0.5,0.2); }
-        };
-
-        window.toggleAmbience = (t) => {
-             if(ac.state==='suspended') ac.resume();
-             ambNodes.forEach(n => { try{n.stop()}catch(e){} }); ambNodes=[];
-             document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active-loop'));
-             if(ambType === t || t === 'stop') { ambType = null; return; }
-             ambType = t;
-             document.getElementById(`ambience-${t}`)?.classList.add('active-loop');
-             const n=ac.createBufferSource(); n.buffer=noiseBuf; n.loop=true; 
-             const g=ac.createGain(); g.gain.value=0.05; 
-             const f=ac.createBiquadFilter(); f.type='lowpass'; f.frequency.value = (t.includes('battle')) ? 100 : 400;
-             n.connect(f); f.connect(g); g.connect(masterGain); n.start();
-             ambNodes.push(n, g, f);
-        };
-
-        // --- UI & INIT ---
-        window.switchTab = (t) => {
-            window.currentTab = t; document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
-            document.getElementById(t).classList.remove('hidden');
-            if(t === 'notes') window.renderStructuredNotes(window.currentSubTab);
+            // Create a temporary element to parse HTML structure safely
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
             
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
-                btn.classList.add('text-gray-400', 'border-transparent');
-                const txt = btn.textContent.toLowerCase();
-                if ((t==='improv' && txt.includes('prep')) || (t==='statblocks' && txt.includes('stats')) || (t==='soundboard' && txt.includes('sound')) || txt.includes(t)) {
-                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
-                }
-            });
-        };
-        window.updateApiKey = (val) => { window.userApiKey = val.trim(); localStorage.setItem('dm_toolkit_api_key', window.userApiKey); document.getElementById('api-key-status').textContent = "Key Saved!"; };
-        window.saveApiKey = () => window.updateApiKey(document.getElementById('user-api-key').value);
+            // Replace <br> tags with actual newlines so regex works
+            tempDiv.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+            tempDiv.querySelectorAll('div, p').forEach(block => block.after('\n')); // Ensure block elements break lines
+            
+            const textContent = tempDiv.textContent || "";
+
+            // Try to find markdown header (# or ##) in the clean text
+            const headerMatch = textContent.match(/^#+\s*(.*?)$/m);
+            if (headerMatch) {
+                return headerMatch[1].trim();
+            }
+
+            // Fallback: Use the first non-empty line
+            const firstLine = textContent.split('\n').find(line => line.trim().length > 0) || "";
+            const cleanLine = firstLine.replace(/^[#*>\s]+/, '').trim(); // Remove markdown chars
+            
+            const shortTitle = cleanLine.substring(0, 50);
+            return (shortTitle + (cleanLine.length > 50 ? '...' : '')) || 'Untitled Generated Note';
+        }
         
-        window.toggleTheme = () => {
-            window.isChristmasMode = !window.isChristmasMode;
-            localStorage.setItem('aegis_theme', window.isChristmasMode ? 'christmas' : 'default');
-            applyTheme();
-        };
-        function applyTheme() {
-            if (window.isChristmasMode) { document.body.classList.add('christmas-mode'); startSnow(); } 
-            else { document.body.classList.remove('christmas-mode'); stopSnow(); }
+        window.saveGeneratedContent = async function(destinationTab) {
+            const outputDiv = document.getElementById('ai-output');
+            let contentToSave = outputDiv.innerHTML.trim();
+            
+            // If we are saving from the Loot tab, use the innerText from the loot output (markdown)
+            if (currentTab === 'loot') {
+                const lootDiv = document.getElementById('loot-output');
+                if (lootDiv) {
+                    contentToSave = lootDiv.innerText.trim(); // Save as plain text markdown
+                }
+            }
+
+            if (!contentToSave || contentToSave === 'Results appear here.' || contentToSave === 'Loot appears here.' || contentToSave.startsWith('Error:')) {
+                console.error('Nothing valid to save.');
+                return;
+            }
+
+            if (!window.isAuthReady || !window.db) {
+                console.error('Database not ready. Please wait for authentication.');
+                return;
+            }
+
+            const title = generateTitleFromContent(contentToSave);
+
+            const newNote = {
+                id: crypto.randomUUID(),
+                title: title,
+                content: contentToSave, // Save the potentially rich HTML content
+                timestamp: new Date().toISOString()
+            };
+            
+            structuredNotes[destinationTab].unshift(newNote); // Add to beginning
+            
+            await window.saveStructuredNotes(destinationTab, structuredNotes[destinationTab]);
+
+            window.switchTab('notes');
+            window.switchSubTab(destinationTab);
         }
 
-        // Dice Visuals
-        window.uploadDiceTexture = (input) => { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { const i = new Image(); i.onload=()=>window.customDiceImage=i; i.src=e.target.result; }; r.readAsDataURL(input.files[0]); } };
-        window.resetDiceTexture = () => { window.customDiceImage = null; document.getElementById('dice-texture-input').value=''; };
+
+        // --- Soundboard ---
+        const ac = new (window.AudioContext||window.webkitAudioContext)();
         
-        (function() {
-            const canvas = document.getElementById('dice-canvas'); if(!canvas) return; const ctx = canvas.getContext('2d'); let dice=[];
-            function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;} window.addEventListener('resize', resize); resize();
-            function animate() { ctx.clearRect(0,0,canvas.width,canvas.height); dice.forEach(d=>{ d.y+=d.vy; d.x+=d.vx; d.vy+=1; if(d.y>canvas.height-50) { d.y=canvas.height-50; d.vy*=-0.6; d.vx*=0.9; if(Math.abs(d.vx)<0.5 && Math.abs(d.vy)<1) d.vAngle=0; } d.angle+=d.vAngle; ctx.save(); ctx.translate(d.x,d.y); ctx.rotate(d.angle); ctx.fillStyle=d.color; ctx.beginPath(); if(d.type===4){ctx.moveTo(0,-20);ctx.lineTo(20,15);ctx.lineTo(-20,15);} else if(d.type===6){ctx.rect(-15,-15,30,30);} else {ctx.arc(0,0,20,0,Math.PI*2);} ctx.closePath(); if(window.customDiceImage){ctx.save();ctx.clip();ctx.drawImage(window.customDiceImage,-25,-25,50,50);ctx.restore();}else{ctx.fill();} ctx.stroke(); ctx.fillStyle='white'; ctx.fillText(d.val, -4, 4); ctx.restore(); }); requestAnimationFrame(animate); }
-            animate();
-            window.throwDiceVisuals = (rolls, type) => { const color = document.getElementById('dice-color-picker').value; dice = rolls.map(r => ({val:r, type, x:canvas.width/2, y:canvas.height+30, vx:(Math.random()-0.5)*20, vy:-25, color, angle:0, vAngle:0.2})); setTimeout(()=>dice=[], 3500); };
-        })();
-        window.rollD20 = () => { window.lastRoll = Math.floor(Math.random()*20)+1; document.getElementById('last-roll-display').textContent = window.lastRoll; window.throwDiceVisuals([window.lastRoll], 20); };
-        window.rollSimple = (s) => { window.throwDiceVisuals([Math.floor(Math.random()*s)+1], s); };
-        window.rollCustomDice = () => { const n=parseInt(document.getElementById('dice-num').value); const t=parseInt(document.getElementById('dice-type').value); let r=[]; for(let i=0;i<n;i++) r.push(Math.floor(Math.random()*t)+1); document.getElementById('dice-roll-result').textContent = r.reduce((a,b)=>a+b,0); window.throwDiceVisuals(r, t); };
-        window.assignInitiativeRoll = () => { const idx=parseInt(document.getElementById('combatant-selector').value); if(!isNaN(idx) && window.combatants[idx]) { window.combatants[idx].init = window.lastRoll; window.saveCombatData(); } };
+        // FIX: Mobile Audio Unlocker
+        // Registers a one-time listener to wake up the audio context on the first touch/click
+        const unlockMobileAudio = () => {
+            if (ac.state === 'suspended') {
+                ac.resume();
+            }
+            // Play a tiny silent buffer to force the audio thread to wake up on iOS/Android
+            const buffer = ac.createBuffer(1, 1, 22050);
+            const source = ac.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ac.destination);
+            source.start(0);
+            
+            // Remove listeners once unlocked
+            document.removeEventListener('touchstart', unlockMobileAudio);
+            document.removeEventListener('click', unlockMobileAudio);
+        };
+        document.addEventListener('touchstart', unlockMobileAudio);
+        document.addEventListener('click', unlockMobileAudio);
+
+        const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
+        let ambNodes = []; let ambType = null;
+        const noiseBuf = ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate);
+        for(let i=0; i<noiseBuf.length; i++) noiseBuf.getChannelData(0)[i] = Math.random()*2-1;
+        
+        document.getElementById('master-volume').addEventListener('input', (e) => {
+            masterGain.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.01);
+        });
+
+        window.playTone = function(type) {
+            if (ac.state === 'suspended') { ac.resume(); }
+            const now = ac.currentTime;
+            const osc = ac.createOscillator();
+            const gain = ac.createGain();
+            // ALL SOUNDS MUST CONNECT TO MASTERGAIN
+            
+            switch (type) {
+                case 'success':
+                    // Bright Major Triad Arpeggio
+                    [523.25, 659.25, 783.99].forEach((freq, i) => {
+                        const o = ac.createOscillator(); const g = ac.createGain();
+                        o.type = 'triangle'; o.frequency.value = freq;
+                        o.connect(g); g.connect(masterGain);
+                        g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + i*0.1 + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+                        o.start(now + i*0.1); o.stop(now + 1.0);
+                    });
+                    break;
+                case 'critical':
+                    // Victory Fanfare
+                    [523.25, 1046.50, 1318.51].forEach((freq, i) => {
+                        const o = ac.createOscillator(); const g = ac.createGain();
+                        o.type = 'square'; o.frequency.value = freq;
+                        o.connect(g); g.connect(masterGain);
+                        g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+                        o.start(now); o.stop(now + 1.5);
+                    });
+                    break;
+                case 'fail':
+                    // Sad "Womp Womp"
+                    const o1 = ac.createOscillator(); const g1 = ac.createGain();
+                    o1.type = 'sawtooth'; o1.frequency.setValueAtTime(196.00, now); o1.frequency.linearRampToValueAtTime(185.00, now + 0.4);
+                    o1.connect(g1); g1.connect(masterGain); g1.gain.setValueAtTime(0.2, now); g1.gain.linearRampToValueAtTime(0, now + 0.4);
+                    o1.start(now); o1.stop(now+0.4);
+                    
+                    const o2 = ac.createOscillator(); const g2 = ac.createGain();
+                    o2.type = 'sawtooth'; o2.frequency.setValueAtTime(174.61, now + 0.45); o2.frequency.linearRampToValueAtTime(155.56, now + 1.0);
+                    o2.connect(g2); g2.connect(masterGain);
+                    g2.gain.setValueAtTime(0, now + 0.45); g2.gain.linearRampToValueAtTime(0.2, now + 0.5); g2.gain.linearRampToValueAtTime(0, now + 1.0);
+                    o2.start(now + 0.45); o2.stop(now + 1.0);
+                    break;
+                case 'combat_start':
+                    // War Horn
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = 60;
+                    const filter = ac.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(200, now);
+                    filter.frequency.linearRampToValueAtTime(1500, now + 0.1); 
+                    filter.frequency.exponentialRampToValueAtTime(200, now + 2);
+                    
+                    osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.4, now + 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 2);
+                    osc.start(now); osc.stop(now + 2);
+                    break;
+                case 'spell':
+                    // Magic Glissando
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(2000, now + 1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 1);
+                    osc.connect(gain); gain.connect(masterGain);
+                    osc.start(now); osc.stop(now + 1);
+                    break;
+                case 'mystery':
+                    // Eerie Dissonance
+                    const mo1 = ac.createOscillator(); const mg1 = ac.createGain();
+                    mo1.type = 'sine'; mo1.frequency.value = 440;
+                    mo1.connect(mg1); mg1.connect(masterGain);
+                    mg1.gain.setValueAtTime(0, now); mg1.gain.linearRampToValueAtTime(0.2, now + 1); mg1.gain.linearRampToValueAtTime(0, now + 3);
+                    mo1.start(now); mo1.stop(now + 3);
+                    
+                    const mo2 = ac.createOscillator(); const mg2 = ac.createGain();
+                    mo2.type = 'sine'; mo2.frequency.value = 455; 
+                    mo2.connect(mg2); mg2.connect(masterGain);
+                    mg2.gain.setValueAtTime(0, now); mg2.gain.linearRampToValueAtTime(0.2, now + 1.5); mg2.gain.linearRampToValueAtTime(0, now + 3);
+                    mo2.start(now); mo2.stop(now + 3);
+                    break;
+                case 'rest':
+                    // Peaceful Chord
+                    [261.63, 329.63, 392.00, 523.25].forEach(f => {
+                        const o = ac.createOscillator(); const g = ac.createGain();
+                        o.type = 'sine'; o.frequency.value = f;
+                        o.connect(g); g.connect(masterGain);
+                        g.gain.setValueAtTime(0, now);
+                        g.gain.linearRampToValueAtTime(0.05, now + 1);
+                        g.gain.linearRampToValueAtTime(0, now + 4);
+                        o.start(now); o.stop(now + 4);
+                    });
+                    break;
+                case 'trap':
+                    // Sharp Snap
+                    const n = ac.createBufferSource();
+                    n.buffer = noiseBuf;
+                    const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000;
+                    const ng = ac.createGain();
+                    n.connect(f); f.connect(ng); ng.connect(masterGain);
+                    ng.gain.setValueAtTime(0.6, now);
+                    ng.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    n.start(now); n.stop(now + 0.1);
+                    
+                    // Low thud
+                    osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+                    osc.connect(gain); gain.connect(masterGain);
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now); osc.stop(now + 0.2);
+                    break;
+                case 'boss':
+                    // Doom Drone
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(55, now);
+                    const bf = ac.createBiquadFilter(); bf.type='lowpass'; bf.frequency.value=150;
+                    osc.connect(bf); bf.connect(gain); gain.connect(masterGain);
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.5, now + 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 3);
+                    osc.start(now); osc.stop(now + 3);
+                    break;
+                
+                // --- Animal Sounds ---
+                case 'wolf': // Howl
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.linearRampToValueAtTime(600, now + 0.5); // Pitch up
+                    osc.frequency.linearRampToValueAtTime(300, now + 2.5); // Long pitch down
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.2, now + 0.5);
+                    gain.gain.linearRampToValueAtTime(0, now + 2.5);
+                    osc.connect(gain); gain.connect(masterGain);
+                    osc.start(now); osc.stop(now + 2.5);
+                    break;
+                case 'bear': // Roar
+                    osc.type = 'sawtooth'; osc.frequency.value = 50;
+                    const bearF = ac.createBiquadFilter(); bearF.type = 'lowpass';
+                    bearF.frequency.setValueAtTime(100, now);
+                    bearF.frequency.linearRampToValueAtTime(600, now + 0.2); // Filter opens
+                    bearF.frequency.linearRampToValueAtTime(100, now + 1.0); // Filter closes
+                    osc.connect(bearF); bearF.connect(gain); gain.connect(masterGain);
+                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.4, now + 0.1); gain.gain.linearRampToValueAtTime(0, now + 1.0);
+                    osc.start(now); osc.stop(now + 1.0);
+                    break;
+                case 'bird': // Chirp
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(2000, now);
+                    osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
+                    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.01); gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                    osc.connect(gain); gain.connect(masterGain);
+                    osc.start(now); osc.stop(now + 0.1);
+                    // Second chirp
+                    setTimeout(() => {
+                        const o2 = ac.createOscillator(); const g2 = ac.createGain();
+                        o2.type = 'sine'; o2.frequency.setValueAtTime(2500, ac.currentTime); o2.frequency.exponentialRampToValueAtTime(1200, ac.currentTime + 0.1);
+                        g2.gain.setValueAtTime(0, ac.currentTime); g2.gain.linearRampToValueAtTime(0.1, ac.currentTime + 0.01); g2.gain.linearRampToValueAtTime(0, ac.currentTime + 0.1);
+                        o2.connect(g2); g2.connect(masterGain);
+                        o2.start(ac.currentTime); o2.stop(ac.currentTime + 0.1);
+                    }, 150);
+                    break;
+                case 'snake': // Hiss
+                    {
+                    const n = ac.createBufferSource(); n.buffer = noiseBuf;
+                    const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 3000;
+                    n.connect(f); f.connect(gain); gain.connect(masterGain);
+                    gain.gain.setValueAtTime(0, now); 
+                    gain.gain.linearRampToValueAtTime(0.15, now + 0.5); 
+                    gain.gain.linearRampToValueAtTime(0, now + 2.0);
+                    n.start(now); n.stop(now + 2.0);
+                    }
+                    break;
+                case 'insect': // Realistic Cricket (Stridulation pulses)
+                    {
+                        // A single "pulse" represents one click of the wing scraper
+                        const playPulse = (t) => {
+                            const osc = ac.createOscillator(); 
+                            osc.type = 'sawtooth'; // Sawtooth + Bandpass = Insect body resonance
+                            osc.frequency.value = 4500; // Typical Field Cricket pitch
+
+                            const filter = ac.createBiquadFilter();
+                            filter.type = 'bandpass';
+                            filter.frequency.value = 4500;
+                            filter.Q.value = 10; // High Q for distinct tone
+
+                            const g = ac.createGain();
+                            
+                            osc.connect(filter); filter.connect(g); g.connect(masterGain);
+
+                            // Instant attack, fast decay (plucked string physics)
+                            g.gain.setValueAtTime(0, t);
+                            g.gain.linearRampToValueAtTime(0.2, t + 0.002); 
+                            g.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+
+                            osc.start(t); osc.stop(t + 0.03);
+                        };
+
+                        // A "chirp" is actually 3-5 rapid pulses creating a trill
+                        const playChirp = (t) => {
+                            const pulseCount = 4;
+                            const pulseGap = 0.018; // 18ms spacing creates the "Trrr" texture
+                            for(let i=0; i<pulseCount; i++) {
+                                playPulse(t + (i * pulseGap));
+                            }
+                        };
+
+                        // Play a standard call pattern: Chirp... Chirp... Chirp
+                        playChirp(now);
+                        playChirp(now + 0.3); // Pause
+                        playChirp(now + 0.6); // Pause
+                    }
+                    break;
+            }
+        };
+
+        // --- Helper Functions for Soundboard ---
+        function playNote(freq, t, dur, type = 'sine', vol = 0.3) {
+            const o = ac.createOscillator(); const g = ac.createGain(); o.type = type; o.frequency.value = freq; 
+            o.connect(g); g.connect(masterGain); 
+            g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.01, t + dur); o.start(t); o.stop(t + dur);
+        }
+        function playDrum(type, time) {
+            const osc = ac.createOscillator(); const gain = ac.createGain(); osc.connect(gain); gain.connect(masterGain);
+            if (type === 'kick') { osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(0.01, time+0.5); gain.gain.setValueAtTime(0.5, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.5); osc.start(time); osc.stop(time+0.5); }
+            else if (type === 'snare') { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.2); n.start(time); n.stop(time+0.2); }
+            else if (type === 'hihat') { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 5000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.3, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.05); n.start(time); n.stop(time+0.05); }
+            else if (type === 'tom') { osc.frequency.setValueAtTime(100, time); osc.frequency.exponentialRampToValueAtTime(50, time+0.3); gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.3); osc.start(time); osc.stop(time+0.3); }
+        }
+        function playLute(freq, startTime, duration) {
+            const osc = ac.createOscillator(); const gain = ac.createGain(); const filter = ac.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.setValueAtTime(1000, startTime); gain.gain.setValueAtTime(0.1, startTime); gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration); osc.connect(filter); filter.connect(gain); gain.connect(masterGain); osc.start(startTime); osc.stop(startTime + duration);
+        }
+        function playAccordion(freq, startTime, duration, vol = 0.15) {
+             const osc = ac.createOscillator(); const gain = ac.createGain(); const filter = ac.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.value = 2500; osc.connect(filter); filter.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, startTime); gain.gain.linearRampToValueAtTime(vol, startTime+0.1); gain.gain.setValueAtTime(vol, startTime + duration - 0.1); gain.gain.linearRampToValueAtTime(0, startTime+duration); osc.start(startTime); osc.stop(startTime + duration);
+        }
+
+        window.toggleAmbience = function(t) {
+             if(ac.state==='suspended') ac.resume();
+             ambNodes.forEach(n => { try{n.stop()}catch(e){} try{n.disconnect()}catch(e){} }); ambNodes=[];
+             document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active-loop'));
+             if(ambType === t) { ambType = null; return; }
+             ambType = t; document.getElementById(`ambience-${t}`).classList.add('active-loop');
+             const now = ac.currentTime;
+             
+             if (t === 'village') {
+                 // 1. Wind (Replaces Crowd Noise)
+                 const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(400, now); const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.1; const lfoGain = ac.createGain(); lfoGain.gain.value = 200; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = ac.createGain(); gain.gain.value = 0.05; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); lfo.start(now); ambNodes.push(noise, lfo, gain);
+                 const waresInterval = setInterval(() => { if (Math.random() > 0.7) { playNote(1500 + Math.random() * 500, ac.currentTime, 0.05, 'triangle', 0.02); } }, 2000); ambNodes.push({ stop: () => clearInterval(waresInterval) });
+                 const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; 
+                 const musicInterval = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.3) { const pitch = scale[Math.floor(Math.random() * scale.length)]; playLute(pitch, t, 0.4); } if (Math.random() > 0.8) { playLute(196.00, t, 0.6); } }, 600); ambNodes.push({ stop: () => clearInterval(musicInterval) });
+             }
+             else if (t === 'city') {
+                 const rumble = ac.createBufferSource(); rumble.buffer = noiseBuf; rumble.loop = true; const rumbleFilter = ac.createBiquadFilter(); rumbleFilter.type = 'lowpass'; rumbleFilter.frequency.value = 150; const rumbleGain = ac.createGain(); rumbleGain.gain.value = 0.1; rumble.connect(rumbleFilter); rumbleFilter.connect(rumbleGain); rumbleGain.connect(masterGain); rumble.start(now); ambNodes.push(rumble, rumbleGain);
+                 const industryInterval = setInterval(() => { if (Math.random() > 0.6) { playNote(400 + Math.random() * 100, ac.currentTime, 0.1, 'square', 0.05); } if (Math.random() > 0.8) { playNote(80, ac.currentTime, 0.1, 'sine', 0.2); } }, 2000); ambNodes.push({ stop: () => clearInterval(industryInterval) });
+                 const bellInterval = setInterval(() => { if (Math.random() > 0.85) { const t = ac.currentTime; playNote(220, t, 2.5, 'sine', 0.15); playNote(554, t, 1.5, 'sine', 0.05); } }, 8000); ambNodes.push({ stop: () => clearInterval(bellInterval) });
+                 const cityScale = [293.66, 329.63, 369.99, 440.00, 493.88, 587.33]; let cityBeat = 0; const cityMusicInterval = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.2) { const note = cityScale[Math.floor(Math.random() * cityScale.length)]; playLute(note, t, 0.15); } if (cityBeat % 4 === 0 || cityBeat % 4 === 2) { playLute(146.83, t, 0.4); } cityBeat++; }, 250); ambNodes.push({ stop: () => clearInterval(cityMusicInterval) });
+             }
+             else if (t === 'tavern') {
+                 const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 150; const gain = ac.createGain(); gain.gain.value = 0.25; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); ambNodes.push(noise, gain);
+                 const clinkInterval = setInterval(() => { if (Math.random() > 0.6) { playNote(1200, ac.currentTime, 0.05, 'triangle', 0.05); } }, 2500); ambNodes.push({ stop: () => clearInterval(clinkInterval) });
+                 const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; let beat = 0; const musicInterval = setInterval(() => { const t = ac.currentTime; if (beat % 4 === 0) { playLute(130.81, t, 0.8); } if (Math.random() > 0.2) { const noteIdx = Math.floor(Math.random() * scale.length); playLute(scale[noteIdx], t + 0.05, 0.4); } beat++; }, 300); ambNodes.push({ stop: () => clearInterval(musicInterval) });
+             }
+             else if (t === 'ocean') {
+                 const drone = ac.createOscillator(); drone.type = 'sawtooth'; drone.frequency.value = 73.42; 
+                 const droneFilter = ac.createBiquadFilter(); droneFilter.type = 'lowpass'; droneFilter.frequency.value = 300; 
+                 const droneGain = ac.createGain(); droneGain.gain.value = 0.05; 
+                 drone.connect(droneFilter); droneFilter.connect(droneGain); droneGain.connect(masterGain); 
+                 drone.start(now); ambNodes.push(drone, droneGain);
+                 
+                 const shantyScale = [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]; let beat = 0; 
+                 const iv = setInterval(() => { const t = ac.currentTime; 
+                     if (beat % 2 === 0) { playDrum('kick', t); playAccordion(146.83, t, 0.4, 0.2); } 
+                     else { playDrum('snare', t); playAccordion(293.66, t, 0.2, 0.05); } 
+                     if (Math.random() > 0.3) { const n = shantyScale[Math.floor(Math.random()*shantyScale.length)]; playAccordion(n, t, 0.4, 0.15); } 
+                     beat++; 
+                 }, 600); 
+                 ambNodes.push({ stop: () => clearInterval(iv) });
+             }
+             else if (t === 'dungeon') {
+                 const drone1 = ac.createOscillator(); drone1.type = 'triangle'; drone1.frequency.value = 55; const drone2 = ac.createOscillator(); drone2.type = 'sine'; drone2.frequency.value = 58; const droneGain = ac.createGain(); droneGain.gain.value = 0.15; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 300; drone1.connect(filter); drone2.connect(filter); filter.connect(droneGain); droneGain.connect(masterGain); drone1.start(now); drone2.start(now); ambNodes.push(drone1, drone2, droneGain);
+                 const dripInterval = setInterval(() => { if (Math.random() > 0.6) { const t = ac.currentTime; const osc = ac.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(2000 + Math.random() * 500, t); const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15); const pan = ac.createStereoPanner(); pan.pan.value = Math.random() * 2 - 1; const delay = ac.createDelay(); delay.delayTime.value = 0.3; const delayGain = ac.createGain(); delayGain.gain.value = 0.3; osc.connect(g); g.connect(pan); pan.connect(masterGain); g.connect(delay); delay.connect(delayGain); delayGain.connect(masterGain); osc.start(t); osc.stop(t + 0.5); } }, 3000); ambNodes.push({ stop: () => clearInterval(dripInterval) });
+                 const scale = [164.81, 174.61, 196.00, 220.00, 246.94, 261.63, 293.66]; const musicInterval = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.4) { const note = scale[Math.floor(Math.random() * scale.length)]; playNote(note, t, 3.5, 'triangle', 0.08); if (Math.random() > 0.7) { playNote(note / 2, t, 4, 'sine', 0.15); } } }, 4500); ambNodes.push({ stop: () => clearInterval(musicInterval) });
+             }
+             else if (t === 'battle_minor') {
+                 // Procedural Battle Music: Driving Ostinato & War Drums
+                 const bpm = 130;
+                 const stepTime = (60 / bpm) / 4; // 16th note duration
+                 let step = 0;
+                 
+                 // D Minor Ostinato pattern (D2, F2, E2)
+                 const bassFreqs = [73.42, 73.42, 73.42, 73.42, 87.31, 87.31, 82.41, 82.41]; 
+
+                 const sequencer = setInterval(() => { 
+                     const t = ac.currentTime; 
+                     const barStep = step % 16; // 0-15
+
+                     // 1. Driving Bass/Cello Ostinato (8th notes)
+                     if (step % 2 === 0) {
+                         const noteIdx = Math.floor((step % 16) / 2) % bassFreqs.length;
+                         const osc = ac.createOscillator(); 
+                         osc.type = 'sawtooth'; 
+                         osc.frequency.value = bassFreqs[noteIdx];
+                         
+                         const filter = ac.createBiquadFilter();
+                         filter.type = 'lowpass';
+                         filter.frequency.value = 600; // Muffle it for "string" effect
+
+                         const gain = ac.createGain();
+                         gain.gain.setValueAtTime(0.25, t);
+                         gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15); // Short, staccato pluck
+                         
+                         osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+                         osc.start(t); osc.stop(t + 0.2);
+                     }
+
+                     // 2. War Drums Pattern
+                     // Kick on 1, 3, and syncopation
+                     if (barStep === 0 || barStep === 6 || barStep === 10) { 
+                         playDrum('kick', t); 
+                         if(barStep === 0) playDrum('tom', t); // Accent downbeat
+                     }
+                     // Snare/Hit impacts
+                     if (barStep === 4 || barStep === 12) { 
+                         playDrum('snare', t); 
+                         
+                         // Add "Brass" Stab on snares for impact
+                         const bOsc = ac.createOscillator(); bOsc.type = 'sawtooth';
+                         bOsc.frequency.value = 146.83; // D3
+                         const bFilt = ac.createBiquadFilter(); bFilt.type = 'lowpass';
+                         bFilt.frequency.setValueAtTime(500, t);
+                         bFilt.frequency.linearRampToValueAtTime(2500, t + 0.05); // Brass "blare" envelope
+                         const bGain = ac.createGain();
+                         bGain.gain.setValueAtTime(0.1, t);
+                         bGain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+                         bOsc.connect(bFilt); bFilt.connect(bGain); bGain.connect(masterGain);
+                         bOsc.start(t); bOsc.stop(t + 0.3);
+                     }
+                     
+                     // High tension clicks/hats
+                     if (barStep % 2 === 0) {
+                         const hOsc = ac.createOscillator(); hOsc.type = 'square';
+                         hOsc.frequency.value = 800;
+                         const hGain = ac.createGain();
+                         hGain.gain.setValueAtTime(0.03, t);
+                         hGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+                         hOsc.connect(hGain); hGain.connect(masterGain);
+                         hOsc.start(t); hOsc.stop(t + 0.05);
+                     }
+
+                     step++; 
+                 }, stepTime * 1000);
+                 
+                 ambNodes.push({ stop: () => clearInterval(sequencer) });
+             }
+             else if (t === 'battle_major') {
+                 const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 35; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 200; const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.25; const lfoGain = ac.createGain(); lfoGain.gain.value = 150; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = ac.createGain(); gain.gain.value = 0.2; osc.connect(filter); filter.connect(gain); gain.connect(masterGain); osc.start(now); lfo.start(now); ambNodes.push(osc, filter, gain, lfo, lfoGain);
+                 let beat = 0; const drumInterval = setInterval(() => { const t = ac.currentTime; if (beat % 4 === 0) { playDrum('kick', t); playDrum('tom', t + 0.1); } if (beat % 4 === 2) { playDrum('snare', t); playDrum('kick', t); } playDrum('hihat', t); playDrum('hihat', t + 0.21); beat++; }, 428); ambNodes.push({ stop: () => clearInterval(drumInterval) });
+             }
+             else if (t === 'sleep') {
+                 const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 120; const gain = ac.createGain(); gain.gain.value = 0.3; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); ambNodes.push(noise, gain);
+                 const crackleInterval = setInterval(() => { if (Math.random() > 0.7) { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2000; const g = ac.createGain(); g.gain.value = 0.1 + Math.random() * 0.1; g.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.05); n.connect(f); f.connect(g); g.connect(masterGain); n.start(); n.stop(ac.currentTime + 0.05); } }, 200); ambNodes.push({ stop: () => clearInterval(crackleInterval) });
+                 const scale = [196.00, 220.00, 246.94, 293.66, 329.63]; const sleepMusicInterval = setInterval(() => { if (Math.random() > 0.4) { const t = ac.currentTime; const noteIdx = Math.floor(Math.random() * scale.length); playNote(scale[noteIdx], t, 4, 'sine', 0.1); if (Math.random() > 0.5) { playNote(scale[(noteIdx + 2) % scale.length], t + 0.5, 4, 'sine', 0.08); } } }, 5000); ambNodes.push({ stop: () => clearInterval(sleepMusicInterval) });
+             }
+        };
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
-             if(window.userApiKey) document.getElementById('user-api-key').value = window.userApiKey;
-             applyTheme();
-             document.getElementById('master-volume')?.addEventListener('input', (e)=>masterGain.gain.value=e.target.value);
-             window.loadCombatData();
-             window.switchTab('improv');
+            if(userApiKey) document.getElementById('user-api-key').value = userApiKey;
+            window.updateApiKey(userApiKey);
+            
+            // Apply Theme on Load
+            applyTheme();
+            
+            switchTab('improv');
         });
-        
-        // Snow
-        let snowInterval; const snowCanvas = document.getElementById('snow-canvas'); const sCtx = snowCanvas ? snowCanvas.getContext('2d') : null;
-        function startSnow() { if(!snowCanvas) return; snowCanvas.width=window.innerWidth; snowCanvas.height=window.innerHeight; let flakes=Array(100).fill().map(()=>({x:Math.random()*snowCanvas.width,y:Math.random()*snowCanvas.height,s:Math.random()+0.5})); snowInterval=setInterval(()=>{ sCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); sCtx.fillStyle='rgba(255,255,255,0.5)'; sCtx.beginPath(); flakes.forEach(f=>{sCtx.moveTo(f.x,f.y);sCtx.arc(f.x,f.y,2,0,Math.PI*2); f.y+=f.s; if(f.y>snowCanvas.height)f.y=0;}); sCtx.fill(); }, 50); }
-        function stopSnow() { clearInterval(snowInterval); if(sCtx) sCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); }
+
+        // --- Fix for Dice Reset ---
+        window.resetDiceTexture = function() {
+            // 1. Remove the image from the dice engine
+            window.customDiceImage = null;
+            
+            // 2. Clear the file input so you can upload the same file again if you want
+            const input = document.getElementById('dice-texture-input');
+            if (input) input.value = "";
+        };
+
+// --- LOOT SPLITTER LOGIC ---
+        window.splitLoot = function() {
+            const pp = parseInt(document.getElementById('loot-pp').value) || 0;
+            const gp = parseInt(document.getElementById('loot-gp').value) || 0;
+            const ep = parseInt(document.getElementById('loot-ep').value) || 0;
+            const sp = parseInt(document.getElementById('loot-sp').value) || 0;
+            const cp = parseInt(document.getElementById('loot-cp').value) || 0;
+            const count = parseInt(document.getElementById('loot-party-size').value) || 1;
+
+            if (count < 1) return;
+
+            // Convert everything to copper to divide evenly
+            const totalCopper = cp + (sp * 10) + (ep * 50) + (gp * 100) + (pp * 1000);
+            const shareCopper = Math.floor(totalCopper / count);
+            const remainder = totalCopper % count;
+
+            // Convert the share back up to highest denominations
+            let rest = shareCopper;
+            const rPP = Math.floor(rest / 1000); rest %= 1000;
+            const rGP = Math.floor(rest / 100); rest %= 100;
+            const rEP = Math.floor(rest / 50); rest %= 50;
+            const rSP = Math.floor(rest / 10); rest %= 10;
+            const rCP = rest;
+
+            let result = [];
+            if(rPP) result.push(`${rPP}pp`);
+            if(rGP) result.push(`${rGP}gp`);
+            if(rEP) result.push(`${rEP}ep`);
+            if(rSP) result.push(`${rSP}sp`);
+            if(rCP) result.push(`${rCP}cp`);
+            
+            const resultText = result.length > 0 ? "Each gets: " + result.join(", ") : "Nothing to split.";
+            const remainderText = remainder > 0 ? ` <span class='text-red-400'>(${remainder}cp left)</span>` : "";
+
+            document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
+        };
+ 
     </script>
 
     <!-- Login Modal -->
