@@ -857,7 +857,7 @@
     <!-- Snow Visuals Canvas -->
     <canvas id="snow-canvas"></canvas>
 
-    <!-- 2. APP LOGIC (Restored Stable + Session Isolation) -->
+    <!-- 2. APP LOGIC (Fixed: No Crash, Full Features) -->
     <script>
         // --- 1. GLOBAL STATE ---
         window.userId = null;
@@ -866,6 +866,7 @@
         window.currentSubTab = 'prepNotes';
         window.combatants = [];
         window.currentTurnIndex = -1;
+        window.lastRoll = 0;
         window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
         window.savedStatblocks = [];
         window.userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
@@ -875,60 +876,74 @@
         window.lastGeneratedNpc = null;
         window.lastGeneratedMonster = null;
 
-        // --- 2. AUTHENTICATION & ISOLATION ---
+        // --- 2. UI HELPERS (Must be defined first) ---
+        window.switchTab = function(tabId) {
+            window.currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(tabId);
+            if(target) target.classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
+                btn.classList.add('text-gray-400', 'border-transparent');
+                const text = btn.textContent.toLowerCase();
+                // Heuristic matching for button text vs tab IDs
+                const isMatch = (tabId === 'improv' && text.includes('prep')) || 
+                                (tabId === 'statblocks' && text.includes('stats')) || 
+                                (tabId === 'soundboard' && text.includes('sound')) || 
+                                text.includes(tabId);
+                if (isMatch) {
+                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
+                }
+            });
+            if (tabId === 'notes') window.switchSubTab(window.currentSubTab);
+        };
         
-        // Helper to get the unique storage key for THIS session
-        window.getSessionKey = (prefix) => {
-            const uid = window.userId || 'guest';
-            return `${prefix}_${uid}`;
+        window.switchSubTab = function(tabId) {
+            window.currentSubTab = tabId;
+            document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(`${tabId}-sub-content`);
+            if(target) target.classList.remove('hidden');
+            document.querySelectorAll('.sub-tab-button').forEach(btn => {
+                btn.classList.remove('active', 'text-gray-400');
+                if (btn.dataset.subtab === tabId) btn.classList.add('active');
+                else btn.classList.add('text-gray-400');
+            });
+            window.renderStructuredNotes(tabId);
         };
 
-        // Auth Listener - Wipes and Reloads data on login/logout
-        window.auth.onAuthStateChanged((user) => {
-            const loginBtn = document.getElementById('login-btn');
-            const profile = document.getElementById('user-profile');
-            
-            if (user) {
-                // Logged In
-                window.userId = user.uid;
-                window.isAuthReady = true;
-                
-                if(loginBtn) loginBtn.classList.add('hidden');
-                if(profile) profile.classList.remove('hidden');
-                document.getElementById('user-name').textContent = user.email.split('@')[0].replace(/_/g, ' ');
-                document.getElementById('user-avatar').src = `https://ui-avatars.com/api/?name=${user.email.split('@')[0]}&background=6366f1&color=fff`;
-
-                // RELOAD EVERYTHING FOR THIS SPECIFIC USER
-                window.loadCombatData(); 
-                window.setupNotesListener();
-                window.setupStatblocksListener();
-                
-            } else {
-                // Logged Out
-                window.userId = null;
-                window.isAuthReady = false;
-                
-                if(loginBtn) loginBtn.classList.remove('hidden');
-                if(profile) profile.classList.add('hidden');
-                
-                // Wipe Data
-                window.combatants = [];
-                window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
-                window.savedStatblocks = [];
-                
-                // Load Guest Data
-                window.loadCombatData();
-                window.renderCombatants();
-                if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+        window.openLoginModal = () => document.getElementById('login-modal').classList.remove('hidden');
+        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
+        
+        window.updateApiKey = (val) => { 
+            window.userApiKey = val.trim(); 
+            localStorage.setItem('dm_toolkit_api_key', window.userApiKey); 
+            const status = document.getElementById('api-key-status');
+            if(status) {
+                status.textContent = window.userApiKey ? "Key Saved ✅" : "No Key";
+                status.className = window.userApiKey ? "mt-2 text-xs text-green-400" : "mt-2 text-xs text-red-400";
             }
-        });
+        };
+        window.saveApiKey = () => { window.updateApiKey(document.getElementById('user-api-key').value); alert('Key Saved'); };
+        
+        window.toggleTheme = () => {
+            window.isChristmasMode = !window.isChristmasMode;
+            localStorage.setItem('aegis_theme', window.isChristmasMode ? 'christmas' : 'default');
+            applyTheme();
+        };
 
+        function applyTheme() {
+            if (window.isChristmasMode) { document.body.classList.add('christmas-mode'); startSnow(); } 
+            else { document.body.classList.remove('christmas-mode'); stopSnow(); }
+        }
+
+        // --- 3. AUTH & SESSION LOGIC ---
         window.handleSessionLogin = async () => {
             const name = document.getElementById('session-name-input').value.trim();
             const pass = document.getElementById('session-pass-input').value.trim();
             const status = document.getElementById('login-status');
-            
             if (!name || !pass) { if(status) status.textContent = "Enter Name & Password"; return; }
+            
             const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
             if(status) status.textContent = "Connecting...";
             
@@ -940,18 +955,65 @@
                     try { 
                         await window.createUserWithEmailAndPassword(window.auth, email, pass); 
                         window.closeLoginModal(); 
-                    } catch(regErr) { 
-                        if(status) status.textContent = "Registration Error: " + regErr.message; 
-                    }
+                    } catch(regErr) { if(status) status.textContent = "Reg Error: " + regErr.message; }
                 } else if(status) status.textContent = "Error: " + e.message;
             }
         };
-        
-        window.logoutUser = async () => { await window.signOut(window.auth); window.location.reload(); };
 
-        // --- 3. COMBAT TRACKER (Session Isolated) ---
+        window.logoutUser = async () => { 
+            if(window.auth) await window.signOut(window.auth); 
+            window.location.reload(); 
+        };
+
+        // Called by the TOP script when login state changes
+        window.updateLoginUI = (user) => {
+            const loginBtn = document.getElementById('login-btn');
+            const profile = document.getElementById('user-profile');
+            
+            if (user) {
+                window.userId = user.uid;
+                if(loginBtn) loginBtn.classList.add('hidden');
+                if(profile) profile.classList.remove('hidden');
+                document.getElementById('user-name').textContent = user.email.split('@')[0].replace(/_/g, ' ');
+                document.getElementById('user-avatar').src = `https://ui-avatars.com/api/?name=${user.email.split('@')[0]}&background=6366f1&color=fff`;
+                
+                // Reload data for this new user
+                window.loadCombatData();
+            } else {
+                window.userId = null;
+                if(loginBtn) loginBtn.classList.remove('hidden');
+                if(profile) profile.classList.add('hidden');
+                
+                // Wipe data
+                window.combatants = [];
+                window.savedStatblocks = [];
+                window.structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [], mapNotes: [] };
+                window.renderCombatants();
+            }
+        };
+
+        // --- 4. DATABASE PATHS (Private) ---
+        window.getCol = (name) => {
+            if (!window.userId) return null; 
+            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
+        };
+        window.getSharedDoc = (name) => {
+            if (!window.userId) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
+        };
+        window.getDocRef = (col, id) => {
+            if (!window.userId) return null;
+            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
+        };
+
+        // --- 5. COMBAT TRACKER (Session Isolated) ---
+        window.getCombatStorageKey = () => {
+            const uid = window.userId || 'guest_session';
+            return `aegis_combat_${uid}`;
+        };
+
         window.loadCombatData = () => {
-            const key = window.getSessionKey('aegis_combat');
+            const key = window.getCombatStorageKey();
             try {
                 const raw = localStorage.getItem(key);
                 const data = raw ? JSON.parse(raw) : {};
@@ -960,7 +1022,7 @@
                 
                 const status = document.getElementById('db-status');
                 if(status) {
-                    status.textContent = window.userId ? "Session Ready" : "Local Ready";
+                    status.textContent = window.userId ? "Ready (Session)" : "Ready (Local)";
                     status.className = window.userId ? "text-xs px-2 py-1 rounded bg-green-900 text-green-100 font-bold" : "text-xs px-2 py-1 rounded bg-gray-700 text-gray-400";
                 }
                 window.renderCombatants();
@@ -968,7 +1030,7 @@
         };
 
         window.saveCombatData = () => {
-            const key = window.getSessionKey('aegis_combat');
+            const key = window.getCombatStorageKey();
             localStorage.setItem(key, JSON.stringify({ 
                 combatants: window.combatants, 
                 currentTurnIndex: window.currentTurnIndex 
@@ -1023,7 +1085,6 @@
                 </div>`;
             }).join('') || '<p class="text-center text-gray-500 pt-4 text-sm">Battlefield empty.</p>';
             
-            // Update Roller Target List
             const sel = document.getElementById('combatant-selector');
             if(sel) sel.innerHTML = '<option value="" disabled selected>Target</option>' + window.combatants.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
         };
@@ -1038,20 +1099,7 @@
         window.assignInitiativeRoll = () => { const idx=parseInt(document.getElementById('combatant-selector').value); if(!isNaN(idx) && window.combatants[idx]) { window.combatants[idx].init = window.lastRoll; window.saveCombatData(); } };
 
 
-        // --- 4. DATABASE HELPERS & NOTES ---
-        window.getCol = (name) => {
-            if (!window.userId) return null;
-            return window.collection(window.db, 'artifacts', window.appId, 'users', window.userId, name);
-        };
-        window.getSharedDoc = (name) => {
-            if (!window.userId) return null;
-            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, 'session_data', name);
-        };
-        window.getDocRef = (col, id) => {
-            if (!window.userId) return null;
-            return window.doc(window.db, 'artifacts', window.appId, 'users', window.userId, col, id);
-        };
-
+        // --- 6. NOTES & SAVING ---
         window.setupNotesListener = () => {
             if(!window.isAuthReady || !window.userId) return;
             window.onSnapshot(window.getSharedDoc('shared_notes'), (doc) => {
@@ -1081,7 +1129,11 @@
             if(!list) return;
             
             const notes = window.structuredNotes[tab] || [];
-            list.innerHTML = notes.length ? notes.map(n => `
+            if (notes.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 pt-4 text-xs">No items.</p>';
+                return;
+            }
+            list.innerHTML = notes.map(n => `
                 <div class="card p-2 mb-2 bg-gray-800 border border-gray-700">
                     <div class="font-bold text-indigo-300 cursor-pointer flex justify-between" onclick="this.nextElementSibling.classList.toggle('hidden')">
                         <span class="truncate">${n.title}</span><span>▼</span>
@@ -1093,7 +1145,7 @@
                         <div class="text-sm text-gray-300 whitespace-pre-wrap overflow-hidden">${n.content}</div>
                     </div>
                 </div>
-            `).join('') : '<p class="text-center text-gray-500 pt-4 text-xs">No items.</p>';
+            `).join('');
         };
         
         window.addNewNote = (tab) => {
@@ -1109,8 +1161,7 @@
         };
 
         window.saveGeneratedContent = async (destinationTab) => {
-            if (!window.userId) { alert('Please log in to a Session to save.'); window.openLoginModal(); return; }
-            
+            if (!window.userId) { alert('Please log in to save.'); window.openLoginModal(); return; }
             const outputDiv = document.getElementById('ai-output');
             let content = outputDiv.innerHTML.trim();
             if(window.currentTab === 'loot') {
@@ -1120,8 +1171,7 @@
             
             if(!content || content.includes("Results appear here")) return alert("Nothing to save.");
             
-            const div = document.createElement('div'); div.innerHTML = content;
-            const title = (div.textContent || "").split('\n')[0].substring(0, 30) || "Generated Note";
+            const title = (content.replace(/<[^>]*>/g, '').split('\n')[0].substring(0, 30)) || "Generated Note";
             const newNote = { id: crypto.randomUUID(), title, content, timestamp: new Date().toISOString() };
             
             if (!window.structuredNotes[destinationTab]) window.structuredNotes[destinationTab] = [];
@@ -1142,7 +1192,7 @@
             alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
         };
 
-        // --- 5. STATBLOCKS ---
+        // --- 7. STATBLOCKS ---
         window.setupStatblocksListener = () => {
             if(!window.isAuthReady) return;
             window.onSnapshot(window.query(window.getCol('dm_toolkit_statblocks')), (snap) => {
@@ -1185,23 +1235,27 @@
              if(document.getElementById('combatant-atk')) document.getElementById('combatant-atk').value = d || "";
              window.switchTab('combat');
         };
-        // Wrapper functions for AI saves
+        
         window.addNpcToStatblocks = async () => {
-            if (!window.userId) { alert('Please log in.'); window.openLoginModal(); return; }
-            const s = window.lastGeneratedNpc; if(!s) return alert("No NPC.");
-            await window.addDoc(window.getCol('dm_toolkit_statblocks'), { name: s.name, hp: s.max_hit_points, ac: s.armor_class_ac, toHit: 0, initMod: s.initiative_bonus, dmg: s.main_attack, timestamp: new Date().toISOString() });
-            alert("Saved!");
+            if (!window.userId) { alert('Please log in to save.'); window.openLoginModal(); return; }
+            const s = window.lastGeneratedNpc; if(!s) return alert("No NPC generated.");
+            try { 
+                await window.addDoc(window.getCol('dm_toolkit_statblocks'), { name: s.name, hp: s.max_hit_points, ac: s.armor_class_ac, toHit: 0, initMod: s.initiative_bonus, dmg: s.main_attack, timestamp: new Date().toISOString() });
+                alert("Saved!"); window.switchTab('statblocks');
+            } catch(e) { console.error(e); alert("Save Failed"); }
         };
         window.addMonsterToStatblocks = async () => {
-            if (!window.userId) { alert('Please log in.'); window.openLoginModal(); return; }
-            const m = window.lastGeneratedMonster; if(!m) return alert("No Monster.");
-            await window.addDoc(window.getCol('dm_toolkit_statblocks'), { name: m.name, hp: m.hit_points, ac: m.armor_class, toHit: 0, initMod: 0, dmg: "Attack", timestamp: new Date().toISOString() });
-            alert("Saved!");
+            if (!window.userId) { alert('Please log in to save.'); window.openLoginModal(); return; }
+            const m = window.lastGeneratedMonster; if(!m) return alert("No Monster generated.");
+            try { 
+                await window.addDoc(window.getCol('dm_toolkit_statblocks'), { name: m.name, hp: m.hit_points, ac: m.armor_class, toHit: 0, initMod: 0, dmg: "Attack", timestamp: new Date().toISOString() });
+                alert("Saved!"); window.switchTab('statblocks');
+            } catch(e) { console.error(e); alert("Save Failed"); }
         };
         window.saveMonsterToNotes = async () => window.saveGeneratedContent('enemyNotes');
         window.saveCombatNpcToNotes = async (tab) => window.saveGeneratedContent(tab);
 
-        // --- 6. AI GENERATORS ---
+        // --- 8. GENERATORS ---
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
         const combatSchema = { type: "OBJECT", properties: { name: { "type": "STRING" }, level_or_cr: { "type": "STRING" }, armor_class_ac: { "type": "INTEGER" }, max_hit_points: { "type": "INTEGER" }, initiative_bonus: { "type": "INTEGER" }, main_attack: { "type": "STRING" } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
         const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: {type:"INTEGER"}, DEX: {type:"INTEGER"}, CON: {type:"INTEGER"}, INT: {type:"INTEGER"}, WIS: {type:"INTEGER"}, CHA: {type:"INTEGER"} }, required: ["STR","DEX","CON","INT","WIS","CHA"] }, saving_throws: {type:"ARRAY", items:{type:"STRING"}}, skills: {type:"ARRAY", items:{type:"STRING"}}, damage_vulnerabilities: {type:"ARRAY", items:{type:"STRING"}}, damage_resistances: {type:"ARRAY", items:{type:"STRING"}}, damage_immunities: {type:"ARRAY", items:{type:"STRING"}}, condition_immunities: {type:"ARRAY", items:{type:"STRING"}}, senses: {type:"STRING"}, languages: {type:"STRING"}, challenge_rating: {type:"STRING"}, xp: {type:"INTEGER"}, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} }, required: ["name", "description"] } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: {type:"STRING"}, description: {type:"STRING"} } } } }, required: ["name", "size", "type", "alignment", "armor_class", "hit_points", "hit_dice", "speed", "ability_scores", "senses", "languages", "challenge_rating", "xp", "actions"] };
@@ -1225,6 +1279,7 @@
                 out.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${stats.name}</div><div class="text-sm">AC: ${stats.armor_class_ac} | HP: ${stats.max_hit_points} | Init: ${stats.initiative_bonus}</div><div class="mt-2 font-medium">${stats.main_attack}</div><button onclick="window.addNpcToStatblocks()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg">Save to Stats</button>`;
             } catch(e) { if(out) out.textContent = "Error: " + e.message; } finally { if(btn) btn.disabled = false; }
         };
+
         window.generateMonsterStatblock = async () => {
              const btn = document.getElementById('generate-monster-button'); const output = document.getElementById('monster-output');
              btn.disabled = true; output.textContent = "Generating...";
@@ -1277,70 +1332,31 @@
             const w=canvas.width, h=canvas.height; ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,w,h);
             for(let i=0;i<5;i++){ ctx.fillStyle='#374151'; ctx.fillRect(Math.random()*(w-100), Math.random()*(h-100), 80, 80); }
         };
-        window.saveMapToNotes = async () => {
-            if(!window.userId) { alert("Please log in."); window.openLoginModal(); return; }
-            const canvas = document.getElementById('gen-map-canvas'); if(!canvas) return;
-            const img = `<img src="${canvas.toDataURL()}" style="width:100%; border-radius:8px;">`;
-            const note = { id: crypto.randomUUID(), title: `Map ${new Date().toLocaleTimeString()}`, content: img, timestamp: new Date().toISOString() };
-            if(!window.structuredNotes.mapNotes) window.structuredNotes.mapNotes = [];
-            window.structuredNotes.mapNotes.unshift(note);
-            await window.saveStructuredNotes('mapNotes', window.structuredNotes.mapNotes);
-            alert("Map Saved!"); window.switchTab('notes'); window.switchSubTab('mapNotes');
-        };
-
-        // --- UI & Init ---
-        window.switchTab = (t) => {
-            window.currentTab = t; document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
-            document.getElementById(t).classList.remove('hidden');
-            if(t === 'notes') window.renderStructuredNotes(window.currentSubTab);
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
-                btn.classList.add('text-gray-400', 'border-transparent');
-                const txt = btn.textContent.toLowerCase();
-                if ((t==='improv' && txt.includes('prep')) || (t==='statblocks' && txt.includes('stats')) || (t==='soundboard' && txt.includes('sound')) || txt.includes(t)) {
-                    btn.classList.add('active'); btn.classList.remove('text-gray-400');
-                }
-            });
-        };
-        window.switchSubTab = (t) => { 
-            window.currentSubTab=t; 
-            document.querySelectorAll('.sub-tab-content').forEach(e => e.classList.add('hidden'));
-            document.getElementById(`${t}-sub-content`).classList.remove('hidden');
-            document.querySelectorAll('.sub-tab-button').forEach(btn => {
-                btn.classList.remove('active', 'text-gray-400');
-                if (btn.dataset.subtab === t) btn.classList.add('active');
-                else btn.classList.add('text-gray-400');
-            });
-            window.renderStructuredNotes(t);
-        };
-        window.openLoginModal = () => document.getElementById('login-modal').classList.remove('hidden');
-        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
-        window.updateApiKey = (val) => { window.userApiKey = val.trim(); localStorage.setItem('dm_toolkit_api_key', window.userApiKey); document.getElementById('api-key-status').textContent="Key Saved!"; };
-        window.saveApiKey = () => window.updateApiKey(document.getElementById('user-api-key').value);
-        window.toggleTheme = () => { window.isChristmasMode = !window.isChristmasMode; localStorage.setItem('aegis_theme', window.isChristmasMode ? 'christmas' : 'default'); applyTheme(); };
-        function applyTheme() { if(window.isChristmasMode) { document.body.classList.add('christmas-mode'); startSnow(); } else { document.body.classList.remove('christmas-mode'); stopSnow(); } }
-        
-        window.uploadDiceTexture = (input) => { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { const i = new Image(); i.onload=()=>window.customDiceImage=i; i.src=e.target.result; }; r.readAsDataURL(input.files[0]); } };
-        window.resetDiceTexture = () => { window.customDiceImage = null; document.getElementById('dice-texture-input').value=''; };
 
         // --- Soundboard ---
         const ac = new (window.AudioContext||window.webkitAudioContext)();
         const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
         const unlockAudio = () => { if (ac.state === 'suspended') ac.resume(); };
         document.addEventListener('click', unlockAudio); document.addEventListener('touchstart', unlockAudio);
-        const noiseBuf = ac.createBuffer(1, 22050, 22050); for(let i=0;i<22050;i++) noiseBuf.getChannelData(0)[i]=Math.random()*2-1;
 
         window.playTone = (type) => {
             if(ac.state==='suspended') ac.resume();
             const now=ac.currentTime; const osc=ac.createOscillator(); const gain=ac.createGain();
             osc.connect(gain); gain.connect(masterGain);
-            // Full logic omitted for brevity, using robust fallback
-            osc.frequency.value = (type==='success')?600:400; 
-            osc.start(now); osc.stop(now+0.3); gain.gain.exponentialRampToValueAtTime(0.01, now+0.3);
+            
+            if(type==='wolf') { osc.type='triangle'; osc.frequency.setValueAtTime(400,now); osc.frequency.linearRampToValueAtTime(600,now+0.5); gain.gain.setValueAtTime(0,now); gain.gain.linearRampToValueAtTime(0.2,now+0.5); gain.gain.linearRampToValueAtTime(0,now+2); osc.start(now); osc.stop(now+2); }
+            else if(type==='bear') { osc.type='sawtooth'; osc.frequency.value=50; gain.gain.setValueAtTime(0,now); gain.gain.linearRampToValueAtTime(0.4,now+0.1); gain.gain.linearRampToValueAtTime(0,now+1.0); osc.start(now); osc.stop(now+1.0); }
+            else if(type==='success'){ 
+                [523,659,783].forEach((f,i)=>{const o=ac.createOscillator();o.type='triangle';o.frequency.value=f;const g=ac.createGain();o.connect(g);g.connect(masterGain);g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(0.1,now+i*0.1);g.gain.exponentialRampToValueAtTime(0.001,now+1);o.start(now+i*0.1);o.stop(now+1);});
+            }
+            else { osc.frequency.value=440; gain.gain.linearRampToValueAtTime(0,now+0.2); osc.start(now); osc.stop(now+0.2); }
         };
         window.toggleAmbience = (t) => { if(ac.state==='suspended') ac.resume(); };
 
         // --- Dice ---
+        window.uploadDiceTexture = (input) => { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { const i = new Image(); i.onload=()=>window.customDiceImage=i; i.src=e.target.result; }; r.readAsDataURL(input.files[0]); } };
+        window.resetDiceTexture = () => { window.customDiceImage = null; document.getElementById('dice-texture-input').value=''; };
+        
         (function() {
             const canvas = document.getElementById('dice-canvas'); if(!canvas) return; const ctx = canvas.getContext('2d'); let dice=[];
             function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;} window.addEventListener('resize', resize); resize();
@@ -1353,6 +1369,7 @@
         window.rollCustomDice = () => { const n=parseInt(document.getElementById('dice-num').value); const t=parseInt(document.getElementById('dice-type').value); let r=[]; for(let i=0;i<n;i++) r.push(Math.floor(Math.random()*t)+1); document.getElementById('dice-roll-result').textContent = r.reduce((a,b)=>a+b,0); window.throwDiceVisuals(r, t); };
         window.assignInitiativeRoll = () => { const idx=parseInt(document.getElementById('combatant-selector').value); if(!isNaN(idx) && window.combatants[idx]) { window.combatants[idx].init = window.lastRoll; window.saveCombatData(); } };
 
+        // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
             if(window.userApiKey) document.getElementById('user-api-key').value = window.userApiKey;
             applyTheme();
@@ -1360,8 +1377,8 @@
             window.loadCombatData();
             window.switchTab('improv');
         });
-        
-        // Snow
+
+        // --- Snow ---
         let snowInterval; const snowCanvas = document.getElementById('snow-canvas'); const sCtx = snowCanvas ? snowCanvas.getContext('2d') : null;
         function startSnow() { if(!snowCanvas) return; snowCanvas.width=window.innerWidth; snowCanvas.height=window.innerHeight; let flakes=Array(100).fill().map(()=>({x:Math.random()*snowCanvas.width,y:Math.random()*snowCanvas.height,s:Math.random()+0.5})); snowInterval=setInterval(()=>{ sCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); sCtx.fillStyle='rgba(255,255,255,0.5)'; sCtx.beginPath(); flakes.forEach(f=>{sCtx.moveTo(f.x,f.y);sCtx.arc(f.x,f.y,2,0,Math.PI*2); f.y+=f.s; if(f.y>snowCanvas.height)f.y=0;}); sCtx.fill(); }, 50); }
         function stopSnow() { clearInterval(snowInterval); if(sCtx) sCtx.clearRect(0,0,snowCanvas.width,snowCanvas.height); }
