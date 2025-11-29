@@ -2948,6 +2948,82 @@
     })();
 </script>
 
+<script>
+    // --- FINAL SYSTEM REPAIR ---
+    // This script runs last to force the UI to update correctly.
+
+    // 1. Fix API Key Saving & Status
+    window.saveApiKey = function() {
+        const input = document.getElementById('user-api-key');
+        const status = document.getElementById('api-key-status');
+
+        if (!input) return alert("Error: API Input not found.");
+        
+        const val = input.value.trim();
+        if (!val) return alert("Please enter a key first.");
+
+        // Save
+        localStorage.setItem('dm_toolkit_api_key', val);
+        window.userApiKey = val;
+
+        // Force Update Status Text
+        if (status) {
+            status.textContent = "Status: Key Saved ✅";
+            status.className = "mt-2 text-xs text-green-400 font-bold";
+            // Force a redraw of the element just in case
+            status.style.display = 'none';
+            status.offsetHeight; // trigger reflow
+            status.style.display = 'block';
+        }
+        
+        alert("API Key Saved!");
+    };
+
+    // 2. Fix Tracker "Connecting..." Stuck Message
+    window.fixTrackerStatus = function() {
+        const statusLabel = document.getElementById('db-status');
+        if (statusLabel) {
+            // Check if we are logged in or local
+            if (window.userId) {
+                statusLabel.textContent = "Ready (Session)";
+                statusLabel.className = "text-xs px-2 py-1 rounded bg-green-900 text-green-100 border border-green-700 font-bold";
+            } else {
+                statusLabel.textContent = "Ready (Local Mode)";
+                statusLabel.className = "text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 border border-gray-600";
+            }
+        }
+    };
+
+    // 3. Auto-Run Fixes on Load
+    document.addEventListener('DOMContentLoaded', () => {
+        // Check for saved key
+        const savedKey = localStorage.getItem('dm_toolkit_api_key');
+        if (savedKey) {
+            const input = document.getElementById('user-api-key');
+            const status = document.getElementById('api-key-status');
+            if (input) input.value = savedKey;
+            if (status) {
+                status.textContent = "Status: Key Loaded ✅";
+                status.className = "mt-2 text-xs text-green-400 font-bold";
+            }
+            window.userApiKey = savedKey;
+        }
+
+        // Fix Tracker Status immediately
+        window.fixTrackerStatus();
+        
+        // Also hook into the existing load function to keep it updated
+        const originalLoad = window.loadCombatData;
+        window.loadCombatData = function() {
+            if(originalLoad) originalLoad();
+            window.fixTrackerStatus();
+        };
+    });
+    
+    // Run once right now in case the page is already loaded
+    window.fixTrackerStatus();
+</script>
+
     <!-- Login Modal -->
 <div id="login-modal" class="hidden fixed inset-0 z-[100] bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="card w-full max-w-md p-8 rounded-xl shadow-2xl border border-gray-600">
