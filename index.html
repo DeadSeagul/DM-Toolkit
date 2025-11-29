@@ -2844,6 +2844,109 @@
         }
  
     </script>
+    
+    <script>
+    // --- EMERGENCY UI REPAIR KIT ---
+    // This script runs last to ensure buttons work even if other code fails.
+
+    // 1. Restore Tab Switching
+    window.switchTab = function(tabId) {
+        window.currentTab = tabId;
+
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(el => {
+            el.classList.add('hidden');
+        });
+
+        // Show the target tab
+        const target = document.getElementById(tabId);
+        if (target) {
+            target.classList.remove('hidden');
+        } else {
+            console.error("Tab not found:", tabId);
+            return;
+        }
+
+        // Highlight the correct button
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
+            btn.classList.add('text-gray-400', 'border-transparent');
+            
+            const text = btn.textContent.toLowerCase();
+            // Smart matching for button text vs tab IDs
+            const isMatch = 
+                (tabId === 'improv' && text.includes('prep')) ||
+                (tabId === 'statblocks' && text.includes('stats')) ||
+                (tabId === 'soundboard' && text.includes('sound')) ||
+                text.includes(tabId);
+
+            if (isMatch) {
+                btn.classList.add('active'); 
+                btn.classList.remove('text-gray-400');
+            }
+        });
+
+        // If we switched to Notes, make sure the sub-tabs work too
+        if (tabId === 'notes' && window.switchSubTab) {
+            window.switchSubTab(window.currentSubTab || 'prepNotes');
+        }
+    };
+
+    // 2. Restore API Key Saving
+    window.saveApiKey = function() {
+        const input = document.getElementById('user-api-key');
+        if (!input) return alert("Error: API Input box not found.");
+
+        const val = input.value.trim();
+        if (!val) return alert("Please paste an API Key first.");
+
+        // Save to storage
+        localStorage.setItem('dm_toolkit_api_key', val);
+        window.userApiKey = val;
+
+        // Update the red/green status text
+        const status = document.getElementById('api-key-status');
+        if (status) {
+            status.textContent = "Status: Key Saved ✅";
+            status.className = "mt-2 text-xs text-green-400 font-bold";
+        }
+        
+        alert("API Key Saved Successfully!");
+    };
+
+    // 3. Fix Notes Sub-tabs
+    window.switchSubTab = function(subTabId) {
+        window.currentSubTab = subTabId;
+        
+        document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
+        const target = document.getElementById(subTabId + '-sub-content');
+        if (target) target.classList.remove('hidden');
+        
+        document.querySelectorAll('.sub-tab-button').forEach(btn => {
+            btn.classList.remove('active', 'text-gray-400');
+            if (btn.dataset.subtab === subTabId) btn.classList.add('active');
+            else btn.classList.add('text-gray-400');
+        });
+
+        // Try to render list if data exists
+        if (window.renderStructuredNotes) window.renderStructuredNotes(subTabId);
+    };
+
+    // 4. Auto-Run: Check for saved key immediately
+    (function initKey() {
+        const saved = localStorage.getItem('dm_toolkit_api_key');
+        if (saved) {
+            const input = document.getElementById('user-api-key');
+            const status = document.getElementById('api-key-status');
+            if (input) input.value = saved;
+            if (status) {
+                status.textContent = "Status: Key Loaded ✅";
+                status.className = "mt-2 text-xs text-green-400 font-bold";
+            }
+            window.userApiKey = saved;
+        }
+    })();
+</script>
 
     <!-- Login Modal -->
 <div id="login-modal" class="hidden fixed inset-0 z-[100] bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
