@@ -163,12 +163,16 @@
                 </div>
             </div>
 
-            <!-- Combat -->
+            <!-- Combat Tab (Reordered: Inputs -> Dice -> List) -->
             <div id="combat" class="tab-content hidden">
-                <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Tracker</h2>
-                    <div class="flex justify-between items-center mb-2"><span id="db-status" class="text-xs px-2 py-1 rounded bg-gray-700 text-gray-400">Connecting...</span></div>
-                    <div class="flex flex-wrap gap-2 mb-4">
+                
+                <!-- 1. Add Combatant Section -->
+                <div class="card p-4 rounded-lg shadow-xl mb-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-indigo-300">Combat Tracker</h2>
+                        <span id="db-status" class="text-xs px-2 py-1 rounded bg-gray-700 text-gray-400">Connecting...</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
                         <input id="combatant-name" type="text" placeholder="Name" class="flex-1 min-w-[100px] p-2 rounded-lg input-style">
                         <input id="combatant-init" type="number" placeholder="Init" class="w-16 p-2 rounded-lg input-style text-center">
                         <input id="combatant-ac" type="number" placeholder="AC" class="w-14 p-2 rounded-lg input-style text-center">
@@ -176,20 +180,36 @@
                         <input id="combatant-atk" type="text" placeholder="Atk/Dmg" class="w-24 p-2 rounded-lg input-style">
                         <button onclick="window.addCombatant()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-lg">Add</button>
                     </div>
-                    <div id="initiative-list" class="space-y-2"><p class="text-center text-gray-500 pt-8">List empty.</p></div>
                 </div>
-                <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50 mt-4">
+
+                <!-- 2. Dice Roller Section -->
+                <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50">
                     <h3 class="text-md font-semibold mb-3 text-indigo-400">Dice Roller</h3>
+                    
+                    <!-- Color & Texture Controls -->
                     <div class="flex items-center justify-between mb-3 bg-gray-900/50 p-2 rounded-lg border border-gray-700">
-                        <div class="flex items-center gap-2"><span class="text-xs text-gray-400">Color:</span><input type="color" id="dice-color-picker" value="#6366f1" class="w-8 h-8 bg-transparent border-none cursor-pointer rounded"></div>
-                        <div class="flex items-center gap-2"><span class="text-xs text-gray-400">Texture:</span><input type="file" id="dice-texture-input" accept="image/*" onchange="window.uploadDiceTexture(this)" class="text-[10px] text-gray-500 w-32"></div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-400">Color:</span>
+                            <input type="color" id="dice-color-picker" value="#6366f1" class="w-8 h-8 bg-transparent border-none cursor-pointer rounded">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-400">Texture:</span>
+                            <input type="file" id="dice-texture-input" accept="image/*" onchange="window.uploadDiceTexture(this)" class="text-[10px] text-gray-500 w-32">
+                        </div>
                         <button onclick="window.resetDiceTexture()" class="text-[10px] text-red-400 hover:text-red-300 underline">Reset</button>
                     </div>
+
+                    <!-- D20 & Target -->
                     <div class="flex items-center space-x-2 mb-4 pb-4 border-b border-gray-700">
                         <button onclick="window.rollD20()" class="w-1/3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg text-sm">Roll D20</button>
                         <div id="last-roll-display" class="w-1/3 text-3xl font-extrabold text-center text-yellow-400 border-2 border-yellow-400 p-1 rounded-lg bg-gray-900/50 select-none">?</div>
-                        <div class="w-1/3 flex flex-col gap-1"><select id="combatant-selector" class="w-full p-1 rounded-lg input-style text-xs"><option>Target</option></select><button onclick="window.assignInitiativeRoll()" id="assign-roll-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 rounded-lg text-xs">Set Init</button></div>
+                        <div class="w-1/3 flex flex-col gap-1">
+                            <select id="combatant-selector" class="w-full p-1 rounded-lg input-style text-xs"><option>Target</option></select>
+                            <button onclick="window.assignInitiativeRoll()" id="assign-roll-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 rounded-lg text-xs">Set Init</button>
+                        </div>
                     </div>
+
+                    <!-- Quick Dice -->
                     <div class="grid grid-cols-7 gap-1">
                         <button onclick="window.rollSimple(4)" class="bg-gray-700 text-white text-xs py-2 rounded">d4</button>
                         <button onclick="window.rollSimple(6)" class="bg-gray-700 text-white text-xs py-2 rounded">d6</button>
@@ -200,6 +220,29 @@
                         <button onclick="window.rollSimple(100)" class="bg-gray-700 text-white text-xs py-2 rounded">d100</button>
                     </div>
                     <div id="dice-roll-result" class="mt-4 text-center text-xl font-bold text-green-400"></div>
+
+                    <!-- Turn Timer -->
+                    <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50 border border-gray-700 mt-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-md font-semibold text-red-300 flex items-center gap-2"><span>⏳</span> Turn Timer</h3>
+                            <div id="turn-timer-display" class="text-3xl font-mono font-bold text-white tracking-wider">00:00</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="window.toggleTimer()" id="timer-btn" class="flex-1 bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-2 rounded border border-green-500 transition">Start</button>
+                            <button onclick="window.resetTimer()" class="w-1/3 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded border border-gray-500 transition">Reset</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 3. Initiative List Section -->
+                <div class="card p-4 rounded-lg shadow-xl">
+                    <h3 class="text-md font-semibold mb-3 text-indigo-300">Initiative Order</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <button onclick="window.sortInitiative()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Sort</button>
+                        <button onclick="window.nextTurn()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Next &raquo;</button>
+                        <button onclick="window.clearCombat()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Clear</button>
+                    </div>
+                    <div id="initiative-list" class="scrollable-content space-y-2"><p class="text-center text-gray-500 pt-8">List empty.</p></div>
                 </div>
             </div>
 
