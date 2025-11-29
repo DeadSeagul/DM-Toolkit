@@ -163,7 +163,7 @@
                 </div>
             </div>
 
-            <!-- Combat Tab (Reordered: Inputs -> Dice -> List) -->
+            <!-- Combat Tab -->
             <div id="combat" class="tab-content hidden">
                 
                 <!-- 1. Add Combatant Section -->
@@ -210,7 +210,7 @@
                     </div>
 
                     <!-- Quick Dice -->
-                    <div class="grid grid-cols-7 gap-1">
+                    <div class="grid grid-cols-7 gap-1 mb-4">
                         <button onclick="window.rollSimple(4)" class="bg-gray-700 text-white text-xs py-2 rounded">d4</button>
                         <button onclick="window.rollSimple(6)" class="bg-gray-700 text-white text-xs py-2 rounded">d6</button>
                         <button onclick="window.rollSimple(8)" class="bg-gray-700 text-white text-xs py-2 rounded">d8</button>
@@ -219,18 +219,22 @@
                         <button onclick="window.rollSimple(20)" class="bg-gray-700 text-white text-xs py-2 rounded">d20</button>
                         <button onclick="window.rollSimple(100)" class="bg-gray-700 text-white text-xs py-2 rounded">d100</button>
                     </div>
-                    <div id="dice-roll-result" class="mt-4 text-center text-xl font-bold text-green-400"></div>
+                    
+                    <!-- Custom Roller Input -->
+                    <div class="flex items-center gap-2 bg-gray-900/30 p-2 rounded-lg mb-4">
+                        <input id="dice-num" type="number" value="1" class="w-10 p-1 text-center text-sm rounded bg-gray-700 text-white border border-gray-600" placeholder="#">
+                        <span class="text-gray-400 text-xs">d</span>
+                        <input id="dice-type" type="number" value="20" class="w-10 p-1 text-center text-sm rounded bg-gray-700 text-white border border-gray-600" placeholder="Type">
+                        <span class="text-gray-400 text-xs">+</span>
+                        <input id="dice-mod" type="number" value="0" class="w-10 p-1 text-center text-sm rounded bg-gray-700 text-white border border-gray-600" placeholder="Mod">
+                        <button onclick="window.rollCustomDice()" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-1 rounded text-sm">Roll</button>
+                    </div>
 
-                    <!-- Turn Timer -->
-                    <div class="card p-4 rounded-lg shadow-inner mb-4 bg-gray-800/50 border border-gray-700 mt-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-md font-semibold text-red-300 flex items-center gap-2"><span>⏳</span> Turn Timer</h3>
-                            <div id="turn-timer-display" class="text-3xl font-mono font-bold text-white tracking-wider">00:00</div>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="window.toggleTimer()" id="timer-btn" class="flex-1 bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-2 rounded border border-green-500 transition">Start</button>
-                            <button onclick="window.resetTimer()" class="w-1/3 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded border border-gray-500 transition">Reset</button>
-                        </div>
+                    <!-- Result Display (Replaces Timer) -->
+                    <div class="bg-gray-900/80 p-3 rounded-lg border border-gray-700 flex flex-col items-center justify-center min-h-[80px]">
+                        <span class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Total Result</span>
+                        <div id="dice-roll-result" class="text-4xl font-extrabold text-green-400 drop-shadow-md">0</div>
+                        <div id="dice-roll-details" class="text-xs text-gray-400 mt-1 font-mono">Roll to see details</div>
                     </div>
                 </div>
                 
