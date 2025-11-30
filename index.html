@@ -1195,9 +1195,179 @@
             function animate() { ctx.clearRect(0,0,canvas.width,canvas.height); dice.forEach(d => { d.update(); d.draw(); }); requestAnimationFrame(animate); } animate();
             window.throwDiceVisuals = (rolls, type) => { dice = rolls.map(r => new VisualDie(r, type)); setTimeout(() => { dice = []; ctx.clearRect(0, 0, canvas.width, canvas.height); }, 3500); };
         })();
-        // Soundboard (Condensed)
-        const ac = new (window.AudioContext||window.webkitAudioContext)(); const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5; document.getElementById('master-volume').addEventListener('input', (e) => masterGain.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.01)); window.playTone = (type) => { if (ac.state === 'suspended') ac.resume(); const osc = ac.createOscillator(); const g = ac.createGain(); osc.connect(g); g.connect(masterGain); osc.start(); osc.stop(ac.currentTime + 0.5); }; window.toggleAmbience = (t) => { if(ac.state==='suspended') ac.resume(); console.log("Ambience toggled:", t); }; window.splitLoot = () => { /* Loot split logic */ };
-    });
+        // --- FULL SOUNDBOARD LOGIC ---
+        const ac = new (window.AudioContext||window.webkitAudioContext)();
+        const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
+        let ambNodes = []; let ambType = null;
+        const noiseBuf = ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate);
+        for(let i=0; i<noiseBuf.length; i++) noiseBuf.getChannelData(0)[i] = Math.random()*2-1;
+
+        // Volume Slider
+        const volSlider = document.getElementById('master-volume');
+        if(volSlider) volSlider.addEventListener('input', (e) => masterGain.gain.setTargetAtTime(parseFloat(e.target.value), ac.currentTime, 0.01));
+
+        // Audio Unlocker for Mobile
+        const unlockMobileAudio = () => {
+            if (ac.state === 'suspended') ac.resume();
+            const buffer = ac.createBuffer(1, 1, 22050); const source = ac.createBufferSource();
+            source.buffer = buffer; source.connect(ac.destination); source.start(0);
+            document.removeEventListener('touchstart', unlockMobileAudio); document.removeEventListener('click', unlockMobileAudio);
+        };
+        document.addEventListener('touchstart', unlockMobileAudio); document.addEventListener('click', unlockMobileAudio);
+
+        // Helper Sound Functions
+        const playNote = (freq, t, dur, type = 'sine', vol = 0.3) => {
+            const o = ac.createOscillator(); const g = ac.createGain(); o.type = type; o.frequency.value = freq; 
+            o.connect(g); g.connect(masterGain); 
+            g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.01, t + dur); o.start(t); o.stop(t + dur);
+        };
+        const playDrum = (type, time) => {
+            const osc = ac.createOscillator(); const gain = ac.createGain(); osc.connect(gain); gain.connect(masterGain);
+            if (type === 'kick') { osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(0.01, time+0.5); gain.gain.setValueAtTime(0.5, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.5); osc.start(time); osc.stop(time+0.5); }
+            else if (type === 'snare') { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.2); n.start(time); n.stop(time+0.2); }
+            else if (type === 'hihat') { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 5000; n.connect(f); f.connect(gain); gain.gain.setValueAtTime(0.3, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.05); n.start(time); n.stop(time+0.05); }
+            else if (type === 'tom') { osc.frequency.setValueAtTime(100, time); osc.frequency.exponentialRampToValueAtTime(50, time+0.3); gain.gain.setValueAtTime(0.4, time); gain.gain.exponentialRampToValueAtTime(0.01, time+0.3); osc.start(time); osc.stop(time+0.3); }
+        };
+        const playLute = (freq, startTime, duration) => {
+            const osc = ac.createOscillator(); const gain = ac.createGain(); const filter = ac.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.setValueAtTime(1000, startTime); gain.gain.setValueAtTime(0.1, startTime); gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration); osc.connect(filter); filter.connect(gain); gain.connect(masterGain); osc.start(startTime); osc.stop(startTime + duration);
+        };
+        const playAccordion = (freq, startTime, duration, vol = 0.15) => {
+             const osc = ac.createOscillator(); const gain = ac.createGain(); const filter = ac.createBiquadFilter(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, startTime); filter.type = 'lowpass'; filter.frequency.value = 2500; osc.connect(filter); filter.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, startTime); gain.gain.linearRampToValueAtTime(vol, startTime+0.1); gain.gain.setValueAtTime(vol, startTime + duration - 0.1); gain.gain.linearRampToValueAtTime(0, startTime+duration); osc.start(startTime); osc.stop(startTime + duration);
+        };
+
+        // Main Play Tone Function
+        window.playTone = function(type) {
+            if (ac.state === 'suspended') ac.resume();
+            const now = ac.currentTime;
+            const osc = ac.createOscillator(); const gain = ac.createGain();
+            
+            switch (type) {
+                case 'success': [523.25, 659.25, 783.99].forEach((freq, i) => { const o = ac.createOscillator(); const g = ac.createGain(); o.type = 'triangle'; o.frequency.value = freq; o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + i*0.1 + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.0); o.start(now + i*0.1); o.stop(now + 1.0); }); break;
+                case 'critical': [523.25, 1046.50, 1318.51].forEach((freq, i) => { const o = ac.createOscillator(); const g = ac.createGain(); o.type = 'square'; o.frequency.value = freq; o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.5); o.start(now); o.stop(now + 1.5); }); break;
+                case 'fail': { const o1 = ac.createOscillator(); const g1 = ac.createGain(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(196.00, now); o1.frequency.linearRampToValueAtTime(185.00, now + 0.4); o1.connect(g1); g1.connect(masterGain); g1.gain.setValueAtTime(0.2, now); g1.gain.linearRampToValueAtTime(0, now + 0.4); o1.start(now); o1.stop(now+0.4); const o2 = ac.createOscillator(); const g2 = ac.createGain(); o2.type = 'sawtooth'; o2.frequency.setValueAtTime(174.61, now + 0.45); o2.frequency.linearRampToValueAtTime(155.56, now + 1.0); o2.connect(g2); g2.connect(masterGain); g2.gain.setValueAtTime(0, now + 0.45); g2.gain.linearRampToValueAtTime(0.2, now + 0.5); g2.gain.linearRampToValueAtTime(0, now + 1.0); o2.start(now + 0.45); o2.stop(now + 1.0); } break;
+                case 'combat_start': { osc.type = 'sawtooth'; osc.frequency.value = 60; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(200, now); filter.frequency.linearRampToValueAtTime(1500, now + 0.1); filter.frequency.exponentialRampToValueAtTime(200, now + 2); osc.connect(filter); filter.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.4, now + 0.1); gain.gain.exponentialRampToValueAtTime(0.001, now + 2); osc.start(now); osc.stop(now + 2); } break;
+                case 'spell': { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(2000, now + 1); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 1); osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now + 1); } break;
+                case 'mystery': { const mo1 = ac.createOscillator(); const mg1 = ac.createGain(); mo1.type = 'sine'; mo1.frequency.value = 440; mo1.connect(mg1); mg1.connect(masterGain); mg1.gain.setValueAtTime(0, now); mg1.gain.linearRampToValueAtTime(0.2, now + 1); mg1.gain.linearRampToValueAtTime(0, now + 3); mo1.start(now); mo1.stop(now + 3); const mo2 = ac.createOscillator(); const mg2 = ac.createGain(); mo2.type = 'sine'; mo2.frequency.value = 455; mo2.connect(mg2); mg2.connect(masterGain); mg2.gain.setValueAtTime(0, now); mg2.gain.linearRampToValueAtTime(0.2, now + 1.5); mg2.gain.linearRampToValueAtTime(0, now + 3); mo2.start(now); mo2.stop(now + 3); } break;
+                case 'rest': { [261.63, 329.63, 392.00, 523.25].forEach(f => { const o = ac.createOscillator(); const g = ac.createGain(); o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.05, now + 1); g.gain.linearRampToValueAtTime(0, now + 4); o.start(now); o.stop(now + 4); }); } break;
+                case 'trap': { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000; const ng = ac.createGain(); n.connect(f); f.connect(ng); ng.connect(masterGain); ng.gain.setValueAtTime(0.6, now); ng.gain.exponentialRampToValueAtTime(0.01, now + 0.1); n.start(now); n.stop(now + 0.1); osc.type = 'square'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.2); osc.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2); osc.start(now); osc.stop(now + 0.2); } break;
+                case 'boss': { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(55, now); const bf = ac.createBiquadFilter(); bf.type='lowpass'; bf.frequency.value=150; osc.connect(bf); bf.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.5, now + 0.1); gain.gain.exponentialRampToValueAtTime(0.001, now + 3); osc.start(now); osc.stop(now + 3); } break;
+                case 'wolf': { osc.type = 'triangle'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(600, now + 0.5); osc.frequency.linearRampToValueAtTime(300, now + 2.5); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.2, now + 0.5); gain.gain.linearRampToValueAtTime(0, now + 2.5); osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now + 2.5); } break;
+                case 'bear': { osc.type = 'sawtooth'; osc.frequency.value = 50; const bearF = ac.createBiquadFilter(); bearF.type = 'lowpass'; bearF.frequency.setValueAtTime(100, now); bearF.frequency.linearRampToValueAtTime(600, now + 0.2); bearF.frequency.linearRampToValueAtTime(100, now + 1.0); osc.connect(bearF); bearF.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.4, now + 0.1); gain.gain.linearRampToValueAtTime(0, now + 1.0); osc.start(now); osc.stop(now + 1.0); } break;
+                case 'bird': { osc.type = 'sine'; osc.frequency.setValueAtTime(2000, now); osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.01); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now + 0.1); setTimeout(() => { const o2 = ac.createOscillator(); const g2 = ac.createGain(); o2.type = 'sine'; o2.frequency.setValueAtTime(2500, ac.currentTime); o2.frequency.exponentialRampToValueAtTime(1200, ac.currentTime + 0.1); g2.gain.setValueAtTime(0, ac.currentTime); g2.gain.linearRampToValueAtTime(0.1, ac.currentTime + 0.01); g2.gain.linearRampToValueAtTime(0, ac.currentTime + 0.1); o2.connect(g2); g2.connect(masterGain); o2.start(ac.currentTime); o2.stop(ac.currentTime + 0.1); }, 150); } break;
+                case 'snake': { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 3000; n.connect(f); f.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.15, now + 0.5); gain.gain.linearRampToValueAtTime(0, now + 2.0); n.start(now); n.stop(now + 2.0); } break;
+                case 'insect': { 
+                    const playPulse = (t) => { const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 4500; const filter = ac.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 4500; filter.Q.value = 10; const g = ac.createGain(); osc.connect(filter); filter.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.002); g.gain.exponentialRampToValueAtTime(0.001, t + 0.02); osc.start(t); osc.stop(t + 0.03); };
+                    const playChirp = (t) => { for(let i=0; i<4; i++) playPulse(t + (i * 0.018)); };
+                    playChirp(now); playChirp(now + 0.3); playChirp(now + 0.6); 
+                } break;
+            }
+        };
+
+        window.toggleAmbience = function(t) {
+            if(ac.state==='suspended') ac.resume();
+            ambNodes.forEach(n => { try{n.stop()}catch(e){} try{n.disconnect()}catch(e){} }); ambNodes=[];
+            document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active-loop'));
+            if(ambType === t) { ambType = null; document.getElementById('ambience-status').innerText = ""; return; }
+            ambType = t; 
+            const btn = document.getElementById(`ambience-${t}`);
+            if(btn) btn.classList.add('active-loop');
+            document.getElementById('ambience-status').innerText = "Playing: " + t.toUpperCase();
+            const now = ac.currentTime;
+            
+            if (t === 'village') {
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(400, now); const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.1; const lfoGain = ac.createGain(); lfoGain.gain.value = 200; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = ac.createGain(); gain.gain.value = 0.05; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); lfo.start(now); ambNodes.push(noise, lfo, gain);
+                const iv1 = setInterval(() => { if (Math.random() > 0.7) { playNote(1500 + Math.random() * 500, ac.currentTime, 0.05, 'triangle', 0.02); } }, 2000);
+                const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; 
+                const iv2 = setInterval(() => { const t = ac.currentTime; if (Math.random() > 0.3) { const pitch = scale[Math.floor(Math.random() * scale.length)]; playLute(pitch, t, 0.4); } }, 600);
+                ambNodes.push({ stop: () => { clearInterval(iv1); clearInterval(iv2); } });
+            }
+            else if (t === 'city') {
+                const rumble = ac.createBufferSource(); rumble.buffer = noiseBuf; rumble.loop = true; const rumbleFilter = ac.createBiquadFilter(); rumbleFilter.type = 'lowpass'; rumbleFilter.frequency.value = 150; const rumbleGain = ac.createGain(); rumbleGain.gain.value = 0.1; rumble.connect(rumbleFilter); rumbleFilter.connect(rumbleGain); rumbleGain.connect(masterGain); rumble.start(now); ambNodes.push(rumble, rumbleGain);
+                const iv1 = setInterval(() => { if (Math.random() > 0.6) { playNote(400 + Math.random() * 100, ac.currentTime, 0.1, 'square', 0.05); } }, 2000);
+                const iv2 = setInterval(() => { if (Math.random() > 0.85) { const t = ac.currentTime; playNote(220, t, 2.5, 'sine', 0.15); playNote(554, t, 1.5, 'sine', 0.05); } }, 8000);
+                ambNodes.push({ stop: () => { clearInterval(iv1); clearInterval(iv2); } });
+            }
+            else if (t === 'tavern') {
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 150; const gain = ac.createGain(); gain.gain.value = 0.25; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); ambNodes.push(noise, gain);
+                const iv1 = setInterval(() => { if (Math.random() > 0.6) { playNote(1200, ac.currentTime, 0.05, 'triangle', 0.05); } }, 2500);
+                const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; let beat = 0; 
+                const iv2 = setInterval(() => { const t = ac.currentTime; if (beat % 4 === 0) { playLute(130.81, t, 0.8); } if (Math.random() > 0.2) { playLute(scale[Math.floor(Math.random() * scale.length)], t + 0.05, 0.4); } beat++; }, 300);
+                ambNodes.push({ stop: () => { clearInterval(iv1); clearInterval(iv2); } });
+            }
+            else if (t === 'ocean') {
+                const drone = ac.createOscillator(); drone.type = 'sawtooth'; drone.frequency.value = 73.42; const df = ac.createBiquadFilter(); df.type = 'lowpass'; df.frequency.value = 300; const dg = ac.createGain(); dg.gain.value = 0.05; drone.connect(df); df.connect(dg); dg.connect(masterGain); drone.start(now); ambNodes.push(drone, dg);
+                const shanty = [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]; let beat = 0;
+                const iv = setInterval(() => { const t = ac.currentTime; if (beat % 2 === 0) { playDrum('kick', t); playAccordion(146.83, t, 0.4, 0.2); } else { playDrum('snare', t); playAccordion(293.66, t, 0.2, 0.05); } if (Math.random() > 0.3) { playAccordion(shanty[Math.floor(Math.random()*shanty.length)], t, 0.4, 0.15); } beat++; }, 600);
+                ambNodes.push({ stop: () => clearInterval(iv) });
+            }
+            else if (t === 'dungeon') {
+                const d1 = ac.createOscillator(); d1.type = 'triangle'; d1.frequency.value = 55; const d2 = ac.createOscillator(); d2.type = 'sine'; d2.frequency.value = 58; const dg = ac.createGain(); dg.gain.value = 0.15; const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 300; d1.connect(f); d2.connect(f); f.connect(dg); dg.connect(masterGain); d1.start(now); d2.start(now); ambNodes.push(d1, d2, dg);
+                const iv1 = setInterval(() => { if (Math.random() > 0.6) { const t = ac.currentTime; const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(2000 + Math.random() * 500, t); const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15); o.connect(g); g.connect(masterGain); o.start(t); o.stop(t + 0.5); } }, 3000);
+                ambNodes.push({ stop: () => clearInterval(iv1) });
+            }
+            else if (t === 'battle_minor') {
+                const bpm = 130; const stepTime = (60 / bpm) / 4; let step = 0; const bassFreqs = [73.42, 73.42, 73.42, 73.42, 87.31, 87.31, 82.41, 82.41]; 
+                const iv = setInterval(() => { 
+                    const t = ac.currentTime; const barStep = step % 16; 
+                    if (step % 2 === 0) { const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = bassFreqs[Math.floor((step % 16) / 2) % bassFreqs.length]; const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 600; const g = ac.createGain(); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.15); osc.connect(f); f.connect(g); g.connect(masterGain); osc.start(t); osc.stop(t + 0.2); }
+                    if (barStep === 0 || barStep === 6 || barStep === 10) { playDrum('kick', t); if(barStep === 0) playDrum('tom', t); }
+                    if (barStep === 4 || barStep === 12) { playDrum('snare', t); }
+                    if (barStep % 2 === 0) { const hOsc = ac.createOscillator(); hOsc.type = 'square'; hOsc.frequency.value = 800; const hG = ac.createGain(); hG.gain.setValueAtTime(0.03, t); hG.gain.exponentialRampToValueAtTime(0.001, t + 0.03); hOsc.connect(hG); hG.connect(masterGain); hOsc.start(t); hOsc.stop(t + 0.05); }
+                    step++; 
+                }, stepTime * 1000);
+                ambNodes.push({ stop: () => clearInterval(iv) });
+            }
+            else if (t === 'battle_major') {
+                const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 35; const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 200; const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.25; const lG = ac.createGain(); lG.gain.value = 150; lfo.connect(lG); lG.connect(f.frequency); const g = ac.createGain(); g.gain.value = 0.2; osc.connect(f); f.connect(g); g.connect(masterGain); osc.start(now); lfo.start(now); ambNodes.push(osc, f, g, lfo, lG);
+                let beat = 0; const iv = setInterval(() => { const t = ac.currentTime; if (beat % 4 === 0) { playDrum('kick', t); playDrum('tom', t + 0.1); } if (beat % 4 === 2) { playDrum('snare', t); playDrum('kick', t); } playDrum('hihat', t); playDrum('hihat', t + 0.21); beat++; }, 428);
+                ambNodes.push({ stop: () => clearInterval(iv) });
+            }
+            else if (t === 'sleep') {
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 120; const g = ac.createGain(); g.gain.value = 0.3; noise.connect(f); f.connect(g); g.connect(masterGain); noise.start(now); ambNodes.push(noise, g);
+                const iv1 = setInterval(() => { if (Math.random() > 0.7) { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f2 = ac.createBiquadFilter(); f2.type = 'highpass'; f2.frequency.value = 2000; const g2 = ac.createGain(); g2.gain.value = 0.1 + Math.random() * 0.1; g2.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.05); n.connect(f2); f2.connect(g2); g2.connect(masterGain); n.start(); n.stop(ac.currentTime + 0.05); } }, 200);
+                const scale = [196.00, 220.00, 246.94, 293.66, 329.63]; 
+                const iv2 = setInterval(() => { if (Math.random() > 0.4) { const t = ac.currentTime; const noteIdx = Math.floor(Math.random() * scale.length); playNote(scale[noteIdx], t, 4, 'sine', 0.1); } }, 5000);
+                ambNodes.push({ stop: () => { clearInterval(iv1); clearInterval(iv2); } });
+            }
+        };
+        
+        // --- END OF SOUNDBOARD LOGIC ---
+
+        window.splitLoot = function() {
+            const pp = parseInt(document.getElementById('loot-pp').value) || 0;
+            const gp = parseInt(document.getElementById('loot-gp').value) || 0;
+            const ep = parseInt(document.getElementById('loot-ep').value) || 0;
+            const sp = parseInt(document.getElementById('loot-sp').value) || 0;
+            const cp = parseInt(document.getElementById('loot-cp').value) || 0;
+            const count = parseInt(document.getElementById('loot-party-size').value) || 1;
+
+            if (count < 1) return;
+
+            // Convert everything to copper to divide evenly
+            const totalCopper = cp + (sp * 10) + (ep * 50) + (gp * 100) + (pp * 1000);
+            const shareCopper = Math.floor(totalCopper / count);
+            const remainder = totalCopper % count;
+
+            // Convert the share back up to highest denominations
+            let rest = shareCopper;
+            const rPP = Math.floor(rest / 1000); rest %= 1000;
+            const rGP = Math.floor(rest / 100); rest %= 100;
+            const rEP = Math.floor(rest / 50); rest %= 50;
+            const rSP = Math.floor(rest / 10); rest %= 10;
+            const rCP = rest;
+
+            let result = [];
+            if(rPP) result.push(`${rPP}pp`);
+            if(rGP) result.push(`${rGP}gp`);
+            if(rEP) result.push(`${rEP}ep`);
+            if(rSP) result.push(`${rSP}sp`);
+            if(rCP) result.push(`${rCP}cp`);
+            
+            const resultText = result.length > 0 ? "Each gets: " + result.join(", ") : "Nothing to split.";
+            const remainderText = remainder > 0 ? ` <span class='text-red-400'>(${remainder}cp left)</span>` : "";
+
+            document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
+        };
 </script>
 
     <!-- Login Modal -->
