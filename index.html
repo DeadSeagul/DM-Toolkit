@@ -218,6 +218,32 @@
             }
         }
     </script>
+    
+    <!-- 1. FIREBASE MODULE (Infrastructure) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const config = { apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg", authDomain: "aegisdmtoolkit.firebaseapp.com", projectId: "aegisdmtoolkit", storageBucket: "aegisdmtoolkit.firebasestorage.app", messagingSenderId: "654767294266", appId: "1:654767294266:web:fbee20be7d458fb7d6f203" };
+        const app = initializeApp(config);
+        
+        // Expose to Global Scope
+        window.db = getFirestore(app);
+        window.auth = getAuth(app);
+        window.appId = 'default-app-id';
+        window.doc = doc; window.setDoc = setDoc; window.deleteDoc = deleteDoc; window.collection = collection;
+        window.query = query; window.onSnapshot = onSnapshot; window.addDoc = (c, d) => setDoc(doc(c), d); 
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signOut = signOut;
+        
+        // Master Auth Listener
+        onAuthStateChanged(window.auth, (user) => {
+            if (window.handleAuthStateChange) window.handleAuthStateChange(user);
+        });
+    </script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&display=swap');
