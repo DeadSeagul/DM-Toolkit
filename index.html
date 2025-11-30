@@ -695,12 +695,11 @@
     <canvas id="snow-canvas"></canvas>
 
     <script type="module">
-        
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, setLogLevel, addDoc, updateDoc, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // --- 1. FIREBASE CONFIGURATION ---
+    // --- 1. FIREBASE CONFIG ---
     const manualFirebaseConfig = {
         apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
         authDomain: "aegisdmtoolkit.firebaseapp.com",
@@ -709,56 +708,62 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
         messagingSenderId: "654767294266",
         appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
     };
-
     const app = initializeApp(manualFirebaseConfig);
     window.db = getFirestore(app);
     window.auth = getAuth(app);
     window.userId = null; 
     window.isAuthReady = false;
 
-    // Expose functions globally for HTML buttons
+    // Expose Functions
     window.doc = doc; window.setDoc = setDoc; window.deleteDoc = deleteDoc; window.collection = collection;
-    window.query = query; window.onSnapshot = onSnapshot; window.addDoc = addDoc; window.getDoc = getDoc; 
-    window.updateDoc = updateDoc; window.orderBy = orderBy; window.writeBatch = writeBatch; 
+    window.query = query; window.onSnapshot = onSnapshot; window.addDoc = addDoc; window.updateDoc = updateDoc; window.writeBatch = writeBatch;
     window.signInWithEmailAndPassword = signInWithEmailAndPassword;
     window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
     window.signOut = signOut;
 
-    // --- 2. GLOBAL STATE ---
+    // --- 2. GLOBAL VARIABLES ---
     let currentTab = 'improv', currentSubTab = 'prepNotes';
     let savedStatblocks = [], combatants = [], currentTurnIndex = -1;
     let structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
     let userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
     let isChristmasMode = localStorage.getItem('aegis_theme') === 'christmas';
-    let lastGeneratedNpc = null; 
-    let lastGeneratedMonster = null;
-    let lastRoll = 0;
+    let lastGeneratedNpc = null, lastGeneratedMonster = null, lastRoll = 0;
 
-    // --- 3. PRIVATE SESSION HELPERS ---
-    // This logic ensures data is saved to YOUR private folder
+    // --- 3. PRIVATE SESSION HELPERS (FIXED PATHS) ---
     const getDataPath = () => {
-        if (window.userId) {
-            return ['sessions', window.userId]; // Private folder
-        }
-        return ['public', 'default']; // Public folder
+        if (window.userId) return ['sessions', window.userId];
+        return ['public', 'default']; 
     };
 
+    // Helper for Lists (Combatants, Statblocks)
+    // Path: artifacts/default/{sessions}/{userId}/{collectionName}
     const getCol = (name) => {
         const path = getDataPath();
-        return window.collection(window.db, 'artifacts', 'default', path[0], path[1], 'data', name);
+        return window.collection(window.db, 'artifacts', 'default', path[0], path[1], name);
     };
 
+    // Helper for Specific Items in Lists
+    // Path: artifacts/default/{sessions}/{userId}/{collectionName}/{docId}
     const getDocRef = (col, id) => {
         const path = getDataPath();
-        return window.doc(window.db, 'artifacts', 'default', path[0], path[1], 'data', col, id);
+        return window.doc(window.db, 'artifacts', 'default', path[0], path[1], col, id);
     };
 
+    // Helper for Shared Single Docs (Notes, Turn State)
+    // Path: artifacts/default/{sessions}/{userId}/singles/{docName}
+    // We use a 'singles' collection to hold these standalone documents cleanly
     const getSharedDoc = (name) => {
         const path = getDataPath();
-        return window.doc(window.db, 'artifacts', 'default', path[0], path[1], 'data', 'dm_toolkit_data', name);
+        return window.doc(window.db, 'artifacts', 'default', path[0], path[1], 'singles', name);
     };
 
-    // --- 4. AUTH UI LOGIC ---
+    window.saveStructuredNotes = async (tab, data) => {
+        if(!window.isAuthReady) return;
+        const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+        try { await window.setDoc(getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error(e); }
+    };
+
+    // --- 4. AUTH UI ---
     window.openLoginModal = () => { document.getElementById('login-modal').classList.remove('hidden'); document.getElementById('session-name-input').focus(); };
     window.closeLoginModal = () => { document.getElementById('login-modal').classList.add('hidden'); };
     
@@ -766,11 +771,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
         const name = document.getElementById('session-name-input').value.trim();
         const pass = document.getElementById('session-pass-input').value.trim();
         const status = document.getElementById('login-status');
-        
         if (!name || !pass) { status.textContent = "Enter Name & Password"; return; }
         if (pass.length < 6) { status.textContent = "Password too short (6+ chars)"; return; }
         status.textContent = "Connecting...";
-        
         const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
         try {
             await signInWithEmailAndPassword(window.auth, email, pass);
@@ -795,15 +798,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
         const userProfile = document.getElementById('user-profile');
         const userName = document.getElementById('user-name');
         const userAvatar = document.getElementById('user-avatar');
-        
         if (user && !user.isAnonymous) {
             if(loginBtn) loginBtn.classList.add('hidden');
             if(userProfile) userProfile.classList.remove('hidden');
-            
-            // Extract session name
             const rawName = user.email.split('@')[0];
             const displayName = rawName.replace(/_/g, ' '); 
-            
             if(userName) {
                 userName.innerHTML = `<span class="text-indigo-300 font-bold">${displayName}</span>`;
                 userName.innerHTML += `<div class="text-[10px] text-green-400">● Private Session</div>`;
@@ -816,18 +815,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
     }
 
     // --- 5. ROBUST DATA LISTENERS ---
-    // These variables store the "unsubscribe" functions so we can stop listening to old sessions
-    window.unsubNotes = null;
-    window.unsubCombat = null;
-    window.unsubStats = null;
-    window.unsubTurn = null;
+    window.unsubNotes = null; window.unsubCombat = null; window.unsubStats = null; window.unsubTurn = null;
 
     window.setupNotesListener = () => {
         if(!window.isAuthReady) return;
-        
-        // Unsubscribe from previous session to prevent data leaks
         if (window.unsubNotes) window.unsubNotes();
-
         window.unsubNotes = window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
             if(doc.exists()) {
                 const d = doc.data();
@@ -835,22 +827,20 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
                 structuredNotes.enemyNotes = d.structuredEnemyNotes || [];
                 structuredNotes.npcNotes = d.structuredNpcNotes || [];
                 structuredNotes.lootNotes = d.structuredLootNotes || [];
-                if(currentTab==='notes') renderStructuredNotes(currentSubTab);
             } else {
-                // New session, clean slate
                 structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
-                if(currentTab==='notes') renderStructuredNotes(currentSubTab);
             }
+            if(currentTab==='notes') renderStructuredNotes(currentSubTab);
         });
     };
 
     window.setupCombatDataListeners = () => {
         if(!window.isAuthReady) return;
         const status = document.getElementById('db-status');
-        
         if (window.unsubCombat) window.unsubCombat();
         if (window.unsubTurn) window.unsubTurn();
 
+        // Note: 'shared_combatants' is now a top-level collection in the session folder
         window.unsubCombat = window.onSnapshot(window.query(getCol('shared_combatants')), (snap) => {
             combatants = []; 
             snap.forEach(d => combatants.push({id: d.id, ...d.data()}));
@@ -867,9 +857,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 
     window.setupStatblocksListener = () => {
         if(!window.isAuthReady) return;
-        
         if (window.unsubStats) window.unsubStats();
-
         window.unsubStats = window.onSnapshot(window.query(getCol('dm_toolkit_statblocks')), (snap) => {
             savedStatblocks = []; 
             snap.forEach(d => savedStatblocks.push({id: d.id, ...d.data()}));
@@ -878,7 +866,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
         });
     };
 
-// --- 6. CORE APP FUNCTIONS ---
+    // --- 6. CORE FUNCTIONS ---
     window.switchTab = function(tabId) {
         currentTab = tabId;
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -926,7 +914,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
     window.toggleCollapse = (id) => { const el = document.getElementById(`content-${id}`); if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; } };
     window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
     window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
-    
     window.editNote = (id, tab) => {
         const n = structuredNotes[tab].find(x => x.id === id); if(!n) return;
         document.getElementById('modal-note-id').value = id; document.getElementById('modal-tab-name').value = tab;
@@ -1012,7 +999,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
         } catch (error) { console.error("Error updating statblock:", error); }
     };
 
-// --- 9. DICE LOGIC ---
+    // --- 9. DICE LOGIC ---
     window.rollD20 = function() { lastRoll = Math.floor(Math.random() * 20) + 1; document.getElementById('last-roll-display').textContent = lastRoll; const btn = document.getElementById('assign-roll-button'); if(btn) btn.disabled = combatants.length === 0 || lastRoll === 0; };
     window.assignInitiativeRoll = async function() { const selector = document.getElementById('combatant-selector'); const selectedIndex = parseInt(selector.value, 10); if (isNaN(selectedIndex) || selectedIndex < 0 || lastRoll === 0) return; const c = combatants[selectedIndex]; const modifier = c.initModifier || 0; const newInitiative = lastRoll + modifier; try { await window.updateDoc(getDocRef('shared_combatants', c.id), { init: newInitiative }); } catch (error) { console.error(error); } lastRoll = 0; document.getElementById('last-roll-display').textContent = '?'; selector.value = ''; document.getElementById('assign-roll-button').disabled = true; };
     window.rollSimple = function(sides) { document.getElementById('dice-num').value = 1; document.getElementById('dice-type').value = sides; document.getElementById('dice-mod').value = 0; window.rollCustomDice(); };
@@ -1048,24 +1035,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 
     // Helper Function for Title Generation
     function generateTitleFromContent(content) {
-        // Check for Rich HTML Title
         const htmlTitleMatch = content.match(/<div class="dnd-header">(.*?)<\/div>/);
-        if (htmlTitleMatch) {
-            return htmlTitleMatch[1].trim();
-        }
-        // Create a temporary element to parse HTML structure safely
+        if (htmlTitleMatch) { return htmlTitleMatch[1].trim(); }
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = content;
-        // Replace <br> tags with actual newlines so regex works
         tempDiv.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
         tempDiv.querySelectorAll('div, p').forEach(block => block.after('\n')); 
         const textContent = tempDiv.textContent || "";
-        // Try to find markdown header (# or ##) in the clean text
         const headerMatch = textContent.match(/^#+\s*(.*?)$/m);
-        if (headerMatch) {
-            return headerMatch[1].trim();
-        }
-        // Fallback: Use the first non-empty line
+        if (headerMatch) { return headerMatch[1].trim(); }
         const firstLine = textContent.split('\n').find(line => line.trim().length > 0) || "";
         const cleanLine = firstLine.replace(/^[#*>\s]+/, '').trim(); 
         const shortTitle = cleanLine.substring(0, 50);
@@ -1106,7 +1084,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
             const data = await callAI(API_URL, { contents: [{ parts: [{ text: `Generate 5e monster statblock for "${name}" CR "${cr}". Return strictly JSON.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } });
             lastGeneratedMonster = JSON.parse(data.candidates[0].content.parts[0].text);
             const stats = lastGeneratedMonster;
-            const getMod = (s) => Math.floor((s-10)/2); const fmt = (s) => {const m=getMod(s); return m>=0?`+${m}`:m;};
             output.innerHTML = `<div class="dnd-statblock text-left"><div class="dnd-header">${stats.name}</div><div class="italic text-black text-sm">${stats.size} ${stats.type}, ${stats.alignment}</div><div class="tapered-rule"></div><div class="text-sm text-red-900"><p><strong>AC</strong> ${stats.armor_class}</p><p><strong>HP</strong> ${stats.hit_points}</p><p><strong>Spd</strong> ${stats.speed}</p></div><div class="tapered-rule"></div><div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold"><div>STR ${stats.ability_scores.STR}</div><div>DEX ${stats.ability_scores.DEX}</div><div>CON ${stats.ability_scores.CON}</div><div>INT ${stats.ability_scores.INT}</div><div>WIS ${stats.ability_scores.WIS}</div><div>CHA ${stats.ability_scores.CHA}</div></div><div class="tapered-rule"></div><div class="text-sm text-black space-y-2 mt-2">${stats.actions.map(a=>`<div><strong>${a.name}.</strong> ${a.description}</div>`).join('')}</div></div>`;
             document.getElementById('save-options-monster').classList.remove('hidden');
         } catch(e) { output.textContent = "Error: " + e.message; }
@@ -1177,15 +1154,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
         window.switchTab('notes'); window.switchSubTab(destinationTab);
     };
 
-    // --- 11. STARTUP & AUTH LISTENER (CRITICAL FIX) ---
-    // Runs automatically when Firebase connects. Because it's at the bottom, all variables above exist.
+    // --- 11. STARTUP & AUTH LISTENER ---
     onAuthStateChanged(window.auth, async (user) => {
-        // Force Clear Data to prevent leakage between sessions
+        // Force Clear Data to ensure privacy on switch/refresh
         combatants = []; 
         savedStatblocks = []; 
         structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
         
-        // Re-render empty state to visually clear screen
+        // Re-render empty state
         if(typeof renderCombatants === 'function') renderCombatants();
         if(typeof renderStatblocks === 'function') renderStatblocks();
         if(typeof renderStructuredNotes === 'function') renderStructuredNotes(currentSubTab);
