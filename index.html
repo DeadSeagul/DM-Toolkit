@@ -693,7 +693,111 @@
     <!-- Snow Visuals Canvas -->
     <canvas id="snow-canvas"></canvas>
 
-    <script>
+    <script type="module">
+    
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, setLogLevel, addDoc, updateDoc, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Expose Firebase functions globally
+        window.doc = doc; window.setDoc = setDoc; window.deleteDoc = deleteDoc; window.collection = collection;
+        window.query = query; window.onSnapshot = onSnapshot; window.addDoc = addDoc; window.getDoc = getDoc; 
+        window.updateDoc = updateDoc; window.orderBy = orderBy; window.writeBatch = writeBatch; 
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signOut = signOut;
+
+        // --- AUTH & CONFIGURATION ---
+        const manualFirebaseConfig = {
+            apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
+            authDomain: "aegisdmtoolkit.firebaseapp.com",
+            projectId: "aegisdmtoolkit",
+            storageBucket: "aegisdmtoolkit.firebasestorage.app",
+            messagingSenderId: "654767294266",
+            appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
+        };
+        
+        const app = initializeApp(manualFirebaseConfig);
+        window.db = getFirestore(app);
+        window.auth = getAuth(app);
+        window.userId = null; 
+        window.isAuthReady = false;
+
+        // UI Helpers
+        window.openLoginModal = () => { document.getElementById('login-modal').classList.remove('hidden'); document.getElementById('session-name-input').focus(); };
+        window.closeLoginModal = () => { document.getElementById('login-modal').classList.add('hidden'); };
+        
+        window.handleSessionLogin = async () => {
+            const name = document.getElementById('session-name-input').value.trim();
+            const pass = document.getElementById('session-pass-input').value.trim();
+            const status = document.getElementById('login-status');
+            
+            if (!name || !pass) { status.textContent = "Enter Name & Password"; return; }
+            if (pass.length < 6) { status.textContent = "Password too short (6+ chars)"; return; }
+            status.textContent = "Connecting...";
+            
+            const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
+            try {
+                await signInWithEmailAndPassword(window.auth, email, pass);
+                closeLoginModal();
+            } catch (error) {
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+                    try {
+                        await createUserWithEmailAndPassword(window.auth, email, pass);
+                        closeLoginModal();
+                    } catch (e) { status.textContent = "Error: " + e.message; }
+                } else { status.textContent = "Error: " + error.message; }
+            }
+        };
+
+        window.logoutUser = async () => {
+            await signOut(window.auth);
+            window.location.reload();
+        };
+
+        function updateLoginUI(user) {
+            const loginBtn = document.getElementById('login-btn');
+            const userProfile = document.getElementById('user-profile');
+            const userName = document.getElementById('user-name');
+            const userAvatar = document.getElementById('user-avatar');
+            
+            if (user && !user.isAnonymous) {
+                if(loginBtn) loginBtn.classList.add('hidden');
+                if(userProfile) userProfile.classList.remove('hidden');
+                const name = user.email.split('@')[0].replace(/_/g, ' ');
+                if(userName) userName.textContent = name;
+                if(userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${name}&background=6366f1&color=fff&size=128`;
+            } else {
+                if(loginBtn) loginBtn.classList.remove('hidden');
+                if(userProfile) userProfile.classList.add('hidden');
+            }
+        }
+
+        // --- MAIN AUTH LISTENER (Now safely at the bottom) ---
+        onAuthStateChanged(window.auth, async (user) => {
+            if (user) {
+                console.log("✅ Logged in as:", user.uid);
+                window.userId = user.uid;
+                window.isAuthReady = true;
+                updateLoginUI(user);
+                
+                // Clear and Reload Data
+                if(typeof structuredNotes !== 'undefined') {
+                    combatants = [];
+                    savedStatblocks = [];
+                    structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+                    
+                    // Start Listeners
+                    if(window.setupNotesListener) window.setupNotesListener();
+                    if(window.setupCombatDataListeners) window.setupCombatDataListeners();
+                    if(window.setupStatblocksListener) window.setupStatblocksListener();
+                }
+            } else {
+                console.log("⚠️ No user, signing in anonymously...");
+                try { await signInAnonymously(window.auth); } catch(e) {}
+            }
+        });
+    
         // --- Global State ---
         let currentTab = 'improv', currentSubTab = 'prepNotes', savedStatblocks = [], lastGeneratedNpc = null, lastGeneratedMonster = null, combatants = [], currentTurnIndex = -1, lastRoll = 0;
         let structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
