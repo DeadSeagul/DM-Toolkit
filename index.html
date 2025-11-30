@@ -2377,34 +2377,10 @@
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Restore API Key
-            if(userApiKey) {
-                const keyInput = document.getElementById('user-api-key');
-                if(keyInput) keyInput.value = userApiKey;
-                window.updateApiKey(userApiKey);
-            }
-            
-            // 2. Apply Theme
+            if(userApiKey) document.getElementById('user-api-key').value = userApiKey;
+            window.updateApiKey(userApiKey);
             applyTheme();
-            
-            // 3. Set Default Tab
             switchTab('improv');
-
-            // 4. FINAL CHECK: Did we log in while the page was loading?
-            // If yes, the top code skipped loading. We do it now.
-            if (window.isAuthReady && window.userId) {
-                console.log("DOM Ready. Triggering delayed data load.");
-                
-                // Clear old data to be safe
-                combatants = [];
-                savedStatblocks = [];
-                structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
-                
-                // Connect the Listeners
-                if (window.setupNotesListener) window.setupNotesListener();
-                if (window.setupCombatDataListeners) window.setupCombatDataListeners();
-                if (window.setupStatblocksListener) window.setupStatblocksListener();
-            }
         });
 
         // --- Fix for Dice Reset ---
