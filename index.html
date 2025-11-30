@@ -1462,10 +1462,17 @@
         })();
 
         // --- Statblocks ---
+window.unsubStats = null;
+
         window.setupStatblocksListener = () => {
             if(!window.isAuthReady) return;
-            window.onSnapshot(window.query(getCol('dm_toolkit_statblocks')), (snap) => {
-                savedStatblocks = []; snap.forEach(d => savedStatblocks.push({id: d.id, ...d.data()}));
+            
+            // Unsubscribe old listener
+            if (window.unsubStats) window.unsubStats();
+
+            window.unsubStats = window.onSnapshot(window.query(getCol('dm_toolkit_statblocks')), (snap) => {
+                savedStatblocks = []; 
+                snap.forEach(d => savedStatblocks.push({id: d.id, ...d.data()}));
                 savedStatblocks.sort((a,b) => a.name.localeCompare(b.name));
                 renderStatblocks();
             });
