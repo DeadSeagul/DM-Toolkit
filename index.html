@@ -1120,21 +1120,32 @@
 
         // ... Keep the rest of your save/load logic below this line ...
         // --- Combat Logic ---
+        window.unsubCombat = null;
+        window.unsubTurn = null;
+
         window.setupCombatDataListeners = () => {
             if(!window.isAuthReady) return;
             const status = document.getElementById('db-status');
-            window.onSnapshot(window.query(getCol('shared_combatants')), (snap) => {
-                combatants = []; snap.forEach(d => combatants.push({id: d.id, ...d.data()}));
+            
+            // Unsubscribe old listeners
+            if (window.unsubCombat) window.unsubCombat();
+            if (window.unsubTurn) window.unsubTurn();
+
+            // New Listener: Combatants
+            window.unsubCombat = window.onSnapshot(window.query(getCol('shared_combatants')), (snap) => {
+                combatants = []; 
+                snap.forEach(d => combatants.push({id: d.id, ...d.data()}));
                 combatants.sort((a,b) => (b.init||0) - (a.init||0));
                 renderCombatants();
                 if(status) { status.textContent = "Connected"; status.className = "text-xs px-2 py-1 rounded bg-gray-700 text-green-400"; }
             });
-            window.onSnapshot(getSharedDoc('shared_combat_state'), (doc) => {
+
+            // New Listener: Turn State
+            window.unsubTurn = window.onSnapshot(getSharedDoc('shared_combat_state'), (doc) => {
                 currentTurnIndex = doc.exists() ? (doc.data().currentTurnIndex || 0) : -1;
                 renderCombatants();
             });
         };
-
         // Helper for Conditions
         const dndConditions = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious', 'Exhaustion', 'Concentrating'];
 
