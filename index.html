@@ -2452,13 +2452,26 @@
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
-            if(userApiKey) document.getElementById('user-api-key').value = userApiKey;
-            window.updateApiKey(userApiKey);
+            // 1. Restore API Key
+            if(userApiKey) {
+                const keyInput = document.getElementById('user-api-key');
+                if(keyInput) keyInput.value = userApiKey;
+                window.updateApiKey(userApiKey);
+            }
             
-            // Apply Theme on Load
+            // 2. Apply Theme
             applyTheme();
             
+            // 3. Set Default Tab
             switchTab('improv');
+
+            // 4. CRITICAL FIX: If Firebase is already ready (User Refreshed), load data NOW.
+            if (window.isAuthReady && window.userId) {
+                console.log("App ready & User detected. Loading data...");
+                if (window.setupNotesListener) window.setupNotesListener();
+                if (window.setupCombatDataListeners) window.setupCombatDataListeners();
+                if (window.setupStatblocksListener) window.setupStatblocksListener();
+            }
         });
 
         // --- Fix for Dice Reset ---
