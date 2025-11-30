@@ -1007,17 +1007,6 @@
         // --- Firebase Helpers (UPDATED FOR PRIVATE SESSIONS) ---
         
         // 1. Helper to determine where to save data
-        // If logged in, save to "sessions/USER_ID". If not, save to "public".
-        const getDataPath = () => {
-            if (window.userId) {
-                return ['sessions', window.userId];
-            }
-            return ['public', 'default']; 
-        };
-
-        // --- Firebase Helpers (UPDATED FOR PRIVATE SESSIONS) ---
-        
-        // 1. Helper to determine where to save data
         const getDataPath = () => {
             if (window.userId) {
                 return ['sessions', window.userId]; // Private folder
@@ -1118,7 +1107,6 @@
         };
         window.closeEditModal = () => document.getElementById('edit-modal').classList.add('hidden');
 
-        // ... Keep the rest of your save/load logic below this line ...
         // --- Combat Logic ---
         window.unsubCombat = null;
         window.unsubTurn = null;
@@ -1146,6 +1134,7 @@
                 renderCombatants();
             });
         };
+
         // Helper for Conditions
         const dndConditions = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious', 'Exhaustion', 'Concentrating'];
 
@@ -1155,8 +1144,6 @@
             if (!c) return;
             const current = c.conditions || [];
             if (current.includes(cond)) return; // No duplicates
-            
-            // We read local, modify, then push to DB (simpler without needing new imports)
             const updated = [...current, cond];
             await window.updateDoc(getDocRef('shared_combatants', id), { conditions: updated });
         };
@@ -1195,7 +1182,6 @@
                         <div class="font-semibold text-sm text-white truncate">${c.name}</div>
                         <div class="text-xs text-gray-300">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</div>
                         
-                        <!-- Conditions Section -->
                         <div class="mt-2">
                             <div class="flex flex-wrap gap-1 mb-1">${conditionBadges}</div>
                             <select onchange="addCondition('${c.id}', this.value); this.value='';" class="bg-gray-800 text-[10px] text-gray-400 border border-gray-600 rounded px-1 py-0.5 focus:outline-none focus:border-indigo-500">
@@ -1245,18 +1231,18 @@
 
         window.delCombatant = async (id) => await window.deleteDoc(getDocRef('shared_combatants', id));
         window.clearCombat = async () => {
-             const batch = window.writeBatch(window.db);
-             combatants.forEach(c => batch.delete(getDocRef('shared_combatants', c.id)));
-             batch.delete(getSharedDoc('shared_combat_state'));
-             await batch.commit();
+            const batch = window.writeBatch(window.db);
+            combatants.forEach(c => batch.delete(getDocRef('shared_combatants', c.id)));
+            batch.delete(getSharedDoc('shared_combat_state'));
+            await batch.commit();
         };
         window.nextTurn = async () => {
-             if(!combatants.length) return;
-             const next = (currentTurnIndex + 1) % combatants.length;
-             await window.setDoc(getSharedDoc('shared_combat_state'), { currentTurnIndex: next });
+            if(!combatants.length) return;
+            const next = (currentTurnIndex + 1) % combatants.length;
+            await window.setDoc(getSharedDoc('shared_combat_state'), { currentTurnIndex: next });
         };
         window.sortInitiative = async () => {
-             await window.setDoc(getSharedDoc('shared_combat_state'), { currentTurnIndex: 0 });
+            await window.setDoc(getSharedDoc('shared_combat_state'), { currentTurnIndex: 0 });
         };
         
         // --- Dice Roller ---
@@ -1286,7 +1272,6 @@
             document.getElementById('assign-roll-button').disabled = true;
         }
         
-        // --- Helper for Quick Rolls ---
         window.rollSimple = function(sides) {
             document.getElementById('dice-num').value = 1;
             document.getElementById('dice-type').value = sides;
@@ -1313,7 +1298,6 @@
 
             let totalRoll = 0;
             const rolls = [];
-            let critString = ""; // For nat 20/1 effects if needed visually
 
             for (let i = 0; i < numDice; i++) {
                 const roll = Math.floor(Math.random() * diceType) + 1;
@@ -1324,36 +1308,27 @@
             const finalTotal = totalRoll + modifier;
             const modString = modifier > 0 ? `+${modifier}` : (modifier < 0 ? `${modifier}` : '');
 
-            // Visual flair for result
             resultDisplay.textContent = finalTotal;
-            resultDisplay.className = "text-2xl font-bold text-white animate-pulse"; // Reset animation
-            
-            // Remove animation class after delay so it can re-trigger
-            setTimeout(() => {
-                 resultDisplay.className = "text-2xl font-bold text-white";
-            }, 200);
+            resultDisplay.className = "text-2xl font-bold text-white animate-pulse";
+            setTimeout(() => { resultDisplay.className = "text-2xl font-bold text-white"; }, 200);
             
             let detailsText = `[${rolls.join(', ')}]`;
             if (modifier !== 0) detailsText += ` ${modString}`;
             detailsDisplay.textContent = `${numDice}d${diceType}${modString}: ${detailsText}`;
 
-            // TRIGGER VISUALS
             if (window.throwDiceVisuals) {
                 window.throwDiceVisuals(rolls, diceType);
             }
-        }; // <--- Fixed Semicolon
+        };
 
-// --- DICE VISUALS (Colors, Textures & Spin Fix) ---
+        // --- DICE VISUALS (Colors, Textures & Spin Fix) ---
         (function() {
             const canvas = document.getElementById('dice-canvas');
             if(!canvas) return;
             const ctx = canvas.getContext('2d');
             let dice = [];
-            
-            // Global to hold the uploaded image
             window.customDiceImage = null;
 
-            // Function to handle file upload
             window.uploadDiceTexture = function(input) {
                 if (input.files && input.files[0]) {
                     const reader = new FileReader();
@@ -1377,28 +1352,18 @@
                     this.vx = (Math.random()-0.5)*20; 
                     this.vy = -(Math.random() * 15 + 20); 
                     this.angle = 0; this.vAngle = 0.2;
-                    
-                    // Color fallback
                     const picker = document.getElementById('dice-color-picker');
                     this.color = picker ? picker.value : '#6366f1';
                 }
                 
                 update() { 
                     this.vy += 1; this.x += this.vx; this.y += this.vy; this.angle += this.vAngle;
-                    
-                    // Floor Collision
                     if(this.y > canvas.height - 50) { 
                         this.y = canvas.height - 50; 
                         this.vy *= -0.6; 
                         this.vx *= 0.9; 
-
-                        // If moving very slowly, stop spinning completely
-                        if(Math.abs(this.vx) < 0.5 && Math.abs(this.vy) < 1) {
-                            this.vAngle = 0;
-                        }
+                        if(Math.abs(this.vx) < 0.5 && Math.abs(this.vy) < 1) { this.vAngle = 0; }
                     } 
-                    
-                    // Wall Collision
                     if(this.x < 20 || this.x > canvas.width - 20) this.vx *= -0.8;
                 }
                 
@@ -1406,9 +1371,7 @@
                     ctx.save(); 
                     ctx.translate(this.x, this.y); 
                     ctx.rotate(this.angle);
-                    
                     ctx.beginPath();
-                    // Draw Shape Path
                     if(this.type === 4) { ctx.moveTo(0,-20); ctx.lineTo(20,15); ctx.lineTo(-20,15); } 
                     else if(this.type === 6) { ctx.rect(-15,-15,30,30); } 
                     else if(this.type === 8 || this.type === 10) { ctx.moveTo(0,-25); ctx.lineTo(15,0); ctx.lineTo(0,25); ctx.lineTo(-15,0); } 
@@ -1416,31 +1379,16 @@
                     else { for(let i=0;i<6;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/6), 22*Math.sin(i*2*Math.PI/6)); } 
                     ctx.closePath();
                     
-                    // FILL LOGIC: Use Image if exists, otherwise Color
                     if (window.customDiceImage) {
-                        ctx.save();
-                        ctx.clip(); // Clip image to the shape defined above
-                        // Draw image centered and scaled to cover the die
-                        ctx.drawImage(window.customDiceImage, -25, -25, 50, 50);
-                        ctx.restore();
+                        ctx.save(); ctx.clip(); ctx.drawImage(window.customDiceImage, -25, -25, 50, 50); ctx.restore();
                     } else {
-                        ctx.fillStyle = this.color;
-                        ctx.fill();
+                        ctx.fillStyle = this.color; ctx.fill();
                     }
 
-                    // Border & Text
-                    ctx.strokeStyle = 'white';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                    
-                    ctx.fillStyle = 'white'; 
-                    ctx.shadowColor = 'black';
-                    ctx.shadowBlur = 4;
-                    ctx.font = 'bold 14px Arial'; 
-                    ctx.textAlign = 'center'; 
-                    ctx.textBaseline = 'middle';
+                    ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+                    ctx.fillStyle = 'white'; ctx.shadowColor = 'black'; ctx.shadowBlur = 4;
+                    ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                     ctx.fillText(this.val, 0, 2); 
-                    
                     ctx.restore();
                 }
             }
@@ -1454,15 +1402,12 @@
 
             window.throwDiceVisuals = (rolls, type) => {
                 dice = rolls.map(r => new VisualDie(r, type));
-                setTimeout(() => {
-                    dice = [];
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                }, 3500);
+                setTimeout(() => { dice = []; ctx.clearRect(0, 0, canvas.width, canvas.height); }, 3500);
             };
         })();
 
         // --- Statblocks ---
-window.unsubStats = null;
+        window.unsubStats = null;
 
         window.setupStatblocksListener = () => {
             if(!window.isAuthReady) return;
@@ -1477,39 +1422,39 @@ window.unsubStats = null;
                 renderStatblocks();
             });
         };
+        
         function renderStatblocks() {
-             const list = document.getElementById('statblocks-list'); if(!list) return;
-             list.innerHTML = savedStatblocks.length ? '' : '<p class="text-center text-gray-500">No stats.</p>';
-             savedStatblocks.forEach(s => {
-                 const div = document.createElement('div'); div.className = 'card p-2 mb-2 bg-gray-800';
-                 // Safe string escape for function call
-                 const safeName = s.name.replace(/'/g, "\\'");
-                 div.innerHTML = `<div class="flex justify-between font-bold text-indigo-300"><span>${s.name}</span><div class="gap-2 flex"><button onclick="editStatblock('${s.id}')" class="text-xs text-blue-400">Edit</button><button onclick="delStat('${s.id}')" class="text-xs text-red-400">Del</button></div></div>
-                 <div class="text-xs text-gray-300 grid grid-cols-2 gap-1 mt-1"><span>HP: ${s.hp}</span><span>AC: ${s.ac}</span><span>Hit: ${s.toHit}</span><span>Init: ${s.initMod}</span></div>
-                 <div class="text-xs text-yellow-500 mt-1 truncate">${s.dmg}</div>
-                 <button onclick="importStat('${safeName}', ${s.hp}, ${s.initMod}, ${s.ac})" class="w-full bg-purple-900 text-xs rounded mt-2 py-1">Add to Tracker</button>`;
-                 list.appendChild(div);
-             });
+            const list = document.getElementById('statblocks-list'); if(!list) return;
+            list.innerHTML = savedStatblocks.length ? '' : '<p class="text-center text-gray-500">No stats.</p>';
+            savedStatblocks.forEach(s => {
+                const div = document.createElement('div'); div.className = 'card p-2 mb-2 bg-gray-800';
+                const safeName = s.name.replace(/'/g, "\\'");
+                div.innerHTML = `<div class="flex justify-between font-bold text-indigo-300"><span>${s.name}</span><div class="gap-2 flex"><button onclick="editStatblock('${s.id}')" class="text-xs text-blue-400">Edit</button><button onclick="delStat('${s.id}')" class="text-xs text-red-400">Del</button></div></div>
+                <div class="text-xs text-gray-300 grid grid-cols-2 gap-1 mt-1"><span>HP: ${s.hp}</span><span>AC: ${s.ac}</span><span>Hit: ${s.toHit}</span><span>Init: ${s.initMod}</span></div>
+                <div class="text-xs text-yellow-500 mt-1 truncate">${s.dmg}</div>
+                <button onclick="importStat('${safeName}', ${s.hp}, ${s.initMod}, ${s.ac})" class="w-full bg-purple-900 text-xs rounded mt-2 py-1">Add to Tracker</button>`;
+                list.appendChild(div);
+            });
         }
         window.saveStatblock = async () => {
-             const name = document.getElementById('stat-name').value.trim(); if(!name) return;
-             await window.addDoc(getCol('dm_toolkit_statblocks'), {
-                 name, hp: parseInt(document.getElementById('stat-hp').value)||0,
-                 ac: parseInt(document.getElementById('stat-ac').value)||0,
-                 toHit: parseInt(document.getElementById('stat-tohit').value)||0,
-                 initMod: parseInt(document.getElementById('stat-init-mod').value)||0,
-                 dmg: document.getElementById('stat-dmg').value,
-                 timestamp: new Date().toISOString()
-             });
-             document.getElementById('stat-name').value = '';
+            const name = document.getElementById('stat-name').value.trim(); if(!name) return;
+            await window.addDoc(getCol('dm_toolkit_statblocks'), {
+                name, hp: parseInt(document.getElementById('stat-hp').value)||0,
+                ac: parseInt(document.getElementById('stat-ac').value)||0,
+                toHit: parseInt(document.getElementById('stat-tohit').value)||0,
+                initMod: parseInt(document.getElementById('stat-init-mod').value)||0,
+                dmg: document.getElementById('stat-dmg').value,
+                timestamp: new Date().toISOString()
+            });
+            document.getElementById('stat-name').value = '';
         };
         window.delStat = async (id) => await window.deleteDoc(getDocRef('dm_toolkit_statblocks', id));
         window.importStat = (n, h, i, a) => {
-             document.getElementById('combatant-name').value = n; 
-             document.getElementById('combatant-hp').value = h;
-             document.getElementById('combatant-init').value = i; 
-             document.getElementById('combatant-ac').value = a;
-             switchTab('combat');
+            document.getElementById('combatant-name').value = n; 
+            document.getElementById('combatant-hp').value = h;
+            document.getElementById('combatant-init').value = i; 
+            document.getElementById('combatant-ac').value = a;
+            switchTab('combat');
         };
         
         // Statblock Edit Modal Functions
