@@ -1015,35 +1015,108 @@
             return ['public', 'default']; 
         };
 
-        // --- Firebase Helpers (UPDATED FOR PRIVATE CLOUD SESSIONS) ---
-
-        // 1. Helper to decide where to look: Public vs Private
+        // --- Firebase Helpers (UPDATED FOR PRIVATE SESSIONS) ---
+        
+        // 1. Helper to determine where to save data
         const getDataPath = () => {
             if (window.userId) {
-                // If logged in, go to: artifacts/{appId}/sessions/{userId}/data
-                return ['sessions', window.userId];
+                return ['sessions', window.userId]; // Private folder
             }
-            // If NOT logged in, go to: artifacts/{appId}/public/default/data
-            return ['public', 'default']; 
+            return ['public', 'default']; // Public folder
         };
 
-        // 2. Access a list of items (like all combatants or all statblocks)
         const getCol = (name) => {
             const path = getDataPath();
             return window.collection(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', path[0], path[1], 'data', name);
         };
 
-        // 3. Access a specific item by ID (to update HP, delete a note, etc)
         const getDocRef = (col, id) => {
             const path = getDataPath();
             return window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', path[0], path[1], 'data', col, id);
         };
 
-        // 4. Access a shared document (like the combat turn counter or the notes file)
         const getSharedDoc = (name) => {
             const path = getDataPath();
             return window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', path[0], path[1], 'data', 'dm_toolkit_data', name);
         };
+
+        window.saveStructuredNotes = async (tab, data) => {
+            if(!window.isAuthReady) return;
+            const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+            try { await window.setDoc(getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error(e); }
+        };
+
+        // --- Robust Listeners (Handles Switching Sessions) ---
+        window.unsubNotes = null;
+
+        window.setupNotesListener = () => {
+            if(!window.isAuthReady) return;
+            
+            // Unsubscribe from old listener
+            if (window.unsubNotes) window.unsubNotes();
+
+            window.unsubNotes = window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
+                if(doc.exists()) {
+                    const d = doc.data();
+                    structuredNotes.prepNotes = d.structuredPrepNotes || [];
+                    structuredNotes.enemyNotes = d.structuredEnemyNotes || [];
+                    structuredNotes.npcNotes = d.structuredNpcNotes || [];
+                    structuredNotes.lootNotes = d.structuredLootNotes || [];
+                    if(currentTab==='notes') renderStructuredNotes(currentSubTab);
+                } else {
+                    structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+                    if(currentTab==='notes') renderStructuredNotes(currentSubTab);
+                }
+            });
+        };
+
+        function renderStructuredNotes(tab) {
+            const list = document.getElementById(`${tab}-list`);
+            if(!list) return;
+            list.innerHTML = structuredNotes[tab].length ? '' : '<p class="text-center text-gray-500 pt-8">No notes.</p>';
+            structuredNotes[tab].forEach(n => {
+                const div = document.createElement('div'); div.className = 'note-item card p-0 rounded-lg shadow-md'; div.id = `note-${n.id}`;
+                div.innerHTML = `<div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')"><span class="font-bold text-indigo-300 truncate">${n.title}</span><span class="text-gray-400">▼</span></div>
+                <div class="collapsible-content" id="content-${n.id}">
+                    <div class="flex justify-end p-2 gap-2 border-b border-gray-700 mb-2">
+                        <button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold">Edit</button>
+                        <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold">Delete</button>
+                    </div>
+                    <div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div>
+                </div>`;
+                list.appendChild(div);
+            });
+        }
+
+        window.toggleCollapse = (id) => {
+            const el = document.getElementById(`content-${id}`);
+            if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; }
+        };
+
+        window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+        window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+        
+        window.editNote = (id, tab) => {
+            const n = structuredNotes[tab].find(x => x.id === id);
+            if(!n) return;
+            document.getElementById('modal-note-id').value = id; document.getElementById('modal-tab-name').value = tab;
+            document.getElementById('modal-title').value = n.title; 
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = n.content;
+            document.getElementById('modal-content').value = tempDiv.textContent.trim(); 
+            document.getElementById('edit-modal').classList.remove('hidden');
+        };
+        window.saveEditedNote = () => {
+            const id = document.getElementById('modal-note-id').value, tab = document.getElementById('modal-tab-name').value;
+            const idx = structuredNotes[tab].findIndex(x => x.id === id);
+            if(idx > -1) {
+                structuredNotes[tab][idx].title = document.getElementById('modal-title').value;
+                structuredNotes[tab][idx].content = document.getElementById('modal-content').value;
+                window.saveStructuredNotes(tab, structuredNotes[tab]);
+            }
+            document.getElementById('edit-modal').classList.add('hidden');
+        };
+        window.closeEditModal = () => document.getElementById('edit-modal').classList.add('hidden');
 
         // ... Keep the rest of your save/load logic below this line ...
         // --- Combat Logic ---
