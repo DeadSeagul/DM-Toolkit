@@ -729,6 +729,77 @@
     let isChristmasMode = localStorage.getItem('aegis_theme') === 'christmas';
     let lastGeneratedNpc = null, lastGeneratedMonster = null, lastRoll = 0;
 
+// --- 2.5 THEME & SNOW ENGINE (RESTORED) ---
+    window.toggleTheme = function() {
+        isChristmasMode = !isChristmasMode;
+        localStorage.setItem('aegis_theme', isChristmasMode ? 'christmas' : 'default');
+        applyTheme();
+    };
+
+    function applyTheme() {
+        if (isChristmasMode) {
+            document.body.classList.add('christmas-mode');
+            startSnow();
+        } else {
+            document.body.classList.remove('christmas-mode');
+            stopSnow();
+        }
+    }
+
+    // Snow Logic
+    let snowInterval;
+    const snowCanvas = document.getElementById('snow-canvas');
+    const snowCtx = snowCanvas ? snowCanvas.getContext('2d') : null;
+    let snowflakes = [];
+
+    function startSnow() {
+        if (!snowCanvas || snowInterval) return;
+        snowCanvas.width = window.innerWidth;
+        snowCanvas.height = window.innerHeight;
+        snowflakes = [];
+        for (let i = 0; i < 100; i++) {
+            snowflakes.push({
+                x: Math.random() * snowCanvas.width,
+                y: Math.random() * snowCanvas.height,
+                r: Math.random() * 3 + 1,
+                speed: Math.random() * 0.5 + 0.2
+            });
+        }
+        snowInterval = setInterval(drawSnow, 50);
+    }
+
+    function stopSnow() {
+        if (snowInterval) { clearInterval(snowInterval); snowInterval = null; }
+        if (snowCtx) snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+    }
+
+    function drawSnow() {
+        if (!snowCtx) return;
+        snowCtx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+        snowCtx.fillStyle = "rgba(255, 255, 255, 0.6)";
+        snowCtx.beginPath();
+        for (let i = 0; i < snowflakes.length; i++) {
+            let f = snowflakes[i];
+            snowCtx.moveTo(f.x, f.y);
+            snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2, true);
+        }
+        snowCtx.fill();
+        moveSnow();
+    }
+
+    let angle = 0;
+    function moveSnow() {
+        angle += 0.005;
+        for (let i = 0; i < snowflakes.length; i++) {
+            let f = snowflakes[i];
+            f.y += f.speed;
+            f.x += Math.sin(angle + f.y/50) * 0.2;
+            if (f.y > snowCanvas.height) { f.y = -10; f.x = Math.random() * snowCanvas.width; }
+            if (f.x > snowCanvas.width + 5) f.x = -5;
+            if (f.x < -5) f.x = snowCanvas.width + 5;
+        }
+    }
+
     // --- 3. PRIVATE SESSION HELPERS (FIXED PATHS) ---
     const getDataPath = () => {
         if (window.userId) return ['sessions', window.userId];
