@@ -1004,86 +1004,37 @@
             }
         };
 
-        // --- Firebase Helpers ---
-        // Access shared/public data for the current app
-        const getCol = (name) => window.collection(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', 'public', 'data', name);
-        const getDocRef = (col, id) => window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', 'public', 'data', col, id);
-        const getSharedDoc = (name) => window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', 'public', 'data', 'dm_toolkit_data', name);
-
-        window.saveStructuredNotes = async (tab, data) => {
-            if(!window.isAuthReady) return;
-            const field = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
-            try { await window.setDoc(getSharedDoc('shared_notes'), { [field]: data }, { merge: true }); } catch(e) { console.error(e); }
-        };
-
-        window.setupNotesListener = () => {
-            if(!window.isAuthReady) return;
-            window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
-                if(doc.exists()) {
-                    const d = doc.data();
-                    structuredNotes.prepNotes = d.structuredPrepNotes || [];
-                    structuredNotes.enemyNotes = d.structuredEnemyNotes || [];
-                    structuredNotes.npcNotes = d.structuredNpcNotes || [];
-                    structuredNotes.lootNotes = d.structuredLootNotes || [];
-                    if(currentTab==='notes') renderStructuredNotes(currentSubTab);
-                }
-            });
-        };
-
-        function renderStructuredNotes(tab) {
-            const list = document.getElementById(`${tab}-list`);
-            if(!list) return;
-            list.innerHTML = structuredNotes[tab].length ? '' : '<p class="text-center text-gray-500 pt-8">No notes.</p>';
-            structuredNotes[tab].forEach(n => {
-                const div = document.createElement('div'); div.className = 'note-item card p-0 rounded-lg shadow-md'; div.id = `note-${n.id}`;
-                // Use innerHTML content as raw HTML, which is necessary if we save rich HTML blocks (like the statblocks)
-                div.innerHTML = `<div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')"><span class="font-bold text-indigo-300 truncate">${n.title}</span><span class="text-gray-400">▼</span></div>
-                <div class="collapsible-content" id="content-${n.id}">
-                    <div class="flex justify-end p-2 gap-2 border-b border-gray-700 mb-2">
-                        <button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold">Edit</button>
-                        <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold">Delete</button>
-                    </div>
-                    <div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div>
-                </div>`;
-                list.appendChild(div);
-            });
-        }
-
-        window.toggleCollapse = (id) => {
-            const el = document.getElementById(`content-${id}`);
-            if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; }
-        };
-
-        window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
-        window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+        // --- Firebase Helpers (UPDATED FOR PRIVATE SESSIONS) ---
         
-        // Note: When loading content into the textarea, we use textContent to strip HTML, which is correct for manual editing.
-        // For rendering, we use innerHTML (see renderStructuredNotes)
-        window.editNote = (id, tab) => {
-            const n = structuredNotes[tab].find(x => x.id === id);
-            if(!n) return;
-            document.getElementById('modal-note-id').value = id; document.getElementById('modal-tab-name').value = tab;
-            document.getElementById('modal-title').value = n.title; 
-            
-            // To edit, we should only expose the plain text content. If the content contains rich HTML (like the D&D blocks), the user should use the monster tab for that structure.
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = n.content;
-            document.getElementById('modal-content').value = tempDiv.textContent.trim(); 
-            
-            document.getElementById('edit-modal').classList.remove('hidden');
-        };
-        window.saveEditedNote = () => {
-            const id = document.getElementById('modal-note-id').value, tab = document.getElementById('modal-tab-name').value;
-            const idx = structuredNotes[tab].findIndex(x => x.id === id);
-            if(idx > -1) {
-                structuredNotes[tab][idx].title = document.getElementById('modal-title').value;
-                structuredNotes[tab][idx].content = document.getElementById('modal-content').value;
-                window.saveStructuredNotes(tab, structuredNotes[tab]);
+        // 1. Helper to determine where to save data
+        // If logged in, save to "sessions/USER_ID". If not, save to "public".
+        const getDataPath = () => {
+            if (window.userId) {
+                return ['sessions', window.userId];
             }
-            document.getElementById('edit-modal').classList.add('hidden');
+            return ['public', 'default']; 
         };
-        window.closeEditModal = () => document.getElementById('edit-modal').classList.add('hidden');
 
+        // 2. Updated Collection Getter
+        const getCol = (name) => {
+            const path = getDataPath();
+            // Path: artifacts/{appId}/{session_or_public}/{id}/data/{name}
+            return window.collection(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', path[0], path[1], 'data', name);
+        };
+
+        // 3. Updated Doc Reference Getter (for specific items like combatants)
+        const getDocRef = (col, id) => {
+            const path = getDataPath();
+            return window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', path[0], path[1], 'data', col, id);
+        };
+
+        // 4. Updated Shared Doc Getter (for Notes/State)
+        const getSharedDoc = (name) => {
+            const path = getDataPath();
+            return window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', path[0], path[1], 'data', 'dm_toolkit_data', name);
+        };
+
+        // ... Keep the rest of your save/load logic below this line ...
         // --- Combat Logic ---
         window.setupCombatDataListeners = () => {
             if(!window.isAuthReady) return;
