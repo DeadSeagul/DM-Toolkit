@@ -1257,14 +1257,89 @@
         if(userApiKey) { document.getElementById('user-api-key').value = userApiKey; window.updateApiKey(userApiKey); }
         if(isChristmasMode) document.body.classList.add('christmas-mode');
         window.switchTab('improv');
-        // Dice visual setup
+        // --- DICE VISUALS (Colors, Textures & Reset Fixed) ---
         (function() {
-            const canvas = document.getElementById('dice-canvas'); if(!canvas) return; const ctx = canvas.getContext('2d'); let dice = []; window.customDiceImage = null;
-            window.uploadDiceTexture = function(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { window.customDiceImage = img; }; img.src = e.target.result; }; reader.readAsDataURL(input.files[0]); } };
-            function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; } window.addEventListener('resize', resize); resize();
-            class VisualDie { constructor(val, type) { this.val = val; this.type = type; this.x = canvas.width/2; this.y = canvas.height + 30; this.vx = (Math.random()-0.5)*20; this.vy = -(Math.random() * 15 + 20); this.angle = 0; this.vAngle = 0.2; const picker = document.getElementById('dice-color-picker'); this.color = picker ? picker.value : '#6366f1'; } update() { this.vy += 1; this.x += this.vx; this.y += this.vy; this.angle += this.vAngle; if(this.y > canvas.height - 50) { this.y = canvas.height - 50; this.vy *= -0.6; this.vx *= 0.9; if(Math.abs(this.vx) < 0.5 && Math.abs(this.vy) < 1) { this.vAngle = 0; } } if(this.x < 20 || this.x > canvas.width - 20) this.vx *= -0.8; } draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.beginPath(); if(this.type === 4) { ctx.moveTo(0,-20); ctx.lineTo(20,15); ctx.lineTo(-20,15); } else if(this.type === 6) { ctx.rect(-15,-15,30,30); } else if(this.type === 8 || this.type === 10) { ctx.moveTo(0,-25); ctx.lineTo(15,0); ctx.lineTo(0,25); ctx.lineTo(-15,0); } else if(this.type === 12) { for(let i=0;i<5;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/5-Math.PI/2), 22*Math.sin(i*2*Math.PI/5-Math.PI/2)); } else { for(let i=0;i<6;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/6), 22*Math.sin(i*2*Math.PI/6)); } ctx.closePath(); if (window.customDiceImage) { ctx.save(); ctx.clip(); ctx.drawImage(window.customDiceImage, -25, -25, 50, 50); ctx.restore(); } else { ctx.fillStyle = this.color; ctx.fill(); } ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = 'white'; ctx.shadowColor = 'black'; ctx.shadowBlur = 4; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(this.val, 0, 2); ctx.restore(); } }
-            function animate() { ctx.clearRect(0,0,canvas.width,canvas.height); dice.forEach(d => { d.update(); d.draw(); }); requestAnimationFrame(animate); } animate();
-            window.throwDiceVisuals = (rolls, type) => { dice = rolls.map(r => new VisualDie(r, type)); setTimeout(() => { dice = []; ctx.clearRect(0, 0, canvas.width, canvas.height); }, 3500); };
+            const canvas = document.getElementById('dice-canvas'); 
+            if(!canvas) return; 
+            const ctx = canvas.getContext('2d'); 
+            let dice = []; 
+            window.customDiceImage = null; // Global variable for the image
+
+            window.uploadDiceTexture = function(input) { 
+                if (input.files && input.files[0]) { 
+                    const reader = new FileReader(); 
+                    reader.onload = function(e) { 
+                        const img = new Image(); 
+                        img.onload = function() { window.customDiceImage = img; }; 
+                        img.src = e.target.result; 
+                    }; 
+                    reader.readAsDataURL(input.files[0]); 
+                } 
+            };
+
+            // --- THE MISSING FUNCTION ---
+            window.resetDiceTexture = function() {
+                // 1. Clear the image from the visualizer
+                window.customDiceImage = null;
+                // 2. Clear the input so you can re-upload the same file if needed
+                const input = document.getElementById('dice-texture-input');
+                if(input) input.value = "";
+            };
+
+            function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; } 
+            window.addEventListener('resize', resize); resize();
+
+            class VisualDie { 
+                constructor(val, type) { 
+                    this.val = val; this.type = type; 
+                    this.x = canvas.width/2; this.y = canvas.height + 30; 
+                    this.vx = (Math.random()-0.5)*20; this.vy = -(Math.random() * 15 + 20); 
+                    this.angle = 0; this.vAngle = 0.2; 
+                    const picker = document.getElementById('dice-color-picker'); 
+                    this.color = picker ? picker.value : '#6366f1'; 
+                } 
+                update() { 
+                    this.vy += 1; this.x += this.vx; this.y += this.vy; this.angle += this.vAngle; 
+                    if(this.y > canvas.height - 50) { 
+                        this.y = canvas.height - 50; this.vy *= -0.6; this.vx *= 0.9; 
+                        if(Math.abs(this.vx) < 0.5 && Math.abs(this.vy) < 1) { this.vAngle = 0; } 
+                    } 
+                    if(this.x < 20 || this.x > canvas.width - 20) this.vx *= -0.8; 
+                } 
+                draw() { 
+                    ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.beginPath(); 
+                    if(this.type === 4) { ctx.moveTo(0,-20); ctx.lineTo(20,15); ctx.lineTo(-20,15); } 
+                    else if(this.type === 6) { ctx.rect(-15,-15,30,30); } 
+                    else if(this.type === 8 || this.type === 10) { ctx.moveTo(0,-25); ctx.lineTo(15,0); ctx.lineTo(0,25); ctx.lineTo(-15,0); } 
+                    else if(this.type === 12) { for(let i=0;i<5;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/5-Math.PI/2), 22*Math.sin(i*2*Math.PI/5-Math.PI/2)); } 
+                    else { for(let i=0;i<6;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/6), 22*Math.sin(i*2*Math.PI/6)); } 
+                    ctx.closePath(); 
+                    
+                    // Draw Image or Color
+                    if (window.customDiceImage) { 
+                        ctx.save(); ctx.clip(); ctx.drawImage(window.customDiceImage, -25, -25, 50, 50); ctx.restore(); 
+                    } else { 
+                        ctx.fillStyle = this.color; ctx.fill(); 
+                    } 
+                    
+                    ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke(); 
+                    ctx.fillStyle = 'white'; ctx.shadowColor = 'black'; ctx.shadowBlur = 4; 
+                    ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; 
+                    ctx.fillText(this.val, 0, 2); ctx.restore(); 
+                } 
+            }
+
+            function animate() { 
+                ctx.clearRect(0,0,canvas.width,canvas.height); 
+                dice.forEach(d => { d.update(); d.draw(); }); 
+                requestAnimationFrame(animate); 
+            } 
+            animate();
+
+            window.throwDiceVisuals = (rolls, type) => { 
+                dice = rolls.map(r => new VisualDie(r, type)); 
+                setTimeout(() => { dice = []; ctx.clearRect(0, 0, canvas.width, canvas.height); }, 3500); 
+            };
         })();
         // --- FULL SOUNDBOARD LOGIC ---
         const ac = new (window.AudioContext||window.webkitAudioContext)();
