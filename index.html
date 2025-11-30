@@ -1353,10 +1353,53 @@
                 ambNodes.push({ stop: () => { clearInterval(iv1); clearInterval(iv2); } });
             }
             else if (t === 'city') {
-                const rumble = ac.createBufferSource(); rumble.buffer = noiseBuf; rumble.loop = true; const rumbleFilter = ac.createBiquadFilter(); rumbleFilter.type = 'lowpass'; rumbleFilter.frequency.value = 150; const rumbleGain = ac.createGain(); rumbleGain.gain.value = 0.1; rumble.connect(rumbleFilter); rumbleFilter.connect(rumbleGain); rumbleGain.connect(masterGain); rumble.start(now); ambNodes.push(rumble, rumbleGain);
-                const iv1 = setInterval(() => { if (Math.random() > 0.6) { playNote(400 + Math.random() * 100, ac.currentTime, 0.1, 'square', 0.05); } }, 2000);
-                const iv2 = setInterval(() => { if (Math.random() > 0.85) { const t = ac.currentTime; playNote(220, t, 2.5, 'sine', 0.15); playNote(554, t, 1.5, 'sine', 0.05); } }, 8000);
-                ambNodes.push({ stop: () => { clearInterval(iv1); clearInterval(iv2); } });
+                // 1. Background Crowd Noise (Pink Noise Filtered)
+                const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; 
+                const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 200; // Higher freq for "chatter"
+                const gain = ac.createGain(); gain.gain.value = 0.08;
+                noise.connect(filter); filter.connect(gain); gain.connect(masterGain); 
+                noise.start(now); ambNodes.push(noise, gain);
+
+                // 2. Street Musician (Procedural Lute Music)
+                // Scale: D Dorian (Folk/Medieval feel) - D, E, F, G, A, B, C
+                const scale = [146.83, 164.81, 174.61, 196.00, 220.00, 246.94, 261.63, 293.66];
+                let beat = 0;
+                
+                const musicIv = setInterval(() => {
+                    const t = ac.currentTime;
+                    
+                    // Steady Bass Line (Walking rhythm)
+                    if (beat % 4 === 0) playLute(scale[0], t, 0.8); // Root (D)
+                    if (beat % 4 === 2) playLute(scale[4], t, 0.6); // Fifth (A)
+
+                    // Improvised Melody (High Octave)
+                    if (Math.random() > 0.4) {
+                        const noteIdx = Math.floor(Math.random() * scale.length);
+                        const note = scale[noteIdx] * 2; // Up one octave
+                        const timing = t + (Math.random() * 0.05); // Humanize timing slightly
+                        playLute(note, timing, 0.3);
+                    }
+
+                    // Occasional Strum (Chord)
+                    if (beat % 8 === 0 && Math.random() > 0.6) {
+                        playLute(scale[0], t + 0.05, 0.5);
+                        playLute(scale[2], t + 0.10, 0.5);
+                        playLute(scale[4], t + 0.15, 0.5);
+                    }
+                    beat++;
+                }, 350); // Tempo: approx 170bpm (Walking pace)
+
+                // 3. Distant Town Sounds (Bells, shouts)
+                const sfxIv = setInterval(() => {
+                     if (Math.random() > 0.95) {
+                         // Distant Church Bell
+                         const bellT = ac.currentTime;
+                         playNote(523.25, bellT, 2.0, 'sine', 0.1);
+                         playNote(261.63, bellT, 2.0, 'triangle', 0.05);
+                     }
+                }, 2000);
+
+                ambNodes.push({ stop: () => { clearInterval(musicIv); clearInterval(sfxIv); } });
             }
             else if (t === 'tavern') {
                 const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 150; const gain = ac.createGain(); gain.gain.value = 0.25; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); ambNodes.push(noise, gain);
