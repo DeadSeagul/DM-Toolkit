@@ -1015,20 +1015,31 @@
             return ['public', 'default']; 
         };
 
-        // 2. Updated Collection Getter
+        // --- Firebase Helpers (UPDATED FOR PRIVATE CLOUD SESSIONS) ---
+
+        // 1. Helper to decide where to look: Public vs Private
+        const getDataPath = () => {
+            if (window.userId) {
+                // If logged in, go to: artifacts/{appId}/sessions/{userId}/data
+                return ['sessions', window.userId];
+            }
+            // If NOT logged in, go to: artifacts/{appId}/public/default/data
+            return ['public', 'default']; 
+        };
+
+        // 2. Access a list of items (like all combatants or all statblocks)
         const getCol = (name) => {
             const path = getDataPath();
-            // Path: artifacts/{appId}/{session_or_public}/{id}/data/{name}
             return window.collection(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', path[0], path[1], 'data', name);
         };
 
-        // 3. Updated Doc Reference Getter (for specific items like combatants)
+        // 3. Access a specific item by ID (to update HP, delete a note, etc)
         const getDocRef = (col, id) => {
             const path = getDataPath();
             return window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', path[0], path[1], 'data', col, id);
         };
 
-        // 4. Updated Shared Doc Getter (for Notes/State)
+        // 4. Access a shared document (like the combat turn counter or the notes file)
         const getSharedDoc = (name) => {
             const path = getDataPath();
             return window.doc(window.db, 'artifacts', typeof __app_id!=='undefined'?__app_id:'default', path[0], path[1], 'data', 'dm_toolkit_data', name);
