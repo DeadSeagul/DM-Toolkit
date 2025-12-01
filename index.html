@@ -588,6 +588,19 @@
                 <div id="calc-xp-details" class="text-[10px] text-gray-500 mt-1"></div>
             </div>
             <button onclick="window.clearCalc()" class="mt-2 text-xs text-red-400 underline w-full text-center">Reset Calculator</button>
+        <details class="mt-4 pt-2 border-t border-gray-700 text-xs text-gray-400 select-none group">
+                <summary class="cursor-pointer hover:text-indigo-300 transition font-bold list-none flex items-center gap-2">
+                    <span>ℹ️ What is Daily Budget?</span>
+                </summary>
+                <div class="mt-2 pl-3 border-l-2 border-indigo-500 bg-gray-800/50 p-2 rounded">
+                    <p class="mb-2">The <strong>Daily Budget</strong> is the total amount of combat XP a party can handle before needing a <strong>Long Rest</strong> (Sleep).</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>33%</strong>: Safe. They can handle ~2 more fights like this today.</li>
+                        <li><strong>50%</strong>: Taxing. They can do 1 more fight like this.</li>
+                        <li><strong>100%+</strong>: <span class="text-red-400">NOVA.</span> They will likely burn all spell slots and abilities just to survive. Rest needed immediately.</li>
+                    </ul>
+                </div>
+            </details>
         </div>
         
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
