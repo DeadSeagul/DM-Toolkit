@@ -354,6 +354,7 @@
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('monsters')">🐲 Monsters</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('loot')">💰 Loot</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('maps')">🗺️ Maps</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('map-maker')">✏️ Map Maker</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('soundboard')">🔊 Sound</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('notes')">📜 Notes</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('help')">❓ Help</button>
@@ -667,6 +668,42 @@
                 </div>
             </div>
         
+        <!-- Map-Maker Tab -->
+        
+        <div id="map-maker" class="tab-content hidden">
+                <div class="card p-4 rounded-lg shadow-xl border border-indigo-500/30">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-indigo-300">Quick Map Architect</h2>
+                        <div class="flex gap-2">
+                            <button onclick="window.clearMap()" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs px-3 py-1 rounded border border-red-800">Clear</button>
+                            <button onclick="window.downloadMap()" class="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1 rounded font-bold shadow-lg">⬇️ Save Image</button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mb-4 bg-gray-800 p-2 rounded-lg border border-gray-700 justify-center">
+                        <button class="brush-btn active ring-2 ring-indigo-400 bg-gray-600 w-8 h-8 rounded" onclick="setBrush('stone', this)" title="Stone Floor"></button>
+                        <button class="brush-btn bg-green-800 w-8 h-8 rounded" onclick="setBrush('grass', this)" title="Grass"></button>
+                        <button class="brush-btn bg-blue-800 w-8 h-8 rounded" onclick="setBrush('water', this)" title="Water"></button>
+                        <button class="brush-btn bg-stone-900 border border-gray-500 w-8 h-8 rounded" onclick="setBrush('wall', this)" title="Wall"></button>
+                        <button class="brush-btn bg-yellow-900 w-8 h-8 rounded" onclick="setBrush('wood', this)" title="Wood Floor"></button>
+                        
+                        <div class="w-[1px] h-8 bg-gray-600 mx-2"></div>
+                        <button class="brush-btn bg-gray-700 w-8 h-8 rounded flex items-center justify-center text-lg" onclick="setBrush('door', this)" title="Door">🚪</button>
+                        <button class="brush-btn bg-gray-700 w-8 h-8 rounded flex items-center justify-center text-lg" onclick="setBrush('tree', this)" title="Tree">🌲</button>
+                        <button class="brush-btn bg-gray-700 w-8 h-8 rounded flex items-center justify-center text-lg" onclick="setBrush('chest', this)" title="Chest">📦</button>
+                        <button class="brush-btn bg-gray-700 w-8 h-8 rounded flex items-center justify-center text-lg" onclick="setBrush('enemy', this)" title="Enemy">💀</button>
+                        <button class="brush-btn bg-gray-700 w-8 h-8 rounded flex items-center justify-center text-lg" onclick="setBrush('fire', this)" title="Fire">🔥</button>
+                        
+                        <div class="w-[1px] h-8 bg-gray-600 mx-2"></div>
+                         <button class="brush-btn bg-red-900 w-8 h-8 rounded flex items-center justify-center text-lg border border-red-500" onclick="setBrush('eraser', this)" title="Eraser">✖️</button>
+                    </div>
+
+                    <div class="overflow-auto border border-gray-700 rounded-lg bg-gray-900 shadow-inner" style="max-height: 60vh;">
+                        <canvas id="map-canvas" width="800" height="600" class="cursor-crosshair mx-auto"></canvas>
+                    </div>
+                    <p class="text-center text-gray-500 text-xs mt-2">Click and drag to paint. Mouse wheel to scroll.</p>
+                </div>
+            </div>
 
             <!-- Soundboard Tab -->
             <div id="soundboard" class="tab-content hidden">
