@@ -1050,6 +1050,22 @@
         });
     };
 
+// --- Map Tab Switching Logic ---
+    window.switchMapSubTab = function(targetId, clickedBtn) {
+        // 1. Hide all map content areas
+        document.querySelectorAll('.map-content-area').forEach(el => el.classList.add('hidden'));
+        // 2. Show the target area
+        document.getElementById(targetId).classList.remove('hidden');
+        
+        // 3. Update button styles
+        document.querySelectorAll('.map-sub-tab').forEach(btn => {
+            btn.classList.remove('active', 'border-b-2', 'border-indigo-400', 'text-indigo-300');
+            btn.classList.add('text-gray-400');
+        });
+        clickedBtn.classList.add('active', 'border-b-2', 'border-indigo-400', 'text-indigo-300');
+        clickedBtn.classList.remove('text-gray-400');
+    };
+
     // --- 6. CORE FUNCTIONS ---
     window.switchTab = function(tabId) {
         window.currentTab = tabId;
