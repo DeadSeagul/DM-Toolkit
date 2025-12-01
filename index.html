@@ -1886,47 +1886,98 @@
         window.switchTab('combat');
     };
     
-    // --- 13. MAP MAKER ENGINE ---
+    // --- 13. DUNGEON SKETCHER ENGINE (Scrawl Style) ---
     (function() {
         const canvas = document.getElementById('map-canvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const TILE_SIZE = 40; // Size of grid squares
+        const TILE_SIZE = 40; 
         let isDrawing = false;
-        let currentBrush = 'stone'; 
-        let mapData = {}; // Stores grid state: "x,y": "type"
+        let currentBrush = 'floor'; 
+        let mapData = {}; // Stores: "x,y": "type"
 
-        // -- Drawing Functions --
-        const drawGrid = () => {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.lineWidth = 1;
-            for (let x = 0; x <= canvas.width; x += TILE_SIZE) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
-            for (let y = 0; y <= canvas.height; y += TILE_SIZE) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+        // 1. Generate the "Old School" Cross-hatch Pattern
+        const createHatchPattern = () => {
+            const pCanvas = document.createElement('canvas');
+            pCanvas.width = 20; pCanvas.height = 20;
+            const pCtx = pCanvas.getContext('2d');
+            
+            // Background (Paper color)
+            pCtx.fillStyle = '#e5e5e5'; // Light grey/parchment
+            pCtx.fillRect(0,0,20,20);
+            
+            // Hatch lines
+            pCtx.strokeStyle = '#a3a3a3'; // Darker grey lines
+            pCtx.lineWidth = 1;
+            pCtx.beginPath();
+            pCtx.moveTo(0, 20); pCtx.lineTo(20, 0); // Diagonal /
+            pCtx.stroke();
+            
+            // Create pattern object
+            return ctx.createPattern(pCanvas, 'repeat');
         };
+        
+        const hatchPattern = createHatchPattern();
 
-        const renderTile = (x, y, type) => {
-            const px = x * TILE_SIZE;
-            const py = y * TILE_SIZE;
+        // 2. The Main Render Loop
+        const drawMap = () => {
+            // A. Fill background with Hatching (The "Rock")
+            ctx.fillStyle = hatchPattern;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Clear tile first
-            ctx.clearRect(px, py, TILE_SIZE, TILE_SIZE);
+            // B. Draw the Grid (Subtle)
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let x = 0; x <= canvas.width; x += TILE_SIZE) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+            for (let y = 0; y <= canvas.height; y += TILE_SIZE) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+            ctx.stroke();
 
-            // Base Colors / Textures
-            if (type === 'stone') { ctx.fillStyle = '#3f3f46'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); ctx.strokeStyle='#52525b'; ctx.strokeRect(px,py,TILE_SIZE,TILE_SIZE); }
-            else if (type === 'grass') { ctx.fillStyle = '#14532d'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); } // Dark Green
-            else if (type === 'water') { ctx.fillStyle = '#1e3a8a'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); } // Deep Blue
-            else if (type === 'wall') { ctx.fillStyle = '#18181b'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); ctx.lineWidth=4; ctx.strokeStyle='#71717a'; ctx.strokeRect(px+2,py+2,TILE_SIZE-4,TILE_SIZE-4); }
-            else if (type === 'wood') { ctx.fillStyle = '#451a03'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); ctx.beginPath(); ctx.moveTo(px, py+10); ctx.lineTo(px+40, py+10); ctx.moveTo(px, py+20); ctx.lineTo(px+40, py+20); ctx.moveTo(px, py+30); ctx.lineTo(px+40, py+30); ctx.strokeStyle='#78350f'; ctx.stroke(); }
-            
-            // Object Overlays (Emojis)
-            else if (type === 'door') { ctx.fillStyle = '#3f3f46'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); ctx.font = '24px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🚪', px + 20, py + 22); }
-            else if (type === 'tree') { ctx.fillStyle = '#14532d'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); ctx.font = '24px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🌲', px + 20, py + 22); }
-            else if (type === 'chest') { ctx.fillStyle = '#3f3f46'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); ctx.font = '24px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('📦', px + 20, py + 22); }
-            else if (type === 'enemy') { ctx.fillStyle = '#3f3f46'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); ctx.font = '24px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('💀', px + 20, py + 22); }
-            else if (type === 'fire') { ctx.fillStyle = '#3f3f46'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE); ctx.font = '24px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🔥', px + 20, py + 22); }
-            
-            // Redraw grid border for this tile
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 1; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+            // C. Draw User Tiles based on mapData
+            for (const [key, type] of Object.entries(mapData)) {
+                const [x, y] = key.split(',').map(Number);
+                const px = x * TILE_SIZE;
+                const py = y * TILE_SIZE;
+
+                if (type === 'floor') {
+                    // Carved out floor (White/Clean)
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    // Border (Walls)
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+                }
+                else if (type === 'wall') {
+                    // Solid Block Wall
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                }
+                else if (type === 'door') {
+                    // Draw Floor first
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    // Draw Door Symbol
+                    ctx.fillStyle = '#5c4033'; // Brown
+                    ctx.fillRect(px + 10, py + 5, 20, 30);
+                    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(px + 10, py + 5, 20, 30);
+                    // Knob
+                    ctx.fillStyle = 'gold'; ctx.beginPath(); ctx.arc(px + 25, py + 20, 2, 0, Math.PI*2); ctx.fill();
+                }
+                else if (type === 'stairs') {
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.fillStyle = '#000';
+                    for(let i=5; i<35; i+=5) ctx.fillRect(px+5, py+i, 30, 2);
+                }
+                else if (type === 'column') {
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(px+20, py+20, 10, 0, Math.PI*2); ctx.fill();
+                }
+                else if (type === 'trap') {
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = 'red'; ctx.lineWidth=2; 
+                    ctx.beginPath(); ctx.moveTo(px+10, py+10); ctx.lineTo(px+30, py+30); ctx.moveTo(px+30, py+10); ctx.lineTo(px+10, py+30); ctx.stroke();
+                }
+            }
         };
 
         // -- Interaction --
@@ -1942,14 +1993,12 @@
             const key = `${x},${y}`;
             
             if (currentBrush === 'eraser') {
+                // "Filling Rock" actually just deletes the tile data, revealing the background pattern
                 delete mapData[key];
-                ctx.clearRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                // Redraw subtle grid
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 1; ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             } else {
                 mapData[key] = currentBrush;
-                renderTile(x, y, currentBrush);
             }
+            drawMap(); // Re-render entire scene
         };
 
         canvas.addEventListener('mousedown', (e) => { isDrawing = true; paint(e); });
@@ -1967,19 +2016,18 @@
         window.clearMap = () => {
             if(!confirm("Clear the map?")) return;
             mapData = {};
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
+            drawMap();
         };
 
         window.downloadMap = () => {
             const link = document.createElement('a');
-            link.download = 'My_Battlemap.png';
+            link.download = 'Dungeon_Sketch.png';
             link.href = canvas.toDataURL();
             link.click();
         };
 
-        // Init Grid
-        drawGrid();
+        // Initial Render
+        drawMap();
     })();
     
 </script>
