@@ -1683,6 +1683,32 @@
             }
         };
         
+        // --- MAP SHARING (iOS Fix) ---
+    window.shareMap = async (path, name) => {
+        try {
+            // 1. Fetch the image as a blob
+            const response = await fetch(path);
+            const blob = await response.blob();
+            
+            // 2. Create a file object
+            const file = new File([blob], `${name}.jpg`, { type: "image/jpeg" });
+
+            // 3. Trigger the Native Share Sheet
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: name,
+                    text: 'Here is a map for our D&D session!'
+                });
+            } else {
+                alert("Sharing not supported. Please long-press the image to save it.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Could not share image. Try long-pressing it!");
+        }
+    };
+        
         // --- END OF SOUNDBOARD LOGIC ---
 
         window.splitLoot = function() {
