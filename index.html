@@ -1569,19 +1569,14 @@
         };
     });
     
-    // --- 12. MONSTER COMPENDIUM (Expandable Statblocks) ---
-    
-    // Helper to calculate mod (e.g. 16 -> +3)
+    // --- 12. MONSTER COMPENDIUM (Search & Import) ---
+
+    // Helpers for formatting stats
     const getMod = (s) => Math.floor((s - 10) / 2);
     const fmtMod = (s) => { const m = getMod(s); return m >= 0 ? `+${m}` : m; };
-
-    // Helper to format speed object into string
     const fmtSpeed = (s) => {
         if (!s) return '30 ft.';
-        // Open5e returns objects like {walk: 30, fly: 60} or strings
-        if (typeof s === 'object') {
-            return Object.entries(s).map(([k, v]) => `${k} ${v} ft.`).join(', ');
-        }
+        if (typeof s === 'object') return Object.entries(s).map(([k, v]) => `${k} ${v} ft.`).join(', ');
         return s;
     };
 
@@ -1613,9 +1608,8 @@
                 const div = document.createElement('div');
                 div.className = 'bg-gray-800 rounded border border-gray-700 overflow-hidden mb-2';
                 
-                // 1. The Header (Always Visible)
                 div.innerHTML = `
-                    <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
+                    <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition select-none" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
                         <div>
                             <div class="font-bold text-blue-200 text-sm flex items-center gap-2">
                                 <span>${m.name}</span>
@@ -1623,7 +1617,7 @@
                             </div>
                             <div class="text-[10px] text-gray-400">CR ${m.challenge_rating} • ${m.type} • AC ${ac} • HP ${hp}</div>
                         </div>
-                        <button onclick="event.stopPropagation(); importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow-lg border border-green-500">
+                        <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow-lg border border-green-500">
                             + Add
                         </button>
                     </div>
@@ -1642,23 +1636,11 @@
                                 CHA ${m.charisma} (${fmtMod(m.charisma)})
                             </div>
                             
-                            ${m.special_abilities ? m.special_abilities.map(a => `
-                                <div class="mt-2 leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>
-                            `).join('') : ''}
-
-                            ${m.actions ? `
-                                <div class="dnd-section-title mt-2">Actions</div>
-                                ${m.actions.map(a => `
-                                    <div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>
-                                `).join('')}
-                            ` : ''}
+                            ${m.special_abilities ? m.special_abilities.map(a => `<div class="mt-2 leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('') : ''}
                             
-                            ${m.legendary_actions ? `
-                                <div class="dnd-section-title mt-2">Legendary Actions</div>
-                                ${m.legendary_actions.map(a => `
-                                    <div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>
-                                `).join('')}
-                            ` : ''}
+                            ${m.actions ? `<div class="dnd-section-title mt-2">Actions</div>${m.actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
+                            
+                            ${m.legendary_actions ? `<div class="dnd-section-title mt-2">Legendary Actions</div>${m.legendary_actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
                         </div>
                     </div>
                 `;
@@ -1669,6 +1651,24 @@
             console.error(error);
             list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data.</p>';
         }
+    };
+
+    // --- The Import Function (Restored) ---
+    window.importCompendiumMonster = async (name, hp, ac, initMod) => {
+        if(!window.isAuthReady) { alert("Please log in to a session first."); return; }
+        
+        // Add to Database
+        await window.addDoc(getCol('shared_combatants'), { 
+            name: name, 
+            init: 0, 
+            maxHp: hp, 
+            currentHp: hp, 
+            ac: ac, 
+            initModifier: initMod 
+        });
+        
+        // Switch to Combat Tab
+        window.switchTab('combat');
     };
 </script>
 
