@@ -1569,7 +1569,7 @@
         };
     });
     
-    // --- 12. MONSTER COMPENDIUM (Open5e API) ---
+    // --- 12. MONSTER COMPENDIUM (UPDATED: More Results) ---
     window.searchCompendium = async () => {
         const query = document.getElementById('compendium-search').value.trim();
         const list = document.getElementById('compendium-results');
@@ -1578,33 +1578,36 @@
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
         
         try {
-            // Fetch from Open5e API (SRD Content)
-            const res = await fetch(`https://api.open5e.com/monsters/?search=${query}&limit=10`);
+            // UPDATED: Limit increased to 50 to show Young/Ancient variants
+            // Added 'ordering' to try and sort by name relevance
+            const res = await fetch(`https://api.open5e.com/monsters/?search=${query}&limit=50&ordering=name`);
             const data = await res.json();
             
             list.innerHTML = '';
             
             if (data.results.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No monsters found.</p>';
+                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No monsters found in SRD.</p>';
                 return;
             }
 
             data.results.forEach(m => {
                 // Calculate Dex Mod for Initiative: (Score - 10) / 2, rounded down
-                const initMod = Math.floor((m.dexterity - 10) / 2);
+                const initMod = Math.floor(((m.dexterity || 10) - 10) / 2);
+                const hp = m.hit_points || 10;
+                const ac = m.armor_class || 10;
                 
                 const div = document.createElement('div');
                 div.className = 'bg-gray-800 p-3 rounded flex justify-between items-center border border-gray-700';
                 
-                // Escape name for safety
+                // Safe name for string passing
                 const safeName = m.name.replace(/'/g, "\\'");
                 
                 div.innerHTML = `
                     <div>
                         <div class="font-bold text-blue-200 text-sm">${m.name}</div>
-                        <div class="text-[10px] text-gray-400">CR ${m.challenge_rating} • ${m.type} • AC ${m.armor_class} • HP ${m.hit_points}</div>
+                        <div class="text-[10px] text-gray-400">CR ${m.challenge_rating} • ${m.type} • AC ${ac} • HP ${hp}</div>
                     </div>
-                    <button onclick="importCompendiumMonster('${safeName}', ${m.hit_points}, ${m.armor_class}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition">
+                    <button onclick="importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition">
                         + Add
                     </button>
                 `;
@@ -1620,21 +1623,16 @@
     window.importCompendiumMonster = async (name, hp, ac, initMod) => {
         if(!window.isAuthReady) { alert("Please log in to a session first."); return; }
         
-        // Add directly to the Combat Tracker (Private Session)
         await window.addDoc(getCol('shared_combatants'), { 
             name: name, 
-            init: 0, // Will need to be rolled
+            init: 0, 
             maxHp: hp, 
             currentHp: hp, 
             ac: ac, 
             initModifier: initMod 
         });
         
-        // Switch to Combat tab and show feedback
         window.switchTab('combat');
-        
-        // Optional: Scroll to top to see it
-        document.getElementById('combat').scrollIntoView({ behavior: 'smooth' });
     };
 </script>
 
