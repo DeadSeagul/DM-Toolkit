@@ -1683,29 +1683,33 @@
             }
         };
         
-        // --- MAP SHARING (iOS Fix) ---
+        // --- MAP SHARING (iOS Fix / Robust) ---
     window.shareMap = async (path, name) => {
+        // 1. Check for Basic Support
+        if (!navigator.share) {
+            alert("Your browser does not support sharing. Please long-press the image to save it.");
+            return;
+        }
+
         try {
-            // 1. Fetch the image as a blob
+            // 2. Fetch the image
             const response = await fetch(path);
             const blob = await response.blob();
             
-            // 2. Create a file object
+            // 3. Create a clean file object
             const file = new File([blob], `${name}.jpg`, { type: "image/jpeg" });
 
-            // 3. Trigger the Native Share Sheet
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: name,
-                    text: 'Here is a map for our D&D session!'
-                });
-            } else {
-                alert("Sharing not supported. Please long-press the image to save it.");
-            }
+            // 4. Share ONLY the file (This forces iOS to see it as an Image, enabling 'Save to Photos')
+            await navigator.share({
+                files: [file]
+            });
+
         } catch (e) {
-            console.error(e);
-            alert("Could not share image. Try long-pressing it!");
+            // Ignore "AbortError" (which happens if you just close the menu without picking anything)
+            if (e.name !== 'AbortError') {
+                console.error(e);
+                alert("Share failed. Possible reasons:\n1. Not on HTTPS (Secure Site)\n2. Browser restriction\n\nTry long-pressing the image to save!");
+            }
         }
     };
         
