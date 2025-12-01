@@ -1683,40 +1683,6 @@
             }
         };
         
-        // --- MAP SHARING (iOS Fix - Strict Mode) ---
-    window.shareMap = async (path, name) => {
-        try {
-            // 1. Fetch the raw image data
-            const response = await fetch(path);
-            const blob = await response.blob();
-            
-            // 2. Detect the REAL type (don't guess)
-            // iOS fails if we say it's a JPG but it's actually a PNG, etc.
-            const mimeType = blob.type || 'image/jpeg';
-            const extension = mimeType.split('/')[1] || 'jpg';
-            const fileName = `${name}.${extension}`;
-
-            // 3. Create the File object
-            const file = new File([blob], fileName, { type: mimeType });
-
-            // 4. Share ONLY the file. 
-            // Removing 'title' and 'text' forces iOS to treat this as an Image Save action.
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file]
-                });
-            } else {
-                throw new Error("Device does not support file sharing.");
-            }
-
-        } catch (e) {
-            // If it fails (or user cancels), offer a backup way to save
-            if (e.name !== 'AbortError') {
-                alert("Could not auto-save. Opening image in a new tab...\nPlease long-press the image to save it manually.");
-                window.open(path, '_blank');
-            }
-        }
-    };
         
         // --- END OF SOUNDBOARD LOGIC ---
 
