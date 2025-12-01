@@ -534,6 +534,62 @@
                 <p class="text-center text-gray-500 text-xs">Search for official 5e monsters.</p>
             </div>
         </div>
+        
+        <div class="card p-4 rounded-lg shadow-xl mb-6 border border-red-500/30">
+            <h2 class="text-xl font-semibold mb-4 text-red-300">⚖️ Encounter Calculator</h2>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-700">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Party Size</label>
+                    <input type="number" id="calc-party-size" value="4" min="1" class="w-full p-2 rounded-lg input-style text-center font-bold" onchange="window.calcEncounter()">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Avg Level</label>
+                    <input type="number" id="calc-party-level" value="3" min="1" max="20" class="w-full p-2 rounded-lg input-style text-center font-bold" onchange="window.calcEncounter()">
+                </div>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <select id="calc-cr" class="flex-1 p-2 rounded-lg input-style text-sm">
+                    <option value="10">CR 0 (10 XP)</option>
+                    <option value="25">CR 1/8 (25 XP)</option>
+                    <option value="50">CR 1/4 (50 XP)</option>
+                    <option value="100">CR 1/2 (100 XP)</option>
+                    <option value="200">CR 1 (200 XP)</option>
+                    <option value="450">CR 2 (450 XP)</option>
+                    <option value="700">CR 3 (700 XP)</option>
+                    <option value="1100">CR 4 (1,100 XP)</option>
+                    <option value="1800">CR 5 (1,800 XP)</option>
+                    <option value="2300">CR 6 (2,300 XP)</option>
+                    <option value="2900">CR 7 (2,900 XP)</option>
+                    <option value="3900">CR 8 (3,900 XP)</option>
+                    <option value="5000">CR 9 (5,000 XP)</option>
+                    <option value="5900">CR 10 (5,900 XP)</option>
+                    <option value="7200">CR 11 (7,200 XP)</option>
+                    <option value="8400">CR 12 (8,400 XP)</option>
+                    <option value="10000">CR 13 (10k XP)</option>
+                    <option value="11500">CR 14 (11.5k XP)</option>
+                    <option value="13000">CR 15 (13k XP)</option>
+                    <option value="15000">CR 16 (15k XP)</option>
+                    <option value="18000">CR 17 (18k XP)</option>
+                    <option value="20000">CR 18 (20k XP)</option>
+                    <option value="22000">CR 19 (22k XP)</option>
+                    <option value="25000">CR 20 (25k XP)</option>
+                </select>
+                <input type="number" id="calc-count" value="1" min="1" class="w-16 p-2 rounded-lg input-style text-center font-bold" placeholder="#">
+                <button onclick="window.addCalcMonster()" class="bg-red-700 hover:bg-red-600 text-white font-bold px-4 rounded-lg shadow-lg">+</button>
+            </div>
+
+            <div id="calc-monster-list" class="flex flex-wrap gap-2 mb-4 min-h-[2rem]"></div>
+
+            <div id="calc-result" class="bg-gray-900 p-4 rounded-lg text-center border border-gray-700 transition duration-300">
+                <div class="text-gray-500 text-xs uppercase tracking-widest mb-1">Difficulty</div>
+                <div id="calc-difficulty-text" class="text-2xl font-bold text-gray-500">Add Monsters...</div>
+                <div id="calc-xp-details" class="text-[10px] text-gray-500 mt-1"></div>
+            </div>
+            <button onclick="window.clearCalc()" class="mt-2 text-xs text-red-400 underline w-full text-center">Reset Calculator</button>
+        </div>
+        
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Monster Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -1795,6 +1851,102 @@
         });
         
         window.switchTab('combat');
+    };
+    
+    // --- 13. ENCOUNTER BALANCER ---
+    let calcMonsters = [];
+    
+    // XP Thresholds per Character Level [Level, Easy, Med, Hard, Deadly]
+    const xpThresholds = {
+        1: [25, 50, 75, 100], 2: [50, 100, 150, 200], 3: [75, 150, 225, 400], 4: [125, 250, 375, 500],
+        5: [250, 500, 750, 1100], 6: [300, 600, 900, 1400], 7: [350, 750, 1100, 1700], 8: [450, 900, 1400, 2100],
+        9: [550, 1100, 1600, 2400], 10: [600, 1200, 1900, 2800], 11: [800, 1600, 2400, 3600], 12: [1000, 2000, 3000, 4500],
+        13: [1100, 2200, 3400, 5100], 14: [1250, 2500, 3800, 5700], 15: [1400, 2800, 4300, 6400], 16: [1600, 3200, 4800, 7200],
+        17: [2000, 3900, 5900, 8800], 18: [2100, 4200, 6300, 9500], 19: [2400, 4900, 7300, 10900], 20: [2800, 5700, 8500, 12700]
+    };
+
+    window.addCalcMonster = () => {
+        const select = document.getElementById('calc-cr');
+        const xp = parseInt(select.value);
+        const count = parseInt(document.getElementById('calc-count').value) || 1;
+        const label = select.options[select.selectedIndex].text;
+        
+        for(let i=0; i<count; i++) calcMonsters.push(xp);
+        window.calcEncounter();
+    };
+
+    window.removeCalcMonster = (index) => {
+        calcMonsters.splice(index, 1);
+        window.calcEncounter();
+    };
+
+    window.clearCalc = () => {
+        calcMonsters = [];
+        window.calcEncounter();
+    };
+
+    window.calcEncounter = () => {
+        const list = document.getElementById('calc-monster-list');
+        const resultBox = document.getElementById('calc-result');
+        const diffText = document.getElementById('calc-difficulty-text');
+        const xpDetail = document.getElementById('calc-xp-details');
+        
+        // 1. Render List
+        list.innerHTML = '';
+        calcMonsters.forEach((xp, idx) => {
+            const tag = document.createElement('span');
+            tag.className = 'bg-gray-700 text-gray-200 text-xs px-2 py-1 rounded cursor-pointer hover:bg-red-900';
+            tag.innerHTML = `${xp} XP &times;`;
+            tag.onclick = () => window.removeCalcMonster(idx);
+            list.appendChild(tag);
+        });
+
+        if (calcMonsters.length === 0) {
+            diffText.textContent = "Add Monsters...";
+            diffText.className = "text-2xl font-bold text-gray-500";
+            resultBox.className = "bg-gray-900 p-4 rounded-lg text-center border border-gray-700";
+            xpDetail.textContent = "";
+            return;
+        }
+
+        // 2. Calculate Math
+        const partySize = parseInt(document.getElementById('calc-party-size').value) || 4;
+        const level = parseInt(document.getElementById('calc-party-level').value) || 1;
+        
+        // Total Raw XP
+        const totalXP = calcMonsters.reduce((a, b) => a + b, 0);
+        
+        // Multiplier based on count (DMG p.82)
+        let mult = 1;
+        const n = calcMonsters.length;
+        if (n === 2) mult = 1.5;
+        else if (n >= 3 && n <= 6) mult = 2;
+        else if (n >= 7 && n <= 10) mult = 2.5;
+        else if (n >= 11 && n <= 14) mult = 3;
+        else if (n >= 15) mult = 4;
+
+        // Adjusted XP for Difficulty
+        const adjustedXP = totalXP * mult;
+
+        // Party Thresholds
+        const thresholds = xpThresholds[level] || xpThresholds[1];
+        const partyEasy = thresholds[0] * partySize;
+        const partyMed = thresholds[1] * partySize;
+        const partyHard = thresholds[2] * partySize;
+        const partyDeadly = thresholds[3] * partySize;
+
+        // Determine Rating
+        let rating = "Trivial";
+        let colorClass = "text-gray-400 border-gray-600";
+
+        if (adjustedXP >= partyDeadly) { rating = "💀 Deadly"; colorClass = "text-red-500 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]"; }
+        else if (adjustedXP >= partyHard) { rating = "Hard"; colorClass = "text-orange-400 border-orange-400"; }
+        else if (adjustedXP >= partyMed) { rating = "Medium"; colorClass = "text-yellow-300 border-yellow-300"; }
+        else if (adjustedXP >= partyEasy) { rating = "Easy"; colorClass = "text-green-400 border-green-400"; }
+
+        diffText.textContent = rating;
+        resultBox.className = `bg-gray-900 p-4 rounded-lg text-center border-2 transition duration-300 ${colorClass}`;
+        xpDetail.textContent = `Adjusted XP: ${adjustedXP} (Daily Budget: ${Math.round((adjustedXP / (partyDeadly*3))*100)}%)`;
     };
     
     
