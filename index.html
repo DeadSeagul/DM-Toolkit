@@ -1037,14 +1037,48 @@
     function renderCombatants() { 
         const list = document.getElementById('initiative-list'); if(!list) return; 
         list.innerHTML = combatants.length ? '' : '<p class="text-center text-gray-500 pt-8">No combatants.</p>'; 
+        
         const conditionOptions = dndConditions.map(cond => `<option value="${cond}">${cond}</option>`).join('');
+        
         combatants.forEach((c, idx) => { 
             const active = idx === currentTurnIndex ? 'bg-indigo-700 glow-shadow' : 'bg-gray-700'; 
+            
+            // 1. Format the Modifier (e.g. "+3" or "-1")
+            // We use (c.initModifier || 0) to ensure it doesn't break if undefined
+            const modVal = parseInt(c.initModifier) || 0;
+            const modStr = (modVal >= 0 ? '+' : '') + modVal;
+
+            // Condition Badges
             const conditionBadges = (c.conditions || []).map(cond => `<span onclick="removeCondition('${c.id}', '${cond}')" class="inline-block cursor-pointer bg-red-900/80 hover:bg-red-800 text-red-100 text-[10px] px-1.5 py-0.5 rounded border border-red-700 mr-1 mb-1 select-none">${cond} &times;</span>`).join('');
+            
             const div = document.createElement('div'); div.className = `flex items-start space-x-2 p-3 rounded-lg transition ${active}`; 
-            div.innerHTML = `<div class="text-lg font-bold w-6 text-center text-white pt-1">${c.init}</div><div class="flex-1 min-w-0"><div class="font-semibold text-sm text-white truncate">${c.name}</div><div class="text-xs text-gray-300">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</div><div class="mt-2"><div class="flex flex-wrap gap-1 mb-1">${conditionBadges}</div><select onchange="addCondition('${c.id}', this.value); this.value='';" class="bg-gray-800 text-[10px] text-gray-400 border border-gray-600 rounded px-1 py-0.5"><option value="">+ Condition</option>${conditionOptions}</select></div></div><div class="flex flex-col items-end gap-2"><div class="flex items-center gap-1"><input type="number" id="dmg-${idx}" class="w-10 p-1 text-xs rounded text-black" placeholder="Amt"><button onclick="modHp('${c.id}', ${idx}, 1)" class="bg-green-600 hover:bg-green-500 px-2 py-1 rounded text-xs font-bold">Heal</button><button onclick="modHp('${c.id}', ${idx}, -1)" class="bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-xs font-bold">Dmg</button></div><button onclick="delCombatant('${c.id}')" class="text-gray-400 hover:text-red-400 text-xs underline">Remove</button></div>`; 
+            
+            div.innerHTML = `
+                <div class="flex flex-col items-center justify-center w-12 mr-1 pt-1">
+                    <div class="text-xl font-bold text-white leading-none">${c.init}</div>
+                    <div class="text-[10px] text-gray-400 font-mono mt-1" title="Dex Modifier">(${modStr})</div>
+                </div>
+
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-sm text-white truncate">${c.name}</div>
+                    <div class="text-xs text-gray-300">HP: ${c.currentHp}/${c.maxHp} | AC: ${c.ac}</div>
+                    <div class="mt-2">
+                        <div class="flex flex-wrap gap-1 mb-1">${conditionBadges}</div>
+                        <select onchange="addCondition('${c.id}', this.value); this.value='';" class="bg-gray-800 text-[10px] text-gray-400 border border-gray-600 rounded px-1 py-0.5"><option value="">+ Condition</option>${conditionOptions}</select>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col items-end gap-2">
+                    <div class="flex items-center gap-1">
+                        <input type="number" id="dmg-${idx}" class="w-10 p-1 text-xs rounded text-black" placeholder="Amt">
+                        <button onclick="modHp('${c.id}', ${idx}, 1)" class="bg-green-600 hover:bg-green-500 px-2 py-1 rounded text-xs font-bold">Heal</button>
+                        <button onclick="modHp('${c.id}', ${idx}, -1)" class="bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-xs font-bold">Dmg</button>
+                    </div>
+                    <button onclick="delCombatant('${c.id}')" class="text-gray-400 hover:text-red-400 text-xs underline">Remove</button>
+                </div>`; 
             list.appendChild(div); 
         }); 
+        
         const sel = document.getElementById('combatant-selector');
         if(sel) { sel.innerHTML = '<option value="" disabled selected>Target</option>'; combatants.forEach((c,i) => sel.innerHTML += `<option value="${i}">${c.name}</option>`); }
         const btn = document.getElementById('assign-roll-button'); if(btn) btn.disabled = combatants.length === 0 || lastRoll === 0;
