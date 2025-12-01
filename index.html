@@ -1569,7 +1569,7 @@
         };
     });
     
-    // --- 12. MONSTER COMPENDIUM (Search & Import) ---
+    // --- 12. MONSTER COMPENDIUM (Search, Expand, & Import) ---
 
     // Helpers for formatting stats
     const getMod = (s) => Math.floor((s - 10) / 2);
@@ -1599,7 +1599,9 @@
             }
 
             data.results.forEach((m, index) => {
+                // 1. CALCULATE INITIATIVE MODIFIER (Dexterity Mod)
                 const initMod = getMod(m.dexterity || 10);
+                
                 const hp = m.hit_points || 10;
                 const ac = m.armor_class || 10;
                 const safeName = m.name.replace(/'/g, "\\'");
@@ -1615,7 +1617,9 @@
                                 <span>${m.name}</span>
                                 <span class="text-[10px] text-gray-500">▼</span>
                             </div>
-                            <div class="text-[10px] text-gray-400">CR ${m.challenge_rating} • ${m.type} • AC ${ac} • HP ${hp}</div>
+                            <div class="text-[10px] text-gray-400">
+                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp} • Init ${initMod >= 0 ? '+'+initMod : initMod}
+                            </div>
                         </div>
                         <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow-lg border border-green-500">
                             + Add
@@ -1635,11 +1639,8 @@
                                 WIS ${m.wisdom} (${fmtMod(m.wisdom)}), 
                                 CHA ${m.charisma} (${fmtMod(m.charisma)})
                             </div>
-                            
                             ${m.special_abilities ? m.special_abilities.map(a => `<div class="mt-2 leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('') : ''}
-                            
                             ${m.actions ? `<div class="dnd-section-title mt-2">Actions</div>${m.actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
-                            
                             ${m.legendary_actions ? `<div class="dnd-section-title mt-2">Legendary Actions</div>${m.legendary_actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
                         </div>
                     </div>
@@ -1653,21 +1654,20 @@
         }
     };
 
-    // --- The Import Function (Restored) ---
+    // --- The Import Function (Saves Init Mod) ---
     window.importCompendiumMonster = async (name, hp, ac, initMod) => {
         if(!window.isAuthReady) { alert("Please log in to a session first."); return; }
         
-        // Add to Database
+        // 2. SAVE TO DATABASE with initModifier
         await window.addDoc(getCol('shared_combatants'), { 
             name: name, 
             init: 0, 
             maxHp: hp, 
             currentHp: hp, 
             ac: ac, 
-            initModifier: initMod 
+            initModifier: parseInt(initMod) || 0 // <--- THIS ENSURES IT TRANSFERS CORRECTLY
         });
         
-        // Switch to Combat Tab
         window.switchTab('combat');
     };
 </script>
