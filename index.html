@@ -782,7 +782,10 @@
     window.signOut = signOut;
 
     // --- 2. GLOBAL VARIABLES ---
-    let currentTab = 'improv', currentSubTab = 'prepNotes';
+    // We attach these to 'window' so the HTML buttons can see them!
+    window.currentTab = 'improv'; 
+    window.currentSubTab = 'prepNotes';
+    
     let savedStatblocks = [], combatants = [], currentTurnIndex = -1;
     let structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
     let userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
