@@ -607,49 +607,63 @@
         <!-- Maps Tab -->
             
             <div id="maps" class="tab-content hidden">
-                
-                <div class="flex border-b border-gray-700 mb-4 justify-center gap-4">
-                    <button class="map-sub-tab active border-b-2 border-indigo-400 pb-2 font-bold text-indigo-300 transition" onclick="switchMapSubTab('static-maps', this)">📂 My Maps</button>
-                    <button class="map-sub-tab text-gray-400 pb-2 font-semibold transition hover:text-gray-200" onclick="switchMapSubTab('embed-dungeon', this)">🏰 Dungeon Scrawl</button>
-                    <button class="map-sub-tab text-gray-400 pb-2 font-semibold transition hover:text-gray-200" onclick="switchMapSubTab('embed-city', this)">🏘️ City Generator</button>
-                </div>
-
-                <div id="static-maps" class="map-content-area grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
                     <div class="card p-4 rounded-lg shadow-xl border border-gray-700">
                         <h3 class="text-lg font-bold text-indigo-300 mb-2">Dark Dungeon</h3>
-                        <img src="IMG_0216.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3" alt="Dungeon">
-                        <div class="flex gap-2"><a href="IMG_0216.jpg" download="Dungeon_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a><button onclick="window.shareMap('IMG_0216.jpg', 'Dungeon_Map')" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button></div>
+                        <div class="relative group">
+                            <img src="IMG_0216.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3 cursor-pointer hover:opacity-90 transition" onclick="window.open('IMG_0216.jpg', '_blank')" alt="Dungeon">
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="IMG_0216.jpg" download="Dungeon_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a>
+                            <button onclick="window.shareMap('IMG_0216.jpg', 'Dungeon_Map')" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button>
+                        </div>
                     </div>
+
                     <div class="card p-4 rounded-lg shadow-xl border border-gray-700">
                         <h3 class="text-lg font-bold text-teal-300 mb-2">Harbor Docks</h3>
-                        <img src="IMG_0217.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3" alt="Harbor">
-                        <div class="flex gap-2"><a href="IMG_0217.jpg" download="Harbor_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a><button onclick="window.shareMap('IMG_0217.jpg', 'Harbor_Map')" class="flex-1 bg-teal-600 hover:bg-teal-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button></div>
+                        <div class="relative group">
+                            <img src="IMG_0217.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3 cursor-pointer hover:opacity-90 transition" onclick="window.open('IMG_0217.jpg', '_blank')" alt="Harbor">
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="IMG_0217.jpg" download="Harbor_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a>
+                            <button onclick="window.shareMap('IMG_0217.jpg', 'Harbor_Map')" class="flex-1 bg-teal-600 hover:bg-teal-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button>
+                        </div>
                     </div>
+
                     <div class="card p-4 rounded-lg shadow-xl border border-gray-700">
                         <h3 class="text-lg font-bold text-yellow-300 mb-2">Tavern Interior</h3>
-                        <img src="IMG_0218.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3" alt="Tavern">
-                        <div class="flex gap-2"><a href="IMG_0218.jpg" download="Tavern_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a><button onclick="window.shareMap('IMG_0218.jpg', 'Tavern_Map')" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button></div>
+                        <div class="relative group">
+                            <img src="IMG_0218.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3 cursor-pointer hover:opacity-90 transition" onclick="window.open('IMG_0218.jpg', '_blank')" alt="Tavern">
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="IMG_0218.jpg" download="Tavern_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a>
+                            <button onclick="window.shareMap('IMG_0218.jpg', 'Tavern_Map')" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button>
+                        </div>
                     </div>
+
                     <div class="card p-4 rounded-lg shadow-xl border border-gray-700">
                         <h3 class="text-lg font-bold text-green-300 mb-2">Forest Bridge</h3>
-                        <img src="IMG_0219.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3" alt="Forest">
-                        <div class="flex gap-2"><a href="IMG_0219.jpg" download="Forest_Bridge_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a><button onclick="window.shareMap('IMG_0219.jpg', 'Forest_Bridge_Map')" class="flex-1 bg-green-600 hover:bg-green-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button></div>
+                        <div class="relative group">
+                            <img src="IMG_0219.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3 cursor-pointer hover:opacity-90 transition" onclick="window.open('IMG_0219.jpg', '_blank')" alt="Forest">
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="IMG_0219.jpg" download="Forest_Bridge_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a>
+                            <button onclick="window.shareMap('IMG_0219.jpg', 'Forest_Bridge_Map')" class="flex-1 bg-green-600 hover:bg-green-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button>
+                        </div>
                     </div>
+
                     <div class="card p-4 rounded-lg shadow-xl border border-gray-700">
                         <h3 class="text-lg font-bold text-blue-300 mb-2">Coastal Path</h3>
-                        <img src="IMG_0220.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3" alt="Coast">
-                        <div class="flex gap-2"><a href="IMG_0220.jpg" download="Coastal_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a><button onclick="window.shareMap('IMG_0220.jpg', 'Coastal_Map')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button></div>
+                        <div class="relative group">
+                            <img src="IMG_0220.jpg" class="w-full h-48 object-cover rounded-lg border border-gray-600 mb-3 cursor-pointer hover:opacity-90 transition" onclick="window.open('IMG_0220.jpg', '_blank')" alt="Coast">
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="IMG_0220.jpg" download="Coastal_Map.jpg" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-center text-sm font-bold py-2 rounded-lg transition">⬇️ PC Download</a>
+                            <button onclick="window.shareMap('IMG_0220.jpg', 'Coastal_Map')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-center text-sm font-bold py-2 rounded-lg transition">📲 Save on Phone</button>
+                        </div>
                     </div>
-                </div>
 
-                <div id="embed-dungeon" class="map-content-area hidden animate-fade-in h-[70vh]">
-                    <iframe src="https://app.dungeonscrawl.com/" class="w-full h-full rounded-lg border border-gray-600" allow="clipboard-read; clipboard-write"></iframe>
-                    <p class="text-center text-xs text-gray-500 mt-2">Powered by Dungeon Scrawl. Use their UI to export images.</p>
-                </div>
-
-                 <div id="embed-city" class="map-content-area hidden animate-fade-in h-[70vh]">
-                    <iframe src="https://watabou.github.io/city-generator/" class="w-full h-full rounded-lg border border-gray-600"></iframe>
-                     <p class="text-center text-xs text-gray-500 mt-2">Powered by Watabou City Generator. Right-click or use menu to save.</p>
                 </div>
             </div>
         
