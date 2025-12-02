@@ -1841,6 +1841,33 @@
             list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data.</p>';
         }
     };
+        // --- THE MISSING IMPORT FUNCTION ---
+    window.importCompendiumMonster = async (name, hp, ac, initMod) => {
+        // 1. Check if logged in
+        if(!window.isAuthReady) { 
+            alert("Please log in to a session first."); 
+            return; 
+        }
+        
+        // 2. Save to Private Database
+        try {
+            await window.addDoc(getCol('shared_combatants'), { 
+                name: name, 
+                init: 0, 
+                maxHp: hp, 
+                currentHp: hp, 
+                ac: ac, 
+                initModifier: parseInt(initMod) || 0 // Save the Dex Mod for initiative rolling
+            });
+            
+            // 3. Switch to Combat Tab to show the user
+            window.switchTab('combat');
+            
+        } catch (error) {
+            console.error("Error importing monster:", error);
+            alert("Failed to add monster. Check console for details.");
+        }
+    };
     
     // --- 13. ENCOUNTER BALANCER ---
     let calcMonsters = [];
