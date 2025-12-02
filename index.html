@@ -1985,12 +1985,12 @@
         xpDetail.textContent = `Adjusted XP: ${adjustedXP} (Daily Budget: ${Math.round((adjustedXP / (partyDeadly*3))*100)}%)`;
     };
     
-    // --- 14. RULES & SPELLS ENGINE ---
-    let currentRuleMode = 'spells'; // 'spells' or 'sections' (Rules)
+    // --- 14. RULES & SPELLS ENGINE (Auto-Load Rules Only) ---
+    let currentRuleMode = 'spells'; // 'spells' or 'sections'
 
     window.switchRuleMode = (mode, btn) => {
         currentRuleMode = mode;
-        // Update UI Styles
+        // 1. Update UI Styles
         document.querySelectorAll('.rule-sub-tab').forEach(b => {
             b.classList.remove('active', 'border-b-2', 'border-purple-400', 'text-purple-300');
             b.classList.add('text-gray-400');
@@ -1998,21 +1998,36 @@
         btn.classList.add('active', 'border-b-2', 'border-purple-400', 'text-purple-300');
         btn.classList.remove('text-gray-400');
         
-        // Clear results and update placeholder
-        document.getElementById('library-results').innerHTML = `<p class="text-center text-gray-500 text-xs">Searching ${mode === 'spells' ? 'Spells' : 'Rules'}...</p>`;
+        // 2. Clear Search Box
+        document.getElementById('library-search').value = "";
+        
+        // 3. Trigger Search Logic (The function below handles the "Auto-Load vs Wait" decision)
+        window.searchLibrary();
     };
 
     window.searchLibrary = async () => {
         const query = document.getElementById('library-search').value.trim();
         const list = document.getElementById('library-results');
-        if (!query) return;
+
+        // --- LOGIC CHANGE: Only Auto-Load if in 'Rules' mode ---
+        if (!query && currentRuleMode === 'spells') {
+            list.innerHTML = '<p class="text-center text-gray-500 text-xs">Type a spell name to search...</p>';
+            return;
+        }
 
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
 
         try {
-            // Fetch from Open5e (Spells or Sections)
-            // Limit to 20 results to keep it fast
-            const res = await fetch(`https://api.open5e.com/${currentRuleMode}/?search=${query}&limit=20&ordering=name`);
+            let url = '';
+            if (!query) {
+                // If no text, and we are here, it MUST be Rules mode. Fetch standard list.
+                url = `https://api.open5e.com/${currentRuleMode}/?limit=50&ordering=name`;
+            } else {
+                // If text exists, search normally
+                url = `https://api.open5e.com/${currentRuleMode}/?search=${query}&limit=20&ordering=name`;
+            }
+
+            const res = await fetch(url);
             const data = await res.json();
 
             list.innerHTML = '';
