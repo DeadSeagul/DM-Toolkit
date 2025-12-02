@@ -1739,7 +1739,7 @@
         };
     });
     
-    // --- 12. MONSTER COMPENDIUM (Strict CR Filtering) ---
+    // --- 12. MONSTER COMPENDIUM (Search, Filter, Sort, & Import) ---
 
     // Helpers
     const getMod = (s) => Math.floor((s - 10) / 2);
@@ -1750,6 +1750,7 @@
         return s;
     };
 
+    // 1. THE SEARCH FUNCTION (Generates the list and the buttons)
     window.searchCompendium = async () => {
         const rawQuery = document.getElementById('compendium-search').value.trim();
         const cr = document.getElementById('compendium-cr').value; 
@@ -1763,7 +1764,7 @@
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
         
         try {
-            // 1. INCREASE LIMIT TO 500 (Shows virtually everything)
+            // Fetch Data (Limit 500 to ensure we find everything)
             let url = `https://api.open5e.com/monsters/?limit=500`; 
             if (rawQuery) url += `&search=${rawQuery}`;
             if (cr) url += `&challenge_rating=${cr}`; 
@@ -1771,7 +1772,7 @@
             const res = await fetch(url);
             const data = await res.json();
             
-            // 2. Strict Filtering
+            // Strict CR Filter (API can be fuzzy)
             let results = data.results;
             if (cr) {
                 results = results.filter(m => m.challenge_rating == cr);
@@ -1782,32 +1783,28 @@
                 return;
             }
 
-            // 3. Sorting
-            if (rawQuery) {
-                const query = rawQuery.toLowerCase();
-                results.sort((a, b) => {
-                    const nameA = a.name.toLowerCase();
-                    const nameB = b.name.toLowerCase();
-                    if (nameA === query && nameB !== query) return -1;
-                    if (nameB === query && nameA !== query) return 1;
-                    const startA = nameA.startsWith(query);
-                    const startB = nameB.startsWith(query);
-                    if (startA && !startB) return -1;
-                    if (!startA && startB) return 1;
-                    return nameA.length - nameB.length;
-                });
-            } else {
-                results.sort((a, b) => a.name.localeCompare(b.name));
-            }
+            // Smart Sorting
+            const query = rawQuery.toLowerCase();
+            results.sort((a, b) => {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+                if (nameA === query && nameB !== query) return -1;
+                if (nameB === query && nameA !== query) return 1;
+                const startA = nameA.startsWith(query);
+                const startB = nameB.startsWith(query);
+                if (startA && !startB) return -1;
+                if (!startA && startB) return 1;
+                return nameA.length - nameB.length;
+            });
 
             list.innerHTML = '';
 
-            // 4. Render
+            // Render Items
             results.forEach((m, index) => {
-                const initMod = getMod(m.dexterity || 10);
+                const initMod = getMod(m.dexterity || 10); // Calculate Init Mod from Dex
                 const hp = m.hit_points || 10;
                 const ac = m.armor_class || 10;
-                const safeName = m.name.replace(/'/g, "\\'");
+                const safeName = m.name.replace(/'/g, "\\'"); // Escape quotes for the button
                 const uniqueId = `monster-${index}`;
 
                 const div = document.createElement('div');
@@ -1833,7 +1830,6 @@
                         <div class="dnd-statblock text-left text-xs sm:text-sm">
                             <div class="dnd-property-line"><strong>Speed</strong> ${fmtSpeed(m.speed)}</div>
                             <div class="dnd-property-line"><strong>Senses</strong> ${m.senses || '-'}</div>
-                            <div class="dnd-property-line"><strong>Languages</strong> ${m.languages || '-'}</div>
                             <div class="dnd-property-line"><strong>Stats</strong> 
                                 STR ${m.strength} (${fmtMod(m.strength)}), 
                                 DEX ${m.dexterity} (${fmtMod(m.dexterity)}), 
@@ -1844,7 +1840,6 @@
                             </div>
                             ${m.special_abilities ? m.special_abilities.map(a => `<div class="mt-2 leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('') : ''}
                             ${m.actions ? `<div class="dnd-section-title mt-2">Actions</div>${m.actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
-                            ${m.legendary_actions ? `<div class="dnd-section-title mt-2">Legendary Actions</div>${m.legendary_actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
                         </div>
                     </div>
                 `;
@@ -1855,6 +1850,25 @@
             console.error(error);
             list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data.</p>';
         }
+    };
+
+    // 2. THE IMPORT FUNCTION (This makes the button work)
+    window.importCompendiumMonster = async (name, hp, ac, initMod) => {
+        // Check if logged in
+        if(!window.isAuthReady) { alert("Please log in to a session first."); return; }
+        
+        // Add to Private Database
+        await window.addDoc(getCol('shared_combatants'), { 
+            name: name, 
+            init: 0, 
+            maxHp: hp, 
+            currentHp: hp, 
+            ac: ac, 
+            initModifier: parseInt(initMod) || 0 // Save the modifier!
+        });
+        
+        // Visual Feedback: Go to Combat Tab
+        window.switchTab('combat');
     };
     
     // --- 13. ENCOUNTER BALANCER ---
