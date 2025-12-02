@@ -1720,18 +1720,7 @@
         };
     });
     
-    // --- 12. MONSTER COMPENDIUM (Search, Filter, Sort, & Import) ---
-
-    // Helpers
-    const getMod = (s) => Math.floor((s - 10) / 2);
-    const fmtMod = (s) => { const m = getMod(s); return m >= 0 ? `+${m}` : m; };
-    const fmtSpeed = (s) => {
-        if (!s) return '30 ft.';
-        if (typeof s === 'object') return Object.entries(s).map(([k, v]) => `${k} ${v} ft.`).join(', ');
-        return s;
-    };
-
-    // 1. THE SEARCH FUNCTION (Generates the list and the buttons)
+    // --- 12. MONSTER COMPENDIUM (SRD Only + Strict CR) ---
     window.searchCompendium = async () => {
         const rawQuery = document.getElementById('compendium-search').value.trim();
         const cr = document.getElementById('compendium-cr').value; 
@@ -1745,47 +1734,53 @@
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
         
         try {
-            // Fetch Data (Limit 500 to ensure we find everything)
-            let url = `https://api.open5e.com/monsters/?limit=500`; 
+            // 1. Build API URL with SRD FILTER
+            // &document__slug=wotc-srd -> Restricts results to official D&D 5e SRD content only
+            let url = `https://api.open5e.com/monsters/?limit=100&document__slug=wotc-srd`; 
+            
             if (rawQuery) url += `&search=${rawQuery}`;
             if (cr) url += `&challenge_rating=${cr}`; 
 
             const res = await fetch(url);
             const data = await res.json();
             
-            // Strict CR Filter (API can be fuzzy)
+            // 2. Strict CR Filter
             let results = data.results;
             if (cr) {
                 results = results.filter(m => m.challenge_rating == cr);
             }
 
             if (results.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No monsters found.</p>';
+                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No SRD monsters found.</p>';
                 return;
             }
 
-            // Smart Sorting
-            const query = rawQuery.toLowerCase();
-            results.sort((a, b) => {
-                const nameA = a.name.toLowerCase();
-                const nameB = b.name.toLowerCase();
-                if (nameA === query && nameB !== query) return -1;
-                if (nameB === query && nameA !== query) return 1;
-                const startA = nameA.startsWith(query);
-                const startB = nameB.startsWith(query);
-                if (startA && !startB) return -1;
-                if (!startA && startB) return 1;
-                return nameA.length - nameB.length;
-            });
+            // 3. Sorting
+            if (rawQuery) {
+                const query = rawQuery.toLowerCase();
+                results.sort((a, b) => {
+                    const nameA = a.name.toLowerCase();
+                    const nameB = b.name.toLowerCase();
+                    if (nameA === query && nameB !== query) return -1;
+                    if (nameB === query && nameA !== query) return 1;
+                    const startA = nameA.startsWith(query);
+                    const startB = nameB.startsWith(query);
+                    if (startA && !startB) return -1;
+                    if (!startA && startB) return 1;
+                    return nameA.length - nameB.length;
+                });
+            } else {
+                results.sort((a, b) => a.name.localeCompare(b.name));
+            }
 
             list.innerHTML = '';
 
-            // Render Items
+            // 4. Render
             results.forEach((m, index) => {
-                const initMod = getMod(m.dexterity || 10); // Calculate Init Mod from Dex
+                const initMod = getMod(m.dexterity || 10);
                 const hp = m.hit_points || 10;
                 const ac = m.armor_class || 10;
-                const safeName = m.name.replace(/'/g, "\\'"); // Escape quotes for the button
+                const safeName = m.name.replace(/'/g, "\\'");
                 const uniqueId = `monster-${index}`;
 
                 const div = document.createElement('div');
@@ -1821,6 +1816,7 @@
                             </div>
                             ${m.special_abilities ? m.special_abilities.map(a => `<div class="mt-2 leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('') : ''}
                             ${m.actions ? `<div class="dnd-section-title mt-2">Actions</div>${m.actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
+                            ${m.legendary_actions ? `<div class="dnd-section-title mt-2">Legendary Actions</div>${m.legendary_actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
                         </div>
                     </div>
                 `;
@@ -1831,25 +1827,6 @@
             console.error(error);
             list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data.</p>';
         }
-    };
-
-    // 2. THE IMPORT FUNCTION (This makes the button work)
-    window.importCompendiumMonster = async (name, hp, ac, initMod) => {
-        // Check if logged in
-        if(!window.isAuthReady) { alert("Please log in to a session first."); return; }
-        
-        // Add to Private Database
-        await window.addDoc(getCol('shared_combatants'), { 
-            name: name, 
-            init: 0, 
-            maxHp: hp, 
-            currentHp: hp, 
-            ac: ac, 
-            initModifier: parseInt(initMod) || 0 // Save the modifier!
-        });
-        
-        // Visual Feedback: Go to Combat Tab
-        window.switchTab('combat');
     };
     
     // --- 13. ENCOUNTER BALANCER ---
