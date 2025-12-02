@@ -2384,7 +2384,7 @@
         } catch (e) { console.error(e); }
     };
 
-    // Listener for Weapons List
+    // Listener for Weapons List (Updated with Fix)
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
@@ -2405,12 +2405,13 @@
             items.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center';
+                // FIX: Updated onclick to use the simple helper function
                 div.innerHTML = `
                     <div>
                         <div class="font-bold text-orange-200 text-sm">${item.name}</div>
                         <div class="text-[10px] text-gray-400">${item.dmg} ${item.type} • ${item.props}</div>
                     </div>
-                    <button onclick="window.deleteDoc(window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'data', 'dm_toolkit_homebrew_items', '${item.id}'))" class="text-red-500 hover:text-red-400 text-xs font-bold px-2">×</button>
+                    <button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold px-2">×</button>
                 `;
                 list.appendChild(div);
             });
