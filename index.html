@@ -1720,7 +1720,7 @@
         };
     });
     
-    // --- 12. MONSTER COMPENDIUM (Unlocked: All Sources) ---
+    // --- 12. MONSTER COMPENDIUM (All Sources + Strict CR) ---
     window.searchCompendium = async () => {
         const rawQuery = document.getElementById('compendium-search').value.trim();
         const cr = document.getElementById('compendium-cr').value; 
@@ -1735,7 +1735,6 @@
         
         try {
             // 1. FETCH EVERYTHING (Limit 2000 to get ALL results from ALL books)
-            // Removed "&document__slug=wotc-srd" to unlock 3rd party content
             let url = `https://api.open5e.com/monsters/?limit=2000`; 
             
             // Apply API filters to speed up the initial fetch if possible
