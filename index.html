@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -715,12 +714,6 @@
                         <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="switchSubTab('npcNotes')">👥 NPCs</button>
                         <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="lootNotes" onclick="switchSubTab('lootNotes')">💰 Loot</button>
                     </div>
-                    
-                    <div class="flex gap-2 mb-4">
-                        <input type="text" id="notes-search" placeholder="Search notes..." class="flex-1 p-2 rounded-lg input-style text-sm focus:ring-2 focus:ring-indigo-500 outline-none" onkeypress="if(event.key==='Enter') window.renderStructuredNotes(window.currentSubTab)">
-                        <button onclick="window.renderStructuredNotes(window.currentSubTab)" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 rounded-lg text-sm">Search</button>
-                    </div>
-                    
                     <div id="prepNotes-sub-content" class="sub-tab-content"><div id="prepNotes-list" class="scrollable-content space-y-3"></div></div>
                     <div id="enemyNotes-sub-content" class="sub-tab-content hidden"><div id="enemyNotes-list" class="scrollable-content space-y-3"></div></div>
                     <div id="npcNotes-sub-content" class="sub-tab-content hidden"><div id="npcNotes-list" class="scrollable-content space-y-3"></div></div>
@@ -800,10 +793,7 @@
             </div>
         
     </div>
-    
-    
-
-    <!-- Modals -->
+ <!-- Modals -->
     <div id="edit-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
         <div class="card w-full max-w-lg p-6 rounded-lg shadow-2xl">
             <h3 class="text-xl font-bold text-indigo-300 mb-4">Edit Note</h3>
@@ -1111,12 +1101,7 @@
     };
 
     window.switchSubTab = function(tabId) {
-        window.currentSubTab = tabId;
-        
-        // Clear search when switching
-        const searchInput = document.getElementById('notes-search');
-        if(searchInput) searchInput.value = "";
-
+        currentSubTab = tabId;
         document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
         document.getElementById(`${tabId}-sub-content`).classList.remove('hidden');
         document.querySelectorAll('.sub-tab-button').forEach(btn => {
@@ -1124,58 +1109,14 @@
             if (btn.dataset.subtab === tabId) btn.classList.add('active');
             else btn.classList.add('text-gray-400');
         });
-        renderStructuredNotes(tabId);
+        renderStructuredNotes(currentSubTab);
     };
 
     function renderStructuredNotes(tab) {
         const list = document.getElementById(`${tab}-list`);
         if(!list) return;
-
-        // 1. GET SEARCH TEXT
-        // We look for the input box. If it has text, we use it.
-        const searchInput = document.getElementById('notes-search');
-        const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
-        
-        // 2. GET NOTES FOR CURRENT TAB
-        // If undefined, use empty array to prevent crash
-        const allNotes = structuredNotes[tab] || [];
-        
-        // 3. FILTER THE LIST
-        // Check if Title OR Content matches the search text
-        const filteredNotes = allNotes.filter(n => 
-            n.title.toLowerCase().includes(query) || 
-            n.content.toLowerCase().includes(query)
-        );
-
-        // 4. RENDER THE RESULTS
-        list.innerHTML = filteredNotes.length ? '' : '<p class="text-center text-gray-500 pt-8">No matching notes found.</p>';
-        
-        filteredNotes.forEach(n => {
-            const div = document.createElement('div'); 
-            div.className = 'note-item card p-0 rounded-lg shadow-md'; 
-            div.id = `note-${n.id}`;
-            
-            div.innerHTML = `
-            <div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')">
-                <span class="font-bold text-indigo-300 truncate">${n.title}</span>
-                <span class="text-gray-400">▼</span>
-            </div>
-            <div class="collapsible-content" id="content-${n.id}">
-                <div class="flex justify-end p-2 gap-2 border-b border-gray-700 mb-2">
-                    <button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold">Edit</button>
-                    <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold">Delete</button>
-                </div>
-                <div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div>
-            </div>`;
-            
-            list.appendChild(div);
-        });
-    }
-
-        // 3. Render
-        list.innerHTML = filteredNotes.length ? '' : '<p class="text-center text-gray-500 pt-8">No matching notes.</p>';
-        
-        filteredNotes.forEach(n => {
+        list.innerHTML = structuredNotes[tab].length ? '' : '<p class="text-center text-gray-500 pt-8">No notes.</p>';
+        structuredNotes[tab].forEach(n => {
             const div = document.createElement('div'); div.className = 'note-item card p-0 rounded-lg shadow-md'; div.id = `note-${n.id}`;
             div.innerHTML = `<div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')"><span class="font-bold text-indigo-300 truncate">${n.title}</span><span class="text-gray-400">▼</span></div>
             <div class="collapsible-content" id="content-${n.id}">
@@ -1582,7 +1523,7 @@
                 setTimeout(() => { dice = []; ctx.clearRect(0, 0, canvas.width, canvas.height); }, 3500); 
             };
         })();
-        // --- FULL SOUNDBOARD LOGIC ---
+// --- FULL SOUNDBOARD LOGIC ---
         const ac = new (window.AudioContext||window.webkitAudioContext)();
         const masterGain = ac.createGain(); masterGain.connect(ac.destination); masterGain.gain.value = 0.5;
         let ambNodes = []; let ambType = null;
