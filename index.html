@@ -388,6 +388,31 @@
                     <button onclick="window.generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                     <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
+                
+                <!-- Name Generator -->
+                <div class="card p-4 rounded-lg shadow-xl mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-pink-300">Name Generator</h2>
+                    <div class="flex gap-2 mb-4">
+                        <select id="name-race" class="flex-1 p-2 rounded-lg input-style text-sm">
+                            <option value="Human">Human</option>
+                            <option value="Elf">Elf</option>
+                            <option value="Dwarf">Dwarf</option>
+                            <option value="Orc">Orc/Half-Orc</option>
+                            <option value="Halfling">Halfling</option>
+                            <option value="Tiefling">Tiefling</option>
+                            <option value="Dragonborn">Dragonborn</option>
+                            <option value="Gnome">Gnome</option>
+                        </select>
+                        <select id="name-gender" class="w-24 p-2 rounded-lg input-style text-sm">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                        <button onclick="window.generateNames()" class="bg-pink-700 hover:bg-pink-600 text-white font-bold px-4 rounded-lg text-sm">Generate</button>
+                    </div>
+                    <div id="name-output" class="text-gray-300 text-sm min-h-[2rem] flex flex-col gap-1">
+                        <p class="text-gray-500 text-xs italic">Select options to generate names.</p>
+                    </div>
+                </div>
 
                 <!-- Creative Lore -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
@@ -2097,7 +2122,74 @@
             list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data.</p>';
         }
     };
-    
+
+    // --- 15. NAME GENERATOR (Gendered) ---
+    const nameDatabase = {
+        "Human": { 
+            male: ["Alaric", "Bram", "Dorian", "Garret", "Ivo", "Kael", "Niles", "Orin", "Silas", "Vane", "Alden", "Roric"], 
+            female: ["Celia", "Elara", "Fiora", "Halia", "Jessa", "Lora", "Maren", "Petra", "Ria", "Tamsin", "Veda", "Lyra"], 
+            last: ["Stormwind", "Blackwood", "Thorne", "Rivera", "Crowley", "Falconer", "Weaver", "Dunn", "Hart", "Mercer"] 
+        },
+        "Elf": { 
+            male: ["Adran", "Carric", "Erdan", "Galin", "Himo", "Ivellios", "Mindartis", "Paelias", "Riardon", "Thamior"], 
+            female: ["Bylia", "Deara", "Faen", "Lia", "Naivara", "Quillathe", "Silaqui", "Thia", "Vadania", "Valanthe"], 
+            last: ["Amakiir", "Caerdonel", "Galanodel", "Holimion", "Ilphelkiir", "Liadon", "Meliamne", "Nailo", "Siannodel", "Xiloscient"] 
+        },
+        "Dwarf": { 
+            male: ["Adrik", "Baern", "Brottor", "Dain", "Darrak", "Eberk", "Fargrim", "Gardain", "Harbek", "Kildrak", "Morgran", "Orsik", "Rangrim", "Thoradin", "Tordek"], 
+            female: ["Amber", "Artin", "Audhild", "Bardryn", "Dagnal", "Diesa", "Eldeth", "Falkrunn", "Finellen", "Gunnloda", "Gurdis", "Helja", "Hlin", "Kathra"], 
+            last: ["Battlehammer", "Brawnanvil", "Fireforge", "Frostbeard", "Gorunn", "Ironfist", "Loderr", "Strakeln", "Torunn", "Ungart"] 
+        },
+        "Orc": { 
+            male: ["Dench", "Feng", "Gell", "Henk", "Holg", "Imsh", "Keth", "Krusk", "Mhurren", "Ront", "Shump", "Thokk"], 
+            female: ["Baggi", "Emen", "Engong", "Kansif", "Myev", "Neega", "Ovak", "Ownka", "Shautha", "Sutha", "Vola", "Volen"], 
+            last: ["Ironhide", "Bonebreaker", "Doomhammer", "Skullcrusher", "Fist of Grumsh", "The Vile", "Bloodaxe", "Stormcaller", "Eye-Gouger", "Rot-Tooth"] 
+        },
+        "Halfling": { 
+            male: ["Alton", "Ander", "Cade", "Corrin", "Eldon", "Errich", "Finnan", "Garret", "Lindal", "Lyle", "Merric", "Milo", "Osborn", "Perrin", "Reed", "Roscoe", "Wellby"], 
+            female: ["Andry", "Bree", "Callie", "Cora", "Euphemia", "Jillian", "Kithri", "Lavinia", "Lidda", "Merla", "Nedda", "Paela", "Portia", "Seraphina", "Shaena", "Trym"], 
+            last: ["Brushgather", "Goodbarrel", "Greenbottle", "High-hill", "Hilltopple", "Leagallow", "Tealeaf", "Thorngage", "Tosscobble", "Underbough"] 
+        },
+        "Tiefling": { 
+            male: ["Akmenos", "Amnon", "Barakas", "Damakos", "Ekemon", "Iados", "Kairon", "Leucis", "Melech", "Mordai", "Morthos", "Pelaios", "Skamos", "Therai"], 
+            female: ["Akta", "Bryseis", "Damaia", "Ea", "Kallista", "Lerissa", "Makaria", "Nemeia", "Orianna", "Phelaia", "Rieta"], 
+            last: ["Art", "Carrion", "Chant", "Creed", "Despair", "Excellence", "Fear", "Glory", "Hope", "Ideal", "Music", "Nowhere", "Open", "Poetry", "Quest", "Random", "Reverence", "Sorrow"] 
+        },
+        "Dragonborn": {
+             male: ["Arjhan", "Balasar", "Bharash", "Donaar", "Ghesh", "Heskan", "Kriv", "Medrash", "Mehen", "Nadarr", "Pandjed", "Patrin", "Rhogar", "Shamash", "Shedinn", "Tarhun", "Torinn"],
+             female: ["Akra", "Biri", "Daar", "Farideh", "Harann", "Havilar", "Jheri", "Kava", "Korinn", "Mishann", "Nala", "Perra", "Raiann", "Sora", "Surina", "Thava", "Uadjit"],
+             last: ["Clethtinthiallor", "Daardendrian", "Delmirev", "Drachedandion", "Fenkenkabradon", "Kepeshkmolik", "Kerrhylon", "Kimbatuul", "Linxakasendalor", "Myistan", "Nemmonis", "Norixius"]
+        },
+        "Gnome": {
+             male: ["Boddynock", "Dimble", "Fonkin", "Gimble", "Glim", "Gerbo", "Jebeddo", "Namfoodle", "Roondar", "Seebo", "Zook"],
+             female: ["Bimpnottin", "Breena", "Caramip", "Carlin", "Donella", "Duvamil", "Ella", "Ellyjobell", "Ellywick", "Lilli", "Loopmottin", "Lorilla", "Mardnab", "Nissa", "Nyx", "Oda"],
+             last: ["Beren", "Daergel", "Folkor", "Garrick", "Nackle", "Murnig", "Ningel", "Raulnor", "Scheppen", "Timbers", "Turen"]
+        }
+    };
+
+    window.generateNames = () => {
+        const race = document.getElementById('name-race').value;
+        const gender = document.getElementById('name-gender').value; // Get gender
+        const data = nameDatabase[race];
+        const output = document.getElementById('name-output');
+        
+        if (!data) return;
+        
+        // Select the correct list based on gender
+        const firstNames = data[gender];
+        const lastNames = data.last;
+
+        let html = '';
+        for (let i = 0; i < 5; i++) {
+            const f = firstNames[Math.floor(Math.random() * firstNames.length)];
+            const l = lastNames[Math.floor(Math.random() * lastNames.length)];
+            html += `<div class="flex justify-between items-center bg-gray-800 px-2 py-1 rounded border border-gray-700">
+                        <span class="text-pink-100 font-medium">${f} ${l}</span>
+                        <button onclick="navigator.clipboard.writeText('${f} ${l}')" class="text-[10px] text-gray-500 hover:text-white uppercase tracking-wider">Copy</button>
+                     </div>`;
+        }
+        output.innerHTML = html;
+    };    
     
 </script>
 
