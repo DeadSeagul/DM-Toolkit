@@ -1122,7 +1122,8 @@
         renderStructuredNotes(window.currentSubTab);
     };
 
-    function renderStructuredNotes(tab) {
+    // --- EXPOSED RENDER FUNCTION (Fixes Search Button) ---
+    window.renderStructuredNotes = function(tab) {
         const list = document.getElementById(`${tab}-list`);
         if(!list) return;
 
@@ -1131,16 +1132,18 @@
         const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
         
         // 2. GET NOTES
+        // We use the global structuredNotes variable
         const allNotes = structuredNotes[tab] || [];
         
         // 3. FILTER NOTES
-        // If query is empty, it shows everything. If not, it filters by Title OR Content.
+        // If query is empty, filter returns true (shows all). 
+        // If not, it checks Title OR Content.
         const filteredNotes = allNotes.filter(n => 
             n.title.toLowerCase().includes(query) || 
             n.content.toLowerCase().includes(query)
         );
 
-        // 4. RENDER
+        // 4. RENDER RESULTS
         list.innerHTML = filteredNotes.length ? '' : '<p class="text-center text-gray-500 pt-8">No matching notes found.</p>';
         
         filteredNotes.forEach(n => {
@@ -1163,7 +1166,7 @@
             
             list.appendChild(div);
         });
-    }
+    };
 
     window.toggleCollapse = (id) => { const el = document.getElementById(`content-${id}`); if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; } };
     window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
