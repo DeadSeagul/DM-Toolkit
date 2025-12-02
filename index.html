@@ -1734,21 +1734,16 @@
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
         
         try {
-            // 1. BUILD URL (Safer Limit: 500)
-            // We encode the query to prevent errors with spaces/symbols
+            // 1. INCREASE LIMIT TO 500 (Shows virtually everything)
             let url = `https://api.open5e.com/monsters/?limit=500`; 
-            
-            if (rawQuery) url += `&search=${encodeURIComponent(rawQuery)}`;
+            if (rawQuery) url += `&search=${rawQuery}`;
             if (cr) url += `&challenge_rating=${cr}`; 
 
             const res = await fetch(url);
-            if (!res.ok) throw new Error("API Connection Failed");
             const data = await res.json();
             
+            // 2. Strict Filtering
             let results = data.results;
-
-            // 2. STRICT CR CHECK
-            // Ensure the API didn't give us "CR 1/8" when we asked for "CR 1"
             if (cr) {
                 results = results.filter(m => m.challenge_rating == cr);
             }
@@ -1758,7 +1753,7 @@
                 return;
             }
 
-            // 3. SORTING (Smart Sort)
+            // 3. Sorting
             if (rawQuery) {
                 const query = rawQuery.toLowerCase();
                 results.sort((a, b) => {
@@ -1778,16 +1773,13 @@
 
             list.innerHTML = '';
 
-            // 4. RENDER
+            // 4. Render
             results.forEach((m, index) => {
                 const initMod = getMod(m.dexterity || 10);
                 const hp = m.hit_points || 10;
                 const ac = m.armor_class || 10;
                 const safeName = m.name.replace(/'/g, "\\'");
                 const uniqueId = `monster-${index}`;
-                
-                // Source label (e.g. "tob" for Tome of Beasts)
-                const source = m.document__slug ? `(${m.document__slug})` : "";
 
                 const div = document.createElement('div');
                 div.className = 'bg-gray-800 rounded border border-gray-700 overflow-hidden mb-2';
@@ -1800,7 +1792,7 @@
                                 <span class="text-[10px] text-gray-500">▼</span>
                             </div>
                             <div class="text-[10px] text-gray-400">
-                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp} <span class="text-gray-600">${source}</span>
+                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp} • Init ${initMod >= 0 ? '+'+initMod : initMod}
                             </div>
                         </div>
                         <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow-lg border border-green-500">
@@ -1812,6 +1804,7 @@
                         <div class="dnd-statblock text-left text-xs sm:text-sm">
                             <div class="dnd-property-line"><strong>Speed</strong> ${fmtSpeed(m.speed)}</div>
                             <div class="dnd-property-line"><strong>Senses</strong> ${m.senses || '-'}</div>
+                            <div class="dnd-property-line"><strong>Languages</strong> ${m.languages || '-'}</div>
                             <div class="dnd-property-line"><strong>Stats</strong> 
                                 STR ${m.strength} (${fmtMod(m.strength)}), 
                                 DEX ${m.dexterity} (${fmtMod(m.dexterity)}), 
@@ -1831,7 +1824,7 @@
             
         } catch (error) {
             console.error(error);
-            list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data. Try being more specific.</p>';
+            list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data.</p>';
         }
     };
     
