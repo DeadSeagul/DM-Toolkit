@@ -1111,7 +1111,12 @@
     };
 
     window.switchSubTab = function(tabId) {
-        currentSubTab = tabId;
+        window.currentSubTab = tabId;
+        
+        // Clear search when switching
+        const searchInput = document.getElementById('notes-search');
+        if(searchInput) searchInput.value = "";
+
         document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
         document.getElementById(`${tabId}-sub-content`).classList.remove('hidden');
         document.querySelectorAll('.sub-tab-button').forEach(btn => {
@@ -1119,7 +1124,7 @@
             if (btn.dataset.subtab === tabId) btn.classList.add('active');
             else btn.classList.add('text-gray-400');
         });
-        renderStructuredNotes(currentSubTab);
+        renderStructuredNotes(tabId);
     };
 
     function renderStructuredNotes(tab) {
