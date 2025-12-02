@@ -523,54 +523,62 @@
                 </div>
             </div>
 
-            <!-- Monsters Tab -->
-            <div class="card p-4 rounded-lg shadow-xl mb-6 border border-blue-500/30">
-            <h2 class="text-xl font-semibold mb-4 text-blue-300">📚 SRD Compendium</h2>
-            
-            <div class="flex gap-2 mb-4">
-                <input type="text" id="compendium-search" placeholder="Name..." class="flex-1 p-2 rounded-lg input-style text-sm" onkeypress="if(event.key==='Enter') window.searchCompendium()">
-                
-                <select id="compendium-cr" class="w-24 p-2 rounded-lg input-style text-sm font-bold text-center" onchange="window.searchCompendium()">
-                    <option value="">Any CR</option>
-                    <option value="0">0</option>
-                    <option value="1/8">1/8</option>
-                    <option value="1/4">1/4</option>
-                    <option value="1/2">1/2</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                    <option value="7">7</option>
-                    <option value="8">8</option>
-                    <option value="9">9</option>
-                    <option value="10">10</option>
-                    <option value="11">11</option>
-                    <option value="12">12</option>
-                    <option value="13">13</option>
-                    <option value="14">14</option>
-                    <option value="15">15</option>
-                    <option value="16">16</option>
-                    <option value="17">17</option>
-                    <option value="18">18</option>
-                    <option value="19">19</option>
-                    <option value="20">20</option>
-                    <option value="21">21</option>
-                    <option value="22">22</option>
-                    <option value="23">23</option>
-                    <option value="24">24</option>
-                    <option value="30">30</option>
-                </select>
+<!-- Monsters Tab -->
 
-                <button onclick="window.searchCompendium()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 rounded-lg text-sm">🔍</button>
-            </div>
-            
-            <div id="compendium-results" class="scrollable-content space-y-2 max-h-60">
-                <p class="text-center text-gray-500 text-xs">Search by Name or CR.</p>
-            </div>
-        </div>
-        
+            <div id="monsters" class="tab-content hidden">
+                
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-red-500/30">
+                    <h2 class="text-xl font-semibold mb-4 text-red-300">⚖️ Encounter Calculator</h2>
+                    <div class="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-700">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Party Size</label>
+                            <input type="number" id="calc-party-size" value="4" min="1" class="w-full p-2 rounded-lg input-style text-center font-bold" onchange="window.calcEncounter()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Avg Level</label>
+                            <input type="number" id="calc-party-level" value="3" min="1" max="20" class="w-full p-2 rounded-lg input-style text-center font-bold" onchange="window.calcEncounter()">
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mb-4">
+                        <select id="calc-cr" class="flex-1 p-2 rounded-lg input-style text-sm">
+                            <option value="10">CR 0</option><option value="25">CR 1/8</option><option value="50">CR 1/4</option><option value="100">CR 1/2</option>
+                            <option value="200">CR 1</option><option value="450">CR 2</option><option value="700">CR 3</option><option value="1100">CR 4</option>
+                            <option value="1800">CR 5</option><option value="2300">CR 6</option><option value="2900">CR 7</option><option value="3900">CR 8</option>
+                            <option value="5000">CR 9</option><option value="5900">CR 10</option><option value="7200">CR 11</option><option value="8400">CR 12</option>
+                            <option value="10000">CR 13</option><option value="11500">CR 14</option><option value="13000">CR 15</option><option value="15000">CR 16</option>
+                            <option value="18000">CR 17</option><option value="20000">CR 18</option><option value="22000">CR 19</option><option value="25000">CR 20</option>
+                        </select>
+                        <input type="number" id="calc-count" value="1" min="1" class="w-16 p-2 rounded-lg input-style text-center font-bold" placeholder="#">
+                        <button onclick="window.addCalcMonster()" class="bg-red-700 hover:bg-red-600 text-white font-bold px-4 rounded-lg shadow-lg">+</button>
+                    </div>
+                    <div id="calc-monster-list" class="flex flex-wrap gap-2 mb-4 min-h-[2rem]"></div>
+                    <div id="calc-result" class="bg-gray-900 p-4 rounded-lg text-center border border-gray-700 transition duration-300">
+                        <div class="text-gray-500 text-xs uppercase tracking-widest mb-1">Difficulty</div>
+                        <div id="calc-difficulty-text" class="text-2xl font-bold text-gray-500">Add Monsters...</div>
+                        <div id="calc-xp-details" class="text-[10px] text-gray-500 mt-1"></div>
+                    </div>
+                    <button onclick="window.clearCalc()" class="mt-2 text-xs text-red-400 underline w-full text-center">Reset Calculator</button>
+                    <details class="mt-4 pt-2 border-t border-gray-700 text-xs text-gray-400 select-none group">
+                        <summary class="cursor-pointer hover:text-indigo-300 transition font-bold list-none flex items-center gap-2"><span>ℹ️ What is Daily Budget?</span></summary>
+                        <div class="mt-2 pl-3 border-l-2 border-indigo-500 bg-gray-800/50 p-2 rounded">
+                            <p class="mb-2">The <strong>Daily Budget</strong> is the total XP a party can handle before a <strong>Long Rest</strong>.</p>
+                            <ul class="list-disc list-inside space-y-1"><li><strong>33%</strong>: Safe (~2 more fights).</li><li><strong>50%</strong>: Taxing.</li><li><strong>100%+</strong>: <span class="text-red-400">NOVA (Rest needed).</span></li></ul>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-blue-500/30">
+                    <h2 class="text-xl font-semibold mb-4 text-blue-300">📚 SRD Compendium</h2>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="compendium-search" placeholder="Name..." class="flex-1 p-2 rounded-lg input-style text-sm" onkeypress="if(event.key==='Enter') window.searchCompendium()">
+                        <select id="compendium-cr" class="w-24 p-2 rounded-lg input-style text-sm font-bold text-center" onchange="window.searchCompendium()">
+                            <option value="">Any CR</option><option value="0">0</option><option value="1/8">1/8</option><option value="1/4">1/4</option><option value="1/2">1/2</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="30">30</option>
+                        </select>
+                        <button onclick="window.searchCompendium()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 rounded-lg text-sm">🔍</button>
+                    </div>
+                    <div id="compendium-results" class="scrollable-content space-y-2 max-h-60"><p class="text-center text-gray-500 text-xs">Search by Name or CR.</p></div>
+                </div>
+
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Monster Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -580,6 +588,7 @@
                     <button onclick="generateMonsterStatblock()" id="generate-monster-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-monster-text">Generate</span><div id="monster-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                     <p id="monster-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
                 </div>
+
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
                     <div id="monster-output" class="min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Stat block will appear here.</div>
