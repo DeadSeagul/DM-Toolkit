@@ -1720,7 +1720,17 @@
         };
     });
     
-// --- 12. MONSTER COMPENDIUM (Stable & Unlocked) ---
+// --- 12. MONSTER COMPENDIUM (Strict CR Filtering) ---
+
+    // Helpers
+    const getMod = (s) => Math.floor((s - 10) / 2);
+    const fmtMod = (s) => { const m = getMod(s); return m >= 0 ? `+${m}` : m; };
+    const fmtSpeed = (s) => {
+        if (!s) return '30 ft.';
+        if (typeof s === 'object') return Object.entries(s).map(([k, v]) => `${k} ${v} ft.`).join(', ');
+        return s;
+    };
+
     window.searchCompendium = async () => {
         const rawQuery = document.getElementById('compendium-search').value.trim();
         const cr = document.getElementById('compendium-cr').value; 
@@ -1734,16 +1744,19 @@
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
         
         try {
-            // 1. INCREASE LIMIT TO 500 (Shows virtually everything)
-            let url = `https://api.open5e.com/monsters/?limit=500`; 
+            // 1. Build API URL
+            // We ask for 100 results to ensure we get a good pool of monsters to filter through
+            let url = `https://api.open5e.com/monsters/?limit=100`; 
             if (rawQuery) url += `&search=${rawQuery}`;
             if (cr) url += `&challenge_rating=${cr}`; 
 
             const res = await fetch(url);
             const data = await res.json();
             
-            // 2. Strict Filtering
+            // 2. STRICT FILTERING (The Fix)
+            // Even if the API returns a "close match", we delete it if the CR is wrong.
             let results = data.results;
+            
             if (cr) {
                 results = results.filter(m => m.challenge_rating == cr);
             }
@@ -1753,7 +1766,7 @@
                 return;
             }
 
-            // 3. Sorting
+            // 3. SORTING (Alphabetical or Relevance)
             if (rawQuery) {
                 const query = rawQuery.toLowerCase();
                 results.sort((a, b) => {
@@ -1768,12 +1781,13 @@
                     return nameA.length - nameB.length;
                 });
             } else {
+                // If looking up by CR only, just sort A-Z
                 results.sort((a, b) => a.name.localeCompare(b.name));
             }
 
             list.innerHTML = '';
 
-            // 4. Render
+            // 4. RENDER
             results.forEach((m, index) => {
                 const initMod = getMod(m.dexterity || 10);
                 const hp = m.hit_points || 10;
