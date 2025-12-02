@@ -2384,6 +2384,13 @@
         } catch (e) { console.error(e); }
     };
 
+        // --- FIX: The Delete Helper ---
+    window.deleteHomebrewWeapon = async (id) => {
+        if(!confirm("Delete this item?")) return;
+        // Uses the existing getDocRef helper to find the correct private path
+        await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id));
+    };
+
     // Listener for Weapons List (Updated with Fix)
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
