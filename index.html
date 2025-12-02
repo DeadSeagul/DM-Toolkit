@@ -1720,7 +1720,7 @@
         };
     });
     
-    // --- 12. MONSTER COMPENDIUM (All Sources + Strict CR) ---
+// --- 12. MONSTER COMPENDIUM (Stable & Unlocked) ---
     window.searchCompendium = async () => {
         const rawQuery = document.getElementById('compendium-search').value.trim();
         const cr = document.getElementById('compendium-cr').value; 
@@ -1734,11 +1734,11 @@
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
         
         try {
-            // 1. FETCH EVERYTHING (Limit 2000 to get ALL results from ALL books)
-            let url = `https://api.open5e.com/monsters/?limit=2000`; 
+            // 1. BUILD URL (Safer Limit: 500)
+            // We encode the query to prevent errors with spaces/symbols
+            let url = `https://api.open5e.com/monsters/?limit=500`; 
             
-            // Apply API filters to speed up the initial fetch if possible
-            if (rawQuery) url += `&search=${rawQuery}`;
+            if (rawQuery) url += `&search=${encodeURIComponent(rawQuery)}`;
             if (cr) url += `&challenge_rating=${cr}`; 
 
             const res = await fetch(url);
@@ -1748,7 +1748,7 @@
             let results = data.results;
 
             // 2. STRICT CR CHECK
-            // The API determines "match" loosely. We strictly enforce the CR if one is selected.
+            // Ensure the API didn't give us "CR 1/8" when we asked for "CR 1"
             if (cr) {
                 results = results.filter(m => m.challenge_rating == cr);
             }
@@ -1758,7 +1758,7 @@
                 return;
             }
 
-            // 3. SORTING (Exact Match -> Starts With -> Alphabetical)
+            // 3. SORTING (Smart Sort)
             if (rawQuery) {
                 const query = rawQuery.toLowerCase();
                 results.sort((a, b) => {
@@ -1773,7 +1773,6 @@
                     return nameA.length - nameB.length;
                 });
             } else {
-                // If just browsing by CR, sort Alphabetically
                 results.sort((a, b) => a.name.localeCompare(b.name));
             }
 
@@ -1787,7 +1786,7 @@
                 const safeName = m.name.replace(/'/g, "\\'");
                 const uniqueId = `monster-${index}`;
                 
-                // Show source book in small text (e.g. "wotc-srd" or "tob") so you know what you are adding
+                // Source label (e.g. "tob" for Tome of Beasts)
                 const source = m.document__slug ? `(${m.document__slug})` : "";
 
                 const div = document.createElement('div');
@@ -1801,7 +1800,7 @@
                                 <span class="text-[10px] text-gray-500">▼</span>
                             </div>
                             <div class="text-[10px] text-gray-400">
-                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp} <span class="text-gray-500">${source}</span>
+                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp} <span class="text-gray-600">${source}</span>
                             </div>
                         </div>
                         <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow-lg border border-green-500">
@@ -1832,7 +1831,7 @@
             
         } catch (error) {
             console.error(error);
-            list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data.</p>';
+            list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data. Try being more specific.</p>';
         }
     };
     
