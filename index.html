@@ -615,36 +615,52 @@
                     </div>
                     <button onclick="generateLoot()" id="generate-loot-button" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-loot-text">Generate</span><div id="loot-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
                 </div>
-                <div class="card p-4 rounded-lg shadow-xl mb-6">
+                <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
                     <div id="loot-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Loot appears here.</div>
                     <button onclick="saveGeneratedContent('lootNotes')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg text-sm">Save to Loot Notes</button>
                 </div>
                 
-                <div class="card p-4 rounded-lg shadow-xl mt-6 border border-yellow-700/30">
-                    <h2 class="text-xl font-semibold mb-4 text-yellow-400">💰 Loot Splitter</h2>
-                    <div class="grid grid-cols-5 gap-2 mb-1 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wider"><div>PP</div><div>GP</div><div>EP</div><div>SP</div><div>CP</div></div>
-                    <div class="grid grid-cols-5 gap-2 mb-4">
-                        <input type="number" id="loot-pp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                        <input type="number" id="loot-gp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                        <input type="number" id="loot-ep" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                        <input type="number" id="loot-sp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                        <input type="number" id="loot-cp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                    </div>
-                    <div class="flex gap-3 items-center mb-4 bg-gray-900/30 p-2 rounded">
-                        <span class="text-sm text-gray-300 font-bold">Party Size:</span>
-                        <input type="number" id="loot-party-size" value="4" class="w-16 p-2 rounded bg-gray-800 text-white text-center border border-gray-600 font-bold">
-                        <button onclick="window.splitLoot()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded transition shadow-lg shadow-yellow-900/20">Split Loot</button>
-                    </div>
-                    <div id="loot-split-result" class="text-sm text-yellow-100 text-center min-h-[1.5em] font-mono bg-gray-800/50 p-2 rounded border border-gray-700">Enter amounts to split...</div>
-                </div>
-            </div> <div id="soundboard" class="tab-content hidden">
+                <!-- Gold Splitter Card -->
+<div class="card p-4 rounded-lg shadow-xl mt-6 border border-yellow-700/30">
+    <h2 class="text-xl font-semibold mb-4 text-yellow-400">💰 Loot Splitter</h2>
+    <!-- Input Headers -->
+    <div class="grid grid-cols-5 gap-2 mb-1 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+        <div>PP</div><div>GP</div><div>EP</div><div>SP</div><div>CP</div>
+    </div>
+    <!-- Inputs -->
+    <div class="grid grid-cols-5 gap-2 mb-4">
+        <input type="number" id="loot-pp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-gp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-ep" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-sp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-cp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+    </div>
+    <!-- Controls -->
+    <div class="flex gap-3 items-center mb-4 bg-gray-900/30 p-2 rounded">
+        <span class="text-sm text-gray-300 font-bold">Party Size:</span>
+        <input type="number" id="loot-party-size" value="4" class="w-16 p-2 rounded bg-gray-800 text-white text-center border border-gray-600 font-bold">
+        <button onclick="window.splitLoot()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded transition shadow-lg shadow-yellow-900/20">Split Loot</button>
+    </div>
+    <!-- Result Display -->
+    <div id="loot-split-result" class="text-sm text-yellow-100 text-center min-h-[1.5em] font-mono bg-gray-800/50 p-2 rounded border border-gray-700">
+        Enter amounts to split...
+    </div>
+</div>
+            </div>
+        
+
+            <!-- Soundboard Tab -->
+            <div id="soundboard" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-pink-300">Synth Soundboard</h2>
+                    
+                    <!-- Volume Slider -->
                     <div class="mb-6 flex items-center gap-4 bg-gray-800 p-3 rounded-lg border border-gray-700">
                         <label for="master-volume" class="text-sm font-bold text-indigo-400">Master Volume:</label>
                         <input type="range" id="master-volume" min="0" max="1" step="0.01" value="0.5" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-400">
                     </div>
+
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
                         <button onclick="playTone('success')" class="sound-btn bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">✨</span><span class="text-xs">Success</span></button>
                         <button onclick="playTone('critical')" class="sound-btn bg-green-700 hover:bg-green-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-green-900 flex flex-col items-center justify-center"><span class="text-2xl mb-1">🎉</span><span class="text-xs">Crit</span></button>
@@ -656,6 +672,8 @@
                         <button onclick="playTone('trap')" class="sound-btn bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-yellow-800 flex flex-col items-center justify-center"><span class="text-2xl mb-1">⚠️</span><span class="text-xs">Trap</span></button>
                         <button onclick="playTone('boss')" class="sound-btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-lg shadow-lg border-b-4 border-gray-900 flex flex-col items-center justify-center"><span class="text-2xl mb-1">💀</span><span class="text-xs">Boss</span></button>
                     </div>
+
+                    <!-- Animal Sounds Section -->
                     <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider border-t border-gray-700 pt-4">Creature Sounds</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
                         <button onclick="playTone('wolf')" class="sound-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-md border-b-4 border-gray-800 flex flex-col items-center justify-center"><span class="text-xl mb-1">🐺</span><span class="text-xs">Wolf</span></button>
@@ -664,6 +682,7 @@
                         <button onclick="playTone('snake')" class="sound-btn bg-green-800 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md border-b-4 border-green-950 flex flex-col items-center justify-center"><span class="text-xl mb-1">🐍</span><span class="text-xs">Snake</span></button>
                         <button onclick="playTone('insect')" class="sound-btn bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-3 rounded-lg shadow-md border-b-4 border-yellow-900 flex flex-col items-center justify-center"><span class="text-xl mb-1">🦗</span><span class="text-xs">Insect</span></button>
                     </div>
+
                     <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider border-t border-gray-700 pt-4">Ambience Loops</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <button onclick="toggleAmbience('village')" id="ambience-village" class="sound-btn bg-teal-800 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow-md border border-teal-600 flex flex-col items-center justify-center"><span class="text-xl mb-1">🏘️</span><span class="text-xs">Village</span></button>
@@ -677,7 +696,10 @@
                     </div>
                     <div id="ambience-status" class="mt-2 text-center text-xs text-green-400 h-4"></div>
                 </div>
-            </div> <div id="notes" class="tab-content hidden">
+            </div>
+
+            <!-- Notes Tab -->
+            <div id="notes" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
                     <h2 class="text-xl font-semibold mb-4 text-indigo-300">Notes</h2>
                     <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4 overflow-x-auto">
@@ -690,10 +712,11 @@
                     <div id="enemyNotes-sub-content" class="sub-tab-content hidden"><div id="enemyNotes-list" class="scrollable-content space-y-3"></div></div>
                     <div id="npcNotes-sub-content" class="sub-tab-content hidden"><div id="npcNotes-list" class="scrollable-content space-y-3"></div></div>
                     <div id="lootNotes-sub-content" class="sub-tab-content hidden"><div id="lootNotes-list" class="scrollable-content space-y-3"></div></div>
-                    <button onclick="addNewNote(window.currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">+ Add Manual Note</button>
+                    <button onclick="addNewNote(currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">+ Add Manual Note</button>
                     <p id="notes-status" class="mt-2 text-sm text-center text-gray-400"></p>
                 </div>
-            </div> ```
+            </div>
+        </div>
         
         <!-- Rules Tab -->
         
