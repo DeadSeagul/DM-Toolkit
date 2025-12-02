@@ -526,6 +526,18 @@
             <!-- Monsters Tab -->
             <div id="monsters" class="tab-content hidden">
                 
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-blue-500/30">
+                    <h2 class="text-xl font-semibold mb-4 text-blue-300">📚 SRD Compendium</h2>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="compendium-search" placeholder="Name..." class="flex-1 p-2 rounded-lg input-style text-sm" onkeypress="if(event.key==='Enter') window.searchCompendium()">
+                        <select id="compendium-cr" class="w-24 p-2 rounded-lg input-style text-sm font-bold text-center" onchange="window.searchCompendium()">
+                            <option value="">Any CR</option><option value="0">0</option><option value="1/8">1/8</option><option value="1/4">1/4</option><option value="1/2">1/2</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="30">30</option>
+                        </select>
+                        <button onclick="window.searchCompendium()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 rounded-lg text-sm">🔍</button>
+                    </div>
+                    <div id="compendium-results" class="scrollable-content space-y-2 max-h-60"><p class="text-center text-gray-500 text-xs">Search by Name or CR.</p></div>
+                </div>
+
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-red-500/30">
                     <h2 class="text-xl font-semibold mb-4 text-red-300">⚖️ Encounter Calculator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-700">
@@ -566,18 +578,6 @@
                     </details>
                 </div>
 
-                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-blue-500/30">
-                    <h2 class="text-xl font-semibold mb-4 text-blue-300">📚 SRD Compendium</h2>
-                    <div class="flex gap-2 mb-4">
-                        <input type="text" id="compendium-search" placeholder="Name..." class="flex-1 p-2 rounded-lg input-style text-sm" onkeypress="if(event.key==='Enter') window.searchCompendium()">
-                        <select id="compendium-cr" class="w-24 p-2 rounded-lg input-style text-sm font-bold text-center" onchange="window.searchCompendium()">
-                            <option value="">Any CR</option><option value="0">0</option><option value="1/8">1/8</option><option value="1/4">1/4</option><option value="1/2">1/2</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="30">30</option>
-                        </select>
-                        <button onclick="window.searchCompendium()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 rounded-lg text-sm">🔍</button>
-                    </div>
-                    <div id="compendium-results" class="scrollable-content space-y-2 max-h-60"><p class="text-center text-gray-500 text-xs">Search by Name or CR.</p></div>
-                </div>
-
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-green-300">Monster Generator</h2>
                     <div class="grid grid-cols-2 gap-4 mb-4">
@@ -597,7 +597,7 @@
                     </div>
                 </div>
             </div>
-
+            
             <!-- Loot Tab -->
             <div id="loot" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
