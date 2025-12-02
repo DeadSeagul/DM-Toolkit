@@ -1720,7 +1720,17 @@
         };
     });
     
-    // --- 12. MONSTER COMPENDIUM (Unlocked: All Sources) ---
+    // --- 12. MONSTER COMPENDIUM (Original: SRD Only) ---
+
+    // Helpers
+    const getMod = (s) => Math.floor((s - 10) / 2);
+    const fmtMod = (s) => { const m = getMod(s); return m >= 0 ? `+${m}` : m; };
+    const fmtSpeed = (s) => {
+        if (!s) return '30 ft.';
+        if (typeof s === 'object') return Object.entries(s).map(([k, v]) => `${k} ${v} ft.`).join(', ');
+        return s;
+    };
+
     window.searchCompendium = async () => {
         const rawQuery = document.getElementById('compendium-search').value.trim();
         const cr = document.getElementById('compendium-cr').value; 
@@ -1734,32 +1744,29 @@
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
         
         try {
-            // 1. FETCH EVERYTHING (Limit 2000 to get ALL results)
-            // We removed the "&document__slug=wotc-srd" filter so you get 3rd party monsters too.
-            let url = `https://api.open5e.com/monsters/?limit=2000`; 
-            
-            // Apply API filters if available to speed it up
+            // 1. FETCH (Limit 500 to get a wide pool)
+            let url = `https://api.open5e.com/monsters/?limit=500`; 
             if (rawQuery) url += `&search=${rawQuery}`;
             if (cr) url += `&challenge_rating=${cr}`; 
 
             const res = await fetch(url);
-            if (!res.ok) throw new Error("API Connection Failed");
             const data = await res.json();
             
-            let results = data.results;
+            // 2. FILTER FOR SRD ONLY (The "Original" behavior)
+            // This removes 3rd party content like "Tome of Beasts"
+            let results = data.results.filter(m => m.document__slug === "wotc-srd");
 
-            // 2. STRICT CR CHECK
-            // The API determines "match" loosely. We strictly enforce the CR.
+            // 3. STRICT CR CHECK
             if (cr) {
                 results = results.filter(m => m.challenge_rating == cr);
             }
 
             if (results.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No monsters found.</p>';
+                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No official SRD monsters found.</p>';
                 return;
             }
 
-            // 3. SORTING (Exact Match -> Starts With -> Alphabetical)
+            // 4. SORTING
             if (rawQuery) {
                 const query = rawQuery.toLowerCase();
                 results.sort((a, b) => {
@@ -1774,22 +1781,18 @@
                     return nameA.length - nameB.length;
                 });
             } else {
-                // If just browsing by CR, sort Alphabetically
                 results.sort((a, b) => a.name.localeCompare(b.name));
             }
 
             list.innerHTML = '';
 
-            // 4. RENDER
+            // 5. RENDER
             results.forEach((m, index) => {
                 const initMod = getMod(m.dexterity || 10);
                 const hp = m.hit_points || 10;
                 const ac = m.armor_class || 10;
                 const safeName = m.name.replace(/'/g, "\\'");
                 const uniqueId = `monster-${index}`;
-                
-                // Show source book in small text (e.g. "wotc-srd" or "tob")
-                const source = m.document__slug ? `(${m.document__slug})` : "";
 
                 const div = document.createElement('div');
                 div.className = 'bg-gray-800 rounded border border-gray-700 overflow-hidden mb-2';
@@ -1802,7 +1805,7 @@
                                 <span class="text-[10px] text-gray-500">▼</span>
                             </div>
                             <div class="text-[10px] text-gray-400">
-                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp} <span class="text-gray-600">${source}</span>
+                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp} • Init ${initMod >= 0 ? '+'+initMod : initMod}
                             </div>
                         </div>
                         <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow-lg border border-green-500">
@@ -1835,6 +1838,22 @@
             console.error(error);
             list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data.</p>';
         }
+    };
+
+    // --- The Import Function ---
+    window.importCompendiumMonster = async (name, hp, ac, initMod) => {
+        if(!window.isAuthReady) { alert("Please log in to a session first."); return; }
+        
+        await window.addDoc(getCol('shared_combatants'), { 
+            name: name, 
+            init: 0, 
+            maxHp: hp, 
+            currentHp: hp, 
+            ac: ac, 
+            initModifier: parseInt(initMod) || 0
+        });
+        
+        window.switchTab('combat');
     };
     
     // --- 13. ENCOUNTER BALANCER ---
