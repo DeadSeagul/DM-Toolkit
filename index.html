@@ -2003,16 +2003,15 @@
     };
 
     window.searchLibrary = async () => {
-        const query = document.getElementById('library-search').value.trim();
+        const rawQuery = document.getElementById('library-search').value.trim();
         const list = document.getElementById('library-results');
-        if (!query) return;
+        if (!rawQuery) return;
 
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
 
         try {
             // Fetch from Open5e (Spells or Sections)
-            // Limit to 20 results to keep it fast
-            const res = await fetch(`https://api.open5e.com/${currentRuleMode}/?search=${query}&limit=20&ordering=name`);
+            const res = await fetch(`https://api.open5e.com/${currentRuleMode}/?search=${rawQuery}&limit=20`);
             const data = await res.json();
 
             list.innerHTML = '';
@@ -2021,6 +2020,29 @@
                 list.innerHTML = '<p class="text-center text-gray-500 text-xs">No results found.</p>';
                 return;
             }
+
+            // --- SMART SORTING LOGIC (The Fix) ---
+            const query = rawQuery.toLowerCase();
+            data.results.sort((a, b) => {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+
+                // 1. Exact Match gets Top Priority
+                if (nameA === query && nameB !== query) return -1;
+                if (nameB === query && nameA !== query) return 1;
+
+                // 2. "Starts With" gets Second Priority
+                const startA = nameA.startsWith(query);
+                const startB = nameB.startsWith(query);
+                if (startA && !startB) return -1;
+                if (!startA && startB) return 1;
+
+                // 3. Shorter Names get Third Priority (General rule usually shortest)
+                if (nameA.length !== nameB.length) return nameA.length - nameB.length;
+
+                return 0;
+            });
+            // -------------------------------------
 
             data.results.forEach((item, index) => {
                 const uniqueId = `lib-${index}`;
