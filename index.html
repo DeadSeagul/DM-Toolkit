@@ -1558,6 +1558,7 @@
             if(window.setupNotesListener) window.setupNotesListener();
             if(window.setupCombatDataListeners) window.setupCombatDataListeners();
             if(window.setupStatblocksListener) window.setupStatblocksListener();
+            if(window.setupHomebrewListener) window.setupHomebrewListener();
         } else {
             console.log("⚠️ No user, signing in anonymously...");
             try { await signInAnonymously(window.auth); } catch(e) {}
