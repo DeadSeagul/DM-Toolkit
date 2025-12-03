@@ -2404,9 +2404,9 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Final Fix) ---
+    // --- 16. HOMEBREW ENGINE (Delete Path Fixed) ---
     
-    // 1. Helper for PUBLIC Collection (Root Level)
+    // 1. Helper for PUBLIC Collection (ROOT PATH: aegis_community_items)
     const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
     
     // 🔴 ADMIN ID SETUP 🔴
@@ -2491,7 +2491,7 @@
             </div>`;
     };
 
-    // --- 2. SAVING (Private) ---
+    // --- 2. SAVING ---
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
@@ -2500,6 +2500,7 @@
         const init = parseInt(document.getElementById('hb-mon-init').value)||0;
         const tohit = parseInt(document.getElementById('hb-mon-tohit').value)||0;
         const fullDmgStr = `${document.getElementById('hb-mon-atkname').value}: ${document.getElementById('hb-mon-dmg').value}`;
+
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
             await window.addDoc(getCol('dm_toolkit_statblocks'), { name, hp, ac, toHit: tohit, initMod: init, dmg: fullDmgStr, timestamp: new Date().toISOString() });
@@ -2557,35 +2558,25 @@
         if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- 4. COMMUNITY (FIXED: No 'window.getDoc') ---
-    
-    // A. SHARE
+    // --- 4. COMMUNITY ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
             const docRef = getDocRef('dm_toolkit_homebrew_items', id);
-            
-            // FIX: Use getDoc directly (since it is imported at the top of the file)
-            const snapshot = await getDoc(docRef);
+            const snapshot = await (window.getDoc ? window.getDoc(docRef) : getDoc(docRef));
             
             if (!snapshot.exists()) { alert("Item not found!"); return; }
             const item = snapshot.data();
-            
             if(!confirm(`Publish "${item.name}"?`)) return;
 
             await window.addDoc(getPublicBrewCol(), {
-                name: item.name, 
-                dmg: item.dmg || "", 
-                type: item.type || "", 
-                props: item.props || "",
-                sharedBy: "Fellow DM", 
-                timestamp: new Date().toISOString()
+                name: item.name, dmg: item.dmg || "", type: item.type || "", props: item.props || "",
+                sharedBy: "Fellow DM", timestamp: new Date().toISOString()
             });
             alert("Published! Check Community tab.");
         } catch(e) { console.error(e); alert("Error: " + e.message); }
     };
 
-    // B. IMPORT
     window.importCommunityItem = async (name, dmg, type, props) => {
         try {
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), { name, dmg, type, props, timestamp: new Date().toISOString() });
@@ -2593,16 +2584,16 @@
         } catch(e) { console.error(e); }
     };
 
-    // C. DELETE (Admin)
+    // DELETE: FIX IS HERE (Pointing to 'aegis_community_items')
     window.deleteCommunityItem = async (id) => {
         if(!confirm("ADMIN: Delete this public item?")) return;
         try {
-            await window.deleteDoc(window.doc(window.db, 'artifacts', 'default', 'aegis_community_items', id));
+            // FIX: Ensure we delete from the SAME root collection we read from
+            await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id));
             alert("Deleted.");
         } catch(e) { console.error(e); alert("Delete failed. Check permissions."); }
     };
 
-    // D. LOAD
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
         const q = window.query(getPublicBrewCol(), window.limit(50));
@@ -2655,7 +2646,7 @@
                 const safeType = (item.type || "").replace(/'/g, "\\'");
                 const safeProps = (item.props || "").replace(/'/g, "\\'").replace(/\n/g, " ");
                 const div = document.createElement('div'); div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center mb-1';
-                div.innerHTML = `<div><div class="font-bold text-orange-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div><div class="flex gap-2 shrink-0"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share">🌍</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button></div>`;
+                div.innerHTML = `<div><div class="font-bold text-orange-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div><div class="flex gap-2 shrink-0"><button onclick="window.shareHomebrewItem('${item.id}', '${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share">🌍</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button></div>`;
                 list.appendChild(div);
             });
         });
