@@ -1330,13 +1330,52 @@
     const combatSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, level_or_cr: { type: "STRING" }, armor_class_ac: { type: "INTEGER" }, max_hit_points: { type: "INTEGER" }, initiative_bonus: { type: "INTEGER" }, main_attack: { type: "STRING" } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
     const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: { type: "INTEGER" }, DEX: { type: "INTEGER" }, CON: { type: "INTEGER" }, INT: { type: "INTEGER" }, WIS: { type: "INTEGER" }, CHA: { type: "INTEGER" } }, required: ["STR", "DEX", "CON", "INT", "WIS", "CHA"] }, saving_throws: { type: "ARRAY", items: { type: "STRING" } }, skills: { type: "ARRAY", items: { type: "STRING" } }, damage_vulnerabilities: { type: "ARRAY", items: { type: "STRING" } }, damage_resistances: { type: "ARRAY", items: { type: "STRING" } }, damage_immunities: { type: "ARRAY", items: { type: "STRING" } }, condition_immunities: { type: "ARRAY", items: { type: "STRING" } }, senses: { type: "STRING" }, languages: { type: "STRING" }, challenge_rating: { type: "STRING" }, xp: { type: "INTEGER" }, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } } } };
 
+    // --- UPDATED AI CALLER (With Auto-Retry) ---
     async function callAI(url, payload) {
+        // 1. Get Key
         let key = userApiKey;
-        if (!key || key === "") { const inputEl = document.getElementById('user-api-key'); if (inputEl && inputEl.value) { key = inputEl.value.trim(); userApiKey = key; localStorage.setItem('dm_toolkit_api_key', key); } }
-        if(!key) throw new Error("No Key");
-        const res = await fetch(`${url}?key=${key}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-        if (res.ok) return await res.json();
-        throw new Error(await res.text());
+        if (!key || key === "") { 
+            const inputEl = document.getElementById('user-api-key'); 
+            if (inputEl && inputEl.value) { 
+                key = inputEl.value.trim(); 
+                userApiKey = key; 
+                localStorage.setItem('dm_toolkit_api_key', key); 
+            } 
+        }
+        if (!key) throw new Error("No API Key provided. Check Prep tab.");
+
+        // 2. Retry Loop (Try 3 times before failing)
+        const maxRetries = 3;
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const res = await fetch(`${url}?key=${key}`, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify(payload) 
+                });
+
+                // Success!
+                if (res.ok) return await res.json();
+
+                // If Server is Overloaded (503), wait and try again
+                if (res.status === 503) {
+                    console.warn(`Server overloaded (503). Retrying... (${i + 1}/${maxRetries})`);
+                    // Wait 2 seconds before retrying
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    continue; 
+                }
+
+                // If other error, throw immediately
+                throw new Error(await res.text());
+
+            } catch (e) {
+                // If this was the last try, throw the error to the user
+                if (i === maxRetries - 1) throw e;
+                
+                // If network error, wait 1 second and retry
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
     }
 
     // Helper Function for Title Generation
