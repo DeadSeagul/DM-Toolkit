@@ -2400,10 +2400,11 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Fixed Publishing) ---
+    // --- 16. HOMEBREW ENGINE (Fixed Community Path) ---
     
-    // 1. Helper for PUBLIC Collection
-    const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'public', 'default', 'data', 'community_homebrew');
+    // 1. Helper for PUBLIC Collection (FIXED: 3 Segments = Valid Collection)
+    const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'community_homebrew');
+    
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
     // UI Switcher
@@ -2431,7 +2432,7 @@
         }
     };
 
-    // --- 1. PREVIEW ---
+    // --- 1. MONSTER PREVIEW ---
     window.previewHomebrewMonster = () => {
         const name = document.getElementById('hb-mon-name').value || "Unknown Monster";
         const type = document.getElementById('hb-mon-type').value || "Medium Beast, Unaligned";
@@ -2479,7 +2480,7 @@
             </div>`;
     };
 
-    // --- 2. SAVING ---
+    // --- 2. SAVING (Private) ---
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
@@ -2519,7 +2520,7 @@
         } catch (e) { console.error(e); }
     };
 
-    // --- 3. NOTES ---
+    // --- 3. NOTES INTEGRATION ---
     window.saveHomebrewToNotes = async (type) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
         let title, content, tab;
@@ -2545,22 +2546,19 @@
         if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- 4. COMMUNITY (THE FIX IS HERE) ---
+    // --- 4. COMMUNITY SHARING (FIXED) ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
-            // Get the item from PRIVATE db
+            // Get Item from PRIVATE DB
             const docRef = getDocRef('dm_toolkit_homebrew_items', id);
-            
-            // FIX: Use getDoc directly (not window.getDoc)
-            const snapshot = await window.getDoc ? window.getDoc(docRef) : await getDoc(docRef); // Safe fallback
+            const snapshot = await (window.getDoc ? window.getDoc(docRef) : getDoc(docRef));
             
             if (!snapshot.exists()) { alert("Item not found!"); return; }
-            
             const item = snapshot.data();
             if(!confirm(`Publish "${item.name}"?`)) return;
 
-            // Write to PUBLIC db
+            // Write to PUBLIC DB (Using Fixed Path)
             await window.addDoc(getPublicBrewCol(), {
                 name: item.name, dmg: item.dmg || "", type: item.type || "", props: item.props || "",
                 sharedBy: "Fellow DM", timestamp: new Date().toISOString()
