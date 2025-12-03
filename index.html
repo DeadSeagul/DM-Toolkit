@@ -2400,27 +2400,38 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Community Fix: No Sort) ---
+    // --- 16. HOMEBREW ENGINE (The "Golden Path" Fix) ---
     
-    // 1. Helper for PUBLIC Collection
-    const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'community_homebrew');
+    // 1. Helper for PUBLIC Collection (3 Segments = Safe & Valid)
+    // Path: artifacts (Col) -> default (Doc) -> public_homebrew (Col)
+    const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'public_homebrew');
     
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
     // UI Switcher
+    window.unsubCommunity = null; // Variable to store the listener
+
     window.switchBrewMode = (mode, btn) => {
+        // Stop listening to community updates if we leave the tab
+        if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
+
         document.querySelectorAll('.brew-sub-tab').forEach(b => {
             b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600');
             b.classList.add('text-gray-400');
         });
         btn.classList.remove('text-gray-400');
-        if(mode === 'community') btn.classList.add('bg-blue-600', 'text-white');
-        else btn.classList.add('bg-orange-600', 'text-white');
+        
+        if(mode === 'community') {
+            btn.classList.add('bg-blue-600', 'text-white');
+        } else {
+            btn.classList.add('bg-orange-600', 'text-white');
+        }
 
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
         document.getElementById('brew-community-area').classList.add('hidden');
+        
         document.getElementById(`brew-${mode}-area`).classList.remove('hidden');
         
         const inv = document.getElementById('my-inventory-container');
@@ -2480,7 +2491,7 @@
             </div>`;
     };
 
-    // --- 2. SAVING ---
+    // --- 2. SAVING (Private) ---
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
@@ -2489,6 +2500,7 @@
         const init = parseInt(document.getElementById('hb-mon-init').value)||0;
         const tohit = parseInt(document.getElementById('hb-mon-tohit').value)||0;
         const fullDmgStr = `${document.getElementById('hb-mon-atkname').value}: ${document.getElementById('hb-mon-dmg').value}`;
+
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
             await window.addDoc(getCol('dm_toolkit_statblocks'), { name, hp, ac, toHit: tohit, initMod: init, dmg: fullDmgStr, timestamp: new Date().toISOString() });
@@ -2546,23 +2558,41 @@
         if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- 4. COMMUNITY (FIXED: NO SORTING) ---
+    // --- 4. COMMUNITY (DEBUGGED) ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
             const docRef = getDocRef('dm_toolkit_homebrew_items', id);
+            // Retrieve the item first
             const snapshot = await (window.getDoc ? window.getDoc(docRef) : getDoc(docRef));
             
-            if (!snapshot.exists()) { alert("Item not found!"); return; }
+            if (!snapshot.exists()) { alert("Item not found in private DB!"); return; }
             const item = snapshot.data();
-            if(!confirm(`Publish "${item.name}"?`)) return;
+            
+            if(!confirm(`Publish "${item.name}" to Community?`)) return;
 
+            console.log("Attempting to write to public path...");
+            
+            // Write to the NEW public path (3 segments)
             await window.addDoc(getPublicBrewCol(), {
-                name: item.name, dmg: item.dmg || "", type: item.type || "", props: item.props || "",
-                sharedBy: "Fellow DM", timestamp: new Date().toISOString()
+                name: item.name, 
+                dmg: item.dmg || "", 
+                type: item.type || "", 
+                props: item.props || "",
+                sharedBy: "Fellow DM", 
+                timestamp: new Date().toISOString()
             });
-            alert("Published! Check Community tab.");
-        } catch(e) { console.error(e); alert("Error: " + e.message); }
+            
+            alert("Published! Check the Community tab.");
+            // Trigger reload to see it immediately
+            if(document.getElementById('brew-community-area').classList.contains('hidden') === false) {
+                window.loadCommunityItems();
+            }
+            
+        } catch(e) { 
+            console.error("Publish Failed:", e); 
+            alert("Publish failed. Check console (F12) for permission errors."); 
+        }
     };
 
     window.importCommunityItem = async (name, dmg, type, props) => {
@@ -2573,30 +2603,48 @@
     };
 
     window.loadCommunityItems = () => {
+        console.log("Loading community items from new path...");
         const list = document.getElementById('community-list');
-        // REMOVED 'orderBy' to prevent index errors. 
-        // Just fetch last 50 items in default order.
+        
+        // Just limit to 50. NO sorting, to prevent Index errors.
         const q = window.query(getPublicBrewCol(), window.limit(50));
         
-        window.onSnapshot(q, (snap) => {
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No community items yet.</p>'; return; }
+        // Set global unsub to this new listener
+        window.unsubCommunity = window.onSnapshot(q, (snap) => {
+            console.log("Community Update Received. Count:", snap.size);
+            
+            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items found in public repo.</p>'; return; }
+            
             list.innerHTML = '';
             snap.forEach(d => {
                 const item = d.data();
+                // Safely escape for HTML
                 const safeName = (item.name||"").replace(/'/g, "\\'");
                 const safeDmg = (item.dmg||"").replace(/'/g, "\\'");
                 const safeType = (item.type||"").replace(/'/g, "\\'");
                 const safeProps = (item.props||"").replace(/'/g, "\\'").replace(/\n/g, " ");
+                
                 const div = document.createElement('div');
                 div.className = 'bg-blue-900/20 p-2 rounded border border-blue-500/30 flex justify-between items-center mb-2';
-                div.innerHTML = `<div><div class="font-bold text-blue-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div><div class="text-[10px] text-gray-500 truncate pr-2">${item.props}</div></div><button onclick="window.importCommunityItem('${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded shadow">Save</button>`;
+                div.innerHTML = `
+                    <div class="overflow-hidden">
+                        <div class="font-bold text-blue-200 text-sm truncate">${item.name}</div>
+                        <div class="text-[10px] text-gray-400">${item.dmg || ""} ${item.type || ""}</div>
+                        <div class="text-[10px] text-gray-500 truncate pr-2">${item.props || ""}</div>
+                    </div>
+                    <button onclick="window.importCommunityItem('${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded shadow">Save</button>
+                `;
                 list.appendChild(div);
             });
+        }, (error) => {
+            console.error("Community Load Error:", error);
+            list.innerHTML = '<p class="text-center text-red-400 text-xs">Error loading community data.</p>';
         });
     };
 
     // 5. LISTENER
     window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
+    
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
@@ -2605,10 +2653,6 @@
             if(items.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; return; }
             items.sort((a,b) => a.name.localeCompare(b.name)); list.innerHTML = '';
             items.forEach(item => {
-                const safeName = item.name.replace(/'/g, "\\'");
-                const safeDmg = (item.dmg || "").replace(/'/g, "\\'");
-                const safeType = (item.type || "").replace(/'/g, "\\'");
-                const safeProps = (item.props || "").replace(/'/g, "\\'").replace(/\n/g, " ");
                 const div = document.createElement('div'); div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center mb-1';
                 div.innerHTML = `<div><div class="font-bold text-orange-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div><div class="flex gap-2 shrink-0"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share">🌍</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button></div>`;
                 list.appendChild(div);
