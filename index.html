@@ -451,25 +451,8 @@
             <!-- Combat Tab -->
             <div id="combat" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
-                    
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-indigo-300">Tracker</h2>
-                        
-                        <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-indigo-300">Tracker</h2>
-                        
-                        <div class="flex items-center gap-1 bg-gray-900 px-2 py-1 rounded-lg border border-gray-700 shadow-inner">
-                            <input type="number" id="timer-min" value="00" min="0" max="99" class="w-7 bg-transparent text-red-400 font-mono font-bold text-lg text-center outline-none p-0 border-none focus:ring-0 placeholder-red-400/50" onfocus="this.select()">
-                            <span class="text-red-400 font-bold">:</span>
-                            <input type="number" id="timer-sec" value="00" min="0" max="59" class="w-7 bg-transparent text-red-400 font-mono font-bold text-lg text-center outline-none p-0 border-none focus:ring-0 placeholder-red-400/50" onfocus="this.select()">
-                            
-                            <button onclick="window.toggleTimer()" id="btn-timer-toggle" class="ml-2 text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded font-bold transition">▶</button>
-                            <button onclick="window.resetTimer()" class="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded font-bold transition">↺</button>
-                        </div>
-                    </div>
-
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Tracker</h2>
                     <div class="flex justify-between items-center mb-2"><span id="db-status" class="text-xs px-2 py-1 rounded bg-gray-700 text-gray-400">Connecting...</span></div>
-                    
                     <div class="flex flex-wrap gap-2 mb-4">
                         <input id="combatant-name" type="text" placeholder="Name" class="flex-1 min-w-[100px] p-2 rounded-lg input-style">
                         <input id="combatant-init" type="number" placeholder="Init" class="w-20 p-2 rounded-lg input-style text-center text-sm">
@@ -547,6 +530,7 @@
                     <div id="initiative-list" class="scrollable-content space-y-2"><p class="text-center text-gray-500 pt-8">List empty.</p></div>
                 </div>
             </div>
+
 
             <!-- Statblocks Tab -->
             <div id="statblocks" class="tab-content hidden">
