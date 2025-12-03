@@ -451,8 +451,19 @@
             <!-- Combat Tab -->
             <div id="combat" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Tracker</h2>
+                    
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-indigo-300">Tracker</h2>
+                        
+                        <div class="flex items-center gap-2 bg-gray-900 px-3 py-1 rounded-lg border border-gray-700 shadow-inner">
+                            <span id="combat-timer-display" class="font-mono font-bold text-lg text-red-400 w-16 text-center">00:00</span>
+                            <button onclick="window.toggleCombatTimer()" id="btn-timer-toggle" class="text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded font-bold transition">▶</button>
+                            <button onclick="window.resetCombatTimer()" class="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded font-bold transition">↺</button>
+                        </div>
+                    </div>
+
                     <div class="flex justify-between items-center mb-2"><span id="db-status" class="text-xs px-2 py-1 rounded bg-gray-700 text-gray-400">Connecting...</span></div>
+                    
                     <div class="flex flex-wrap gap-2 mb-4">
                         <input id="combatant-name" type="text" placeholder="Name" class="flex-1 min-w-[100px] p-2 rounded-lg input-style">
                         <input id="combatant-init" type="number" placeholder="Init" class="w-20 p-2 rounded-lg input-style text-center text-sm">
@@ -2506,6 +2517,47 @@
                 list.appendChild(div);
             });
         });
+    };
+
+        // --- 17. COMBAT TIMER ---
+    let combatTimerInterval = null;
+    let combatTimerSeconds = 0;
+
+    window.toggleCombatTimer = () => {
+        const btn = document.getElementById('btn-timer-toggle');
+        const display = document.getElementById('combat-timer-display');
+        
+        if (combatTimerInterval) {
+            // Stop Timer
+            clearInterval(combatTimerInterval);
+            combatTimerInterval = null;
+            btn.textContent = "▶";
+            btn.classList.replace('bg-red-700', 'bg-green-700');
+            btn.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
+            display.classList.replace('text-green-400', 'text-red-400');
+        } else {
+            // Start Timer
+            combatTimerInterval = setInterval(() => {
+                combatTimerSeconds++;
+                const m = Math.floor(combatTimerSeconds / 60).toString().padStart(2, '0');
+                const s = (combatTimerSeconds % 60).toString().padStart(2, '0');
+                display.textContent = `${m}:${s}`;
+            }, 1000);
+            
+            btn.textContent = "⏸";
+            btn.classList.replace('bg-green-700', 'bg-red-700');
+            btn.classList.replace('hover:bg-green-600', 'hover:bg-red-600');
+            display.classList.replace('text-red-400', 'text-green-400');
+        }
+    };
+
+    window.resetCombatTimer = () => {
+        // Stop first if running
+        if(combatTimerInterval) window.toggleCombatTimer();
+        
+        combatTimerSeconds = 0;
+        const display = document.getElementById('combat-timer-display');
+        if(display) display.textContent = "00:00";
     };
     
 </script>
