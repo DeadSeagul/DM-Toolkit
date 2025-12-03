@@ -986,10 +986,12 @@
 
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    
+    // FIX: Added 'limit' and 'orderBy' to this list
+    import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // --- 1. FIREBASE CONFIG ---
+    // --- 1. FIREBASE SETUP ---
     const manualFirebaseConfig = {
         apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
         authDomain: "aegisdmtoolkit.firebaseapp.com",
@@ -1004,9 +1006,11 @@
     window.userId = null; 
     window.isAuthReady = false;
 
-    // Expose Functions
+    // Expose Functions (FIX: Added limit and orderBy here)
     window.doc = doc; window.setDoc = setDoc; window.deleteDoc = deleteDoc; window.collection = collection;
     window.query = query; window.onSnapshot = onSnapshot; window.addDoc = addDoc; window.updateDoc = updateDoc; window.writeBatch = writeBatch;
+    window.limit = limit; window.orderBy = orderBy;
+    
     window.signInWithEmailAndPassword = signInWithEmailAndPassword;
     window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
     window.signOut = signOut;
