@@ -2404,58 +2404,46 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Fixed Tabs & Community) ---
+    // --- 16. HOMEBREW ENGINE (Final Fix) ---
     
-    // 1. CONFIGURATION
-    // Path: artifacts -> default -> community_homebrew (3 segments = Valid)
-    const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'community_homebrew');
+    // 1. Helper for PUBLIC Collection (Root Level)
+    const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
     
-    // 🔴 REPLACE THIS WITH YOUR ID IF YOU WANT TO BE THE ONLY ADMIN 🔴
-    const ADMIN_ID = "DBFLOO3aeeZ4ySvDi2lSzUdTNzY2"; 
+    // 🔴 ADMIN ID SETUP 🔴
+    const ADMIN_ID = "YOUR_ADMIN_ID_HERE"; 
     
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
-    // 2. TAB SWITCHER (This fixes the buttons!)
+    // UI Switcher
     window.unsubCommunity = null;
-    
     window.switchBrewMode = (mode, btn) => {
-        // Stop listening to community updates if we leave that tab (saves data)
         if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
 
-        // 1. Update Buttons
         document.querySelectorAll('.brew-sub-tab').forEach(b => {
             b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600');
             b.classList.add('text-gray-400');
         });
-        
         btn.classList.remove('text-gray-400');
         
-        // Color logic: Blue for Community, Orange for others
-        if(mode === 'community') {
-            btn.classList.add('bg-blue-600', 'text-white');
-        } else {
-            btn.classList.add('bg-orange-600', 'text-white');
-        }
+        if(mode === 'community') btn.classList.add('bg-blue-600', 'text-white');
+        else btn.classList.add('bg-orange-600', 'text-white');
 
-        // 2. Switch Content Areas
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
         document.getElementById('brew-community-area').classList.add('hidden');
-        
         document.getElementById(`brew-${mode}-area`).classList.remove('hidden');
         
-        // 3. Toggle Inventory vs Community List
         const inv = document.getElementById('my-inventory-container');
         if(mode === 'community') {
             if(inv) inv.classList.add('hidden');
-            window.loadCommunityItems(); // Trigger the community loader
+            window.loadCommunityItems(); 
         } else {
             if(inv) inv.classList.remove('hidden');
         }
     };
 
-    // --- 3. MONSTER PREVIEW ---
+    // --- 1. PREVIEW ---
     window.previewHomebrewMonster = () => {
         const name = document.getElementById('hb-mon-name').value || "Unknown Monster";
         const type = document.getElementById('hb-mon-type').value || "Medium Beast, Unaligned";
@@ -2503,7 +2491,7 @@
             </div>`;
     };
 
-    // --- 4. SAVING (Private DB) ---
+    // --- 2. SAVING (Private) ---
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
@@ -2512,7 +2500,6 @@
         const init = parseInt(document.getElementById('hb-mon-init').value)||0;
         const tohit = parseInt(document.getElementById('hb-mon-tohit').value)||0;
         const fullDmgStr = `${document.getElementById('hb-mon-atkname').value}: ${document.getElementById('hb-mon-dmg').value}`;
-
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
             await window.addDoc(getCol('dm_toolkit_statblocks'), { name, hp, ac, toHit: tohit, initMod: init, dmg: fullDmgStr, timestamp: new Date().toISOString() });
@@ -2544,7 +2531,7 @@
         } catch (e) { console.error(e); }
     };
 
-    // --- 5. NOTES SAVING ---
+    // --- 3. NOTES ---
     window.saveHomebrewToNotes = async (type) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
         let title, content, tab;
@@ -2570,26 +2557,35 @@
         if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- 6. COMMUNITY SHARING ---
+    // --- 4. COMMUNITY (FIXED: No 'window.getDoc') ---
+    
+    // A. SHARE
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
             const docRef = getDocRef('dm_toolkit_homebrew_items', id);
-            // Using internal getDoc to avoid scope issues
-            const snapshot = await window.getDoc(docRef);
+            
+            // FIX: Use getDoc directly (since it is imported at the top of the file)
+            const snapshot = await getDoc(docRef);
             
             if (!snapshot.exists()) { alert("Item not found!"); return; }
             const item = snapshot.data();
+            
             if(!confirm(`Publish "${item.name}"?`)) return;
 
             await window.addDoc(getPublicBrewCol(), {
-                name: item.name, dmg: item.dmg || "", type: item.type || "", props: item.props || "",
-                sharedBy: "Fellow DM", timestamp: new Date().toISOString()
+                name: item.name, 
+                dmg: item.dmg || "", 
+                type: item.type || "", 
+                props: item.props || "",
+                sharedBy: "Fellow DM", 
+                timestamp: new Date().toISOString()
             });
             alert("Published! Check Community tab.");
         } catch(e) { console.error(e); alert("Error: " + e.message); }
     };
 
+    // B. IMPORT
     window.importCommunityItem = async (name, dmg, type, props) => {
         try {
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), { name, dmg, type, props, timestamp: new Date().toISOString() });
@@ -2597,17 +2593,18 @@
         } catch(e) { console.error(e); }
     };
 
-    // Delete from Community (Admin Only)
+    // C. DELETE (Admin)
     window.deleteCommunityItem = async (id) => {
         if(!confirm("ADMIN: Delete this public item?")) return;
         try {
-            await window.deleteDoc(window.doc(window.db, 'artifacts', 'default', 'community_homebrew', id));
+            await window.deleteDoc(window.doc(window.db, 'artifacts', 'default', 'aegis_community_items', id));
+            alert("Deleted.");
         } catch(e) { console.error(e); alert("Delete failed. Check permissions."); }
     };
 
+    // D. LOAD
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
-        // Limit to 50, NO sorting to avoid index errors
         const q = window.query(getPublicBrewCol(), window.limit(50));
         
         window.unsubCommunity = window.onSnapshot(q, (snap) => {
@@ -2620,9 +2617,9 @@
                 const safeType = (item.type||"").replace(/'/g, "\\'");
                 const safeProps = (item.props||"").replace(/'/g, "\\'").replace(/\n/g, " ");
                 
-                // Admin check
-                const deleteBtn = (window.userId === ADMIN_ID) 
-                    ? `<button onclick="window.deleteCommunityItem('${d.id}')" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs font-bold px-2 py-1 rounded border border-red-700">×</button>` 
+                const isAdmin = (window.userId === ADMIN_ID);
+                const deleteBtn = isAdmin 
+                    ? `<button onclick="window.deleteCommunityItem('${d.id}')" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs font-bold px-2 py-1 rounded border border-red-700 ml-2">×</button>` 
                     : '';
 
                 const div = document.createElement('div');
@@ -2633,7 +2630,7 @@
                         <div class="text-[10px] text-gray-400">${item.dmg || ""} ${item.type || ""}</div>
                         <div class="text-[10px] text-gray-500 truncate pr-2">${item.props || ""}</div>
                     </div>
-                    <div class="flex gap-1">
+                    <div class="flex items-center">
                         <button onclick="window.importCommunityItem('${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded shadow">Save</button>
                         ${deleteBtn}
                     </div>
@@ -2643,7 +2640,7 @@
         });
     };
 
-    // 7. INVENTORY LISTENER
+    // 5. LISTENER
     window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
