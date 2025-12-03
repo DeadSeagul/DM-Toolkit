@@ -2404,45 +2404,58 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Admin Mode) ---
+    // --- 16. HOMEBREW ENGINE (Fixed Tabs & Community) ---
     
     // 1. CONFIGURATION
+    // Path: artifacts -> default -> community_homebrew (3 segments = Valid)
     const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'community_homebrew');
-    // 🔴 REPLACE THIS WITH YOUR ID FROM THE CONSOLE 🔴
-    const ADMIN_ID = DBFLOO3aeeZ4ySvDi2lSzUdTNzY2; 
+    
+    // 🔴 REPLACE THIS WITH YOUR ID IF YOU WANT TO BE THE ONLY ADMIN 🔴
+    const ADMIN_ID = "YOUR_ADMIN_ID_HERE"; 
     
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
-    // UI Switcher
+    // 2. TAB SWITCHER (This fixes the buttons!)
     window.unsubCommunity = null;
+    
     window.switchBrewMode = (mode, btn) => {
+        // Stop listening to community updates if we leave that tab (saves data)
         if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
 
+        // 1. Update Buttons
         document.querySelectorAll('.brew-sub-tab').forEach(b => {
             b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600');
             b.classList.add('text-gray-400');
         });
+        
         btn.classList.remove('text-gray-400');
         
-        if(mode === 'community') btn.classList.add('bg-blue-600', 'text-white');
-        else btn.classList.add('bg-orange-600', 'text-white');
+        // Color logic: Blue for Community, Orange for others
+        if(mode === 'community') {
+            btn.classList.add('bg-blue-600', 'text-white');
+        } else {
+            btn.classList.add('bg-orange-600', 'text-white');
+        }
 
+        // 2. Switch Content Areas
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
         document.getElementById('brew-community-area').classList.add('hidden');
+        
         document.getElementById(`brew-${mode}-area`).classList.remove('hidden');
         
+        // 3. Toggle Inventory vs Community List
         const inv = document.getElementById('my-inventory-container');
         if(mode === 'community') {
             if(inv) inv.classList.add('hidden');
-            window.loadCommunityItems(); 
+            window.loadCommunityItems(); // Trigger the community loader
         } else {
             if(inv) inv.classList.remove('hidden');
         }
     };
 
-    // --- 1. PREVIEW ---
+    // --- 3. MONSTER PREVIEW ---
     window.previewHomebrewMonster = () => {
         const name = document.getElementById('hb-mon-name').value || "Unknown Monster";
         const type = document.getElementById('hb-mon-type').value || "Medium Beast, Unaligned";
@@ -2490,7 +2503,7 @@
             </div>`;
     };
 
-    // --- 2. SAVING (Private) ---
+    // --- 4. SAVING (Private DB) ---
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
@@ -2531,7 +2544,7 @@
         } catch (e) { console.error(e); }
     };
 
-    // --- 3. NOTES INTEGRATION ---
+    // --- 5. NOTES SAVING ---
     window.saveHomebrewToNotes = async (type) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
         let title, content, tab;
@@ -2557,12 +2570,14 @@
         if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- 4. COMMUNITY (ADMIN LOCKED) ---
+    // --- 6. COMMUNITY SHARING ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
             const docRef = getDocRef('dm_toolkit_homebrew_items', id);
-            const snapshot = await (window.getDoc ? window.getDoc(docRef) : getDoc(docRef));
+            // Using internal getDoc to avoid scope issues
+            const snapshot = await window.getDoc(docRef);
+            
             if (!snapshot.exists()) { alert("Item not found!"); return; }
             const item = snapshot.data();
             if(!confirm(`Publish "${item.name}"?`)) return;
@@ -2582,7 +2597,7 @@
         } catch(e) { console.error(e); }
     };
 
-    // NEW: Delete from Community (Only shows for Admin)
+    // Delete from Community (Admin Only)
     window.deleteCommunityItem = async (id) => {
         if(!confirm("ADMIN: Delete this public item?")) return;
         try {
@@ -2592,6 +2607,7 @@
 
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
+        // Limit to 50, NO sorting to avoid index errors
         const q = window.query(getPublicBrewCol(), window.limit(50));
         
         window.unsubCommunity = window.onSnapshot(q, (snap) => {
@@ -2604,9 +2620,8 @@
                 const safeType = (item.type||"").replace(/'/g, "\\'");
                 const safeProps = (item.props||"").replace(/'/g, "\\'").replace(/\n/g, " ");
                 
-                // CHECK IF USER IS ADMIN
-                const isAdmin = (window.userId === ADMIN_ID);
-                const deleteBtn = isAdmin 
+                // Admin check
+                const deleteBtn = (window.userId === ADMIN_ID) 
                     ? `<button onclick="window.deleteCommunityItem('${d.id}')" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs font-bold px-2 py-1 rounded border border-red-700">×</button>` 
                     : '';
 
@@ -2628,7 +2643,7 @@
         });
     };
 
-    // 5. INVENTORY LISTENER
+    // 7. INVENTORY LISTENER
     window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
