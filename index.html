@@ -2300,263 +2300,300 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Final Fix: Direct Sharing) ---
+    // --- 16. HOMEBREW ENGINE (Debugged & Fixed) ---
     
+    // 1. CONFIGURATION
+    // Defines the Public and Private collections
     const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
+    // 🔴 ADMIN ID
     const ADMIN_ID = "DBFLOO3aeeZ4ySvDi2lSzUdTNzY2"; 
+    
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
-
-    // 1. HTML GENERATORS
-    const generateParchmentHTML = (name, meta1, meta2, desc, image) => {
-        const imgTag = image ? `<img src="${image}" class="card-image" style="display:block; width:100%; height:auto; max-height:250px; object-fit:contain; margin:0.5rem auto; filter:drop-shadow(0px 4px 6px rgba(0,0,0,0.2));">` : '';
-        return `
-        <div class="parchment-card" style="background-color:#f4e4bc; background-image:url('https://www.transparenttextures.com/patterns/aged-paper.png'); border:8px solid transparent; border-image:url('https://i.imgur.com/xnP6b0k.png') 30 round; padding:1.5rem; text-align:center; color:#3e2723; font-family:'IM Fell English SC', serif; box-shadow:0 4px 10px rgba(0,0,0,0.3); position:relative; overflow:hidden;">
-            <div class="card-title" style="font-family:'Cinzel Decorative', cursive; font-size:1.5rem; margin-bottom:0.5rem; text-transform:uppercase; line-height:1.1;">${name}</div>
-            ${imgTag}
-            <div class="card-meta-1" style="font-weight:bold; font-size:0.9rem; border-top:2px solid #3e2723; padding-top:0.5rem; display:inline-block;">${meta1}</div>
-            <div class="card-meta-2" style="font-weight:bold; font-size:1rem; margin-bottom:1rem;">${meta2}</div>
-            <div class="card-body" style="font-size:0.9rem; line-height:1.4; white-space:pre-wrap; text-align:left;">${desc}</div>
-        </div>`;
-    };
-
-    const generateMonsterHTML = (name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atk, dmg, desc) => {
-        return `
-        <div class="dnd-statblock text-left text-sm" style="background-color:#fdf1dc; border:1px solid #d4b57e; padding:15px; box-shadow:0 2px 5px rgba(0,0,0,0.2); color:#58180d; font-family:'Libre Baskerville', serif;">
-            <div class="dnd-header" style="font-family:'Libre Baskerville', serif; font-variant:small-caps; font-weight:700; font-size:1.4em; border-bottom:2px solid #e69a28; margin-bottom:5px;">${name}</div>
-            <div class="italic text-black text-xs mb-2">${type}</div>
-            <div class="text-red-900 font-serif"><p><strong>AC</strong> ${ac}</p><p><strong>HP</strong> ${hp}</p><p><strong>Speed</strong> ${spd}</p></div>
-            <div class="tapered-rule" style="height:2px; background:#e69a28; margin:8px 0;"></div>
-            <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold">
-                <div>STR<br>${str} (${calcMod(str)})</div><div>DEX<br>${dex} (${calcMod(dex)})</div><div>CON<br>${con} (${calcMod(con)})</div>
-                <div>INT<br>${int} (${calcMod(int)})</div><div>WIS<br>${wis} (${calcMod(wis)})</div><div>CHA<br>${cha} (${calcMod(cha)})</div>
-            </div>
-            <div class="tapered-rule" style="height:2px; background:#e69a28; margin:8px 0;"></div>
-            <div class="text-black mt-2 space-y-2">
-                ${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}
-                <div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div>
-                <p><strong class="italic font-bold text-black">${atk}.</strong> <span class="text-black"><em>Melee:</em> +${toHit} hit. <em>Hit:</em> ${dmg}.</span></p>
-            </div>
-        </div>`;
-    };
 
     // 2. UI SWITCHER
     window.unsubCommunity = null;
     window.switchBrewMode = (mode, btn) => {
         if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
-        document.querySelectorAll('.brew-sub-tab').forEach(b => { b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600'); b.classList.add('text-gray-400'); });
+
+        document.querySelectorAll('.brew-sub-tab').forEach(b => {
+            b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600');
+            b.classList.add('text-gray-400');
+        });
         btn.classList.remove('text-gray-400');
-        if(mode === 'community') btn.classList.add('bg-blue-600', 'text-white'); else btn.classList.add('bg-orange-600', 'text-white');
+        
+        if(mode === 'community') btn.classList.add('bg-blue-600', 'text-white');
+        else btn.classList.add('bg-orange-600', 'text-white');
 
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
         document.getElementById('brew-community-area').classList.add('hidden');
+        
         document.getElementById(`brew-${mode}-area`).classList.remove('hidden');
         
         const inv = document.getElementById('my-inventory-container');
-        if(mode === 'community') { if(inv) inv.classList.add('hidden'); window.loadCommunityItems(); } 
-        else { if(inv) inv.classList.remove('hidden'); }
+        if(mode === 'community') {
+            if(inv) inv.classList.add('hidden');
+            window.loadCommunityItems(); 
+        } else {
+            if(inv) inv.classList.remove('hidden');
+        }
     };
 
-    // 3. INPUT & PREVIEW
-    const wepImgInput = document.getElementById('hb-wep-image-input');
-    if(wepImgInput) {
-        wepImgInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                if (file.size > 500000) { alert("Image too large! Keep under 500KB."); this.value = ""; return; }
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('prev-wep-img').src = e.target.result;
-                    document.getElementById('prev-wep-img').classList.remove('hidden');
-                    document.getElementById('hb-wep-image-data').value = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
-    window.updateWeaponPreview = () => {
-        const html = generateParchmentHTML(
-            document.getElementById('hb-wep-name').value || "Weapon Name",
-            document.getElementById('hb-wep-meta1').value || "Rarity",
-            document.getElementById('hb-wep-meta2').value || "Type",
-            document.getElementById('hb-wep-desc').value || "Description...",
-            document.getElementById('hb-wep-image-data').value
-        );
-        const preview = document.getElementById('hb-weapon-card-preview');
-        if(preview) preview.outerHTML = `<div id="hb-weapon-card-preview">${html}</div>`;
-    };
+    // --- 3. PREVIEW LOGIC ---
     window.previewHomebrewMonster = () => {
-        const v = getMonsterFormData();
-        const html = generateMonsterHTML(v.name, v.type, v.ac, v.hp, v.spd, v.str, v.dex, v.con, v.int, v.wis, v.cha, v.init, v.tohit, v.atk, v.dmg, v.desc);
-        const p = document.getElementById('hb-monster-preview'); p.classList.remove('hidden'); p.innerHTML = html;
-    };
-    const getMonsterFormData = () => {
-        return {
-            name: document.getElementById('hb-mon-name').value.trim()||"Monster", category: 'monster',
-            hp: document.getElementById('hb-mon-hp').value, ac: document.getElementById('hb-mon-ac').value,
-            init: document.getElementById('hb-mon-init').value, tohit: document.getElementById('hb-mon-tohit').value,
-            atk: document.getElementById('hb-mon-atkname').value, dmg: document.getElementById('hb-mon-dmg').value,
-            type: document.getElementById('hb-mon-type').value, spd: document.getElementById('hb-mon-spd').value,
-            str: document.getElementById('hb-mon-str').value, dex: document.getElementById('hb-mon-dex').value,
-            con: document.getElementById('hb-mon-con').value, int: document.getElementById('hb-mon-int').value,
-            wis: document.getElementById('hb-mon-wis').value, cha: document.getElementById('hb-mon-cha').value,
-            desc: document.getElementById('hb-mon-desc').value, timestamp: new Date().toISOString()
-        };
+        const name = document.getElementById('hb-mon-name').value || "Unknown Monster";
+        const type = document.getElementById('hb-mon-type').value || "Medium Beast, Unaligned";
+        const ac = document.getElementById('hb-mon-ac').value || 10;
+        const hp = document.getElementById('hb-mon-hp').value || 10;
+        const spd = document.getElementById('hb-mon-spd').value || "30 ft.";
+        const str = document.getElementById('hb-mon-str').value||10; const dex = document.getElementById('hb-mon-dex').value||10;
+        const con = document.getElementById('hb-mon-con').value||10; const int = document.getElementById('hb-mon-int').value||10;
+        const wis = document.getElementById('hb-mon-wis').value||10; const cha = document.getElementById('hb-mon-cha').value||10;
+        const init = document.getElementById('hb-mon-init').value || 0;
+        const toHit = document.getElementById('hb-mon-tohit').value || 0;
+        const atkName = document.getElementById('hb-mon-atkname').value || "Attack";
+        const dmg = document.getElementById('hb-mon-dmg').value || "1d4";
+        const desc = document.getElementById('hb-mon-desc').value || "";
+
+        const preview = document.getElementById('hb-monster-preview');
+        if(!preview) return;
+        preview.classList.remove('hidden');
+        preview.innerHTML = `<div class="dnd-statblock text-left text-sm"><div class="dnd-header">${name}</div><div class="italic text-black text-xs mb-2">${type}</div><div class="tapered-rule"></div><div class="text-red-900 font-serif"><p><strong>Armor Class</strong> ${ac}</p><p><strong>Hit Points</strong> ${hp}</p><p><strong>Speed</strong> ${spd}</p></div><div class="tapered-rule"></div><div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold"><div>STR<br>${str} (${calcMod(str)})</div><div>DEX<br>${dex} (${calcMod(dex)})</div><div>CON<br>${con} (${calcMod(con)})</div><div>INT<br>${int} (${calcMod(int)})</div><div>WIS<br>${wis} (${calcMod(wis)})</div><div>CHA<br>${cha} (${calcMod(cha)})</div></div><div class="tapered-rule"></div><div class="text-black mt-2 space-y-2">${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}<div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div><p><strong class="italic font-bold text-black">${atkName}.</strong> <span class="text-black"><em>Melee:</em> +${toHit} hit. <em>Hit:</em> ${dmg}.</span></p></div></div>`;
     };
 
-    // 4. SAVING
+    // --- 4. SAVING FUNCTIONS ---
     window.saveHomebrewMonster = async () => {
+        const name = document.getElementById('hb-mon-name').value.trim();
+        if (!name) { alert("Name required!"); return; }
         if(!window.isAuthReady) { alert("Login required."); return; }
-        const d = getMonsterFormData();
         try {
-            await window.addDoc(getCol('dm_toolkit_statblocks'), { name: d.name, hp: parseInt(d.hp), ac: parseInt(d.ac), toHit: parseInt(d.tohit), initMod: parseInt(d.init), dmg: `${d.atk}: ${d.dmg}`, timestamp: d.timestamp });
-            await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...d, fullStats: JSON.stringify(d) });
-            alert(`Saved ${d.name}!`); document.getElementById('hb-mon-name').value = '';
+            const hp = parseInt(document.getElementById('hb-mon-hp').value)||10;
+            const ac = parseInt(document.getElementById('hb-mon-ac').value)||10;
+            const init = parseInt(document.getElementById('hb-mon-init').value)||0;
+            const tohit = parseInt(document.getElementById('hb-mon-tohit').value)||0;
+            const fullDmg = `${document.getElementById('hb-mon-atkname').value}: ${document.getElementById('hb-mon-dmg').value}`;
+            
+            // 1. Save to Stats
+            await window.addDoc(getCol('dm_toolkit_statblocks'), { name, hp, ac, toHit: tohit, initMod: init, dmg: fullDmg, timestamp: new Date().toISOString() });
+            
+            // 2. Save to Inventory (For Sharing)
+            const mData = {
+                name, category: 'monster', hp, ac, init, tohit, 
+                atk: document.getElementById('hb-mon-atkname').value, 
+                dmg: document.getElementById('hb-mon-dmg').value,
+                type: document.getElementById('hb-mon-type').value, 
+                spd: document.getElementById('hb-mon-spd').value,
+                str: document.getElementById('hb-mon-str').value, dex: document.getElementById('hb-mon-dex').value,
+                con: document.getElementById('hb-mon-con').value, int: document.getElementById('hb-mon-int').value,
+                wis: document.getElementById('hb-mon-wis').value, cha: document.getElementById('hb-mon-cha').value,
+                desc: document.getElementById('hb-mon-desc').value, timestamp: new Date().toISOString()
+            };
+            await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ? • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
+            
+            alert(`Saved ${name} to Stats & Inventory!`);
+            document.getElementById('hb-mon-name').value = '';
         } catch (e) { console.error(e); }
-    };
-    window.saveHomebrewWeapon = async () => {
-        if(!window.isAuthReady) { alert("Login required."); return; }
-        const name = document.getElementById('hb-wep-name').value.trim();
-        if(!name) return;
-        const data = {
-            name: name, category: 'weapon',
-            imageData: document.getElementById('hb-wep-image-data').value || "",
-            dmg: document.getElementById('hb-wep-meta1').value,
-            type: document.getElementById('hb-wep-meta2').value,
-            props: document.getElementById('hb-wep-desc').value,
-            isParchment: true, timestamp: new Date().toISOString()
-        };
-        try {
-            await window.addDoc(getCol('dm_toolkit_homebrew_items'), data);
-            alert(`Forged ${name}!`); document.getElementById('hb-wep-name').value = ''; 
-        } catch (e) { console.error(e); }
-    };
-    window.saveHomebrewMagicItem = async () => {
-        if(!window.isAuthReady) return;
-        const name = document.getElementById('hb-item-name').value.trim();
-        if(!name) return;
-        const props = `${document.getElementById('hb-item-attune').checked ? "(Attunement)" : ""} ${document.getElementById('hb-item-desc').value}`;
-        const data = {
-            name: name, category: 'item', isParchment: true,
-            dmg: document.getElementById('hb-item-rarity').value, 
-            type: document.getElementById('hb-item-type').value, 
-            props: props, timestamp: new Date().toISOString()
-        };
-        try { await window.addDoc(getCol('dm_toolkit_homebrew_items'), data); alert("Saved Item!"); } catch(e) { console.error(e); }
     };
 
-    // 5. NOTES / SHARE / IMPORT
+    window.saveHomebrewWeapon = async () => {
+        const name = document.getElementById('hb-wep-name').value.trim();
+        if (!name) return;
+        try {
+            await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
+                name, category: 'weapon',
+                imageData: document.getElementById('hb-wep-image-data').value || "", 
+                dmg: document.getElementById('hb-wep-meta1').value, 
+                type: document.getElementById('hb-wep-meta2').value, 
+                props: document.getElementById('hb-wep-desc').value,
+                isParchment: true, timestamp: new Date().toISOString()
+            });
+            alert(`Forged ${name}!`);
+            document.getElementById('hb-wep-name').value = ''; 
+        } catch (e) { console.error(e); }
+    };
+
+    window.saveHomebrewMagicItem = async () => {
+        const name = document.getElementById('hb-item-name').value.trim();
+        if (!name) return;
+        try {
+            const fullProps = `${document.getElementById('hb-item-attune').checked ? "(Attunement)" : ""} ${document.getElementById('hb-item-desc').value}`;
+            await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
+                name, category: 'item',
+                dmg: document.getElementById('hb-item-rarity').value, 
+                type: document.getElementById('hb-item-type').value, 
+                props: fullProps, timestamp: new Date().toISOString()
+            });
+            document.getElementById('hb-item-name').value = ''; 
+        } catch (e) { console.error(e); }
+    };
+
     window.saveHomebrewToNotes = async (type) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
-        const id = crypto.randomUUID(); let title, content, tab;
+        let title, content, tab;
+        const id = crypto.randomUUID();
+        
         if (type === 'monster') {
-            const d = getMonsterFormData(); title = d.name; tab = 'enemyNotes';
-            content = generateMonsterHTML(d.name, d.type, d.ac, d.hp, d.spd, d.str, d.dex, d.con, d.int, d.wis, d.cha, d.init, d.tohit, d.atk, d.dmg, d.desc);
-            window.saveHomebrewMonster();
+            window.previewHomebrewMonster();
+            title = (document.getElementById('hb-mon-name').value || "Monster") + " (Homebrew)";
+            content = document.getElementById('hb-monster-preview').innerHTML;
+            tab = 'enemyNotes';
+        } else if (type === 'weapon') {
+            window.updateWeaponPreview();
+            title = document.getElementById('hb-wep-name').value || "Weapon";
+            content = document.getElementById('hb-weapon-card-preview').outerHTML;
+            tab = 'lootNotes';
         } else {
-            const isWep = type === 'weapon';
-            const name = document.getElementById(isWep ? 'hb-wep-name' : 'hb-item-name').value;
-            const d1 = document.getElementById(isWep ? 'hb-wep-meta1' : 'hb-item-rarity').value;
-            const d2 = document.getElementById(isWep ? 'hb-wep-meta2' : 'hb-item-type').value;
-            const d3 = document.getElementById(isWep ? 'hb-wep-desc' : 'hb-item-desc').value;
-            const img = isWep ? document.getElementById('hb-wep-image-data').value : "";
-            title = name; tab = 'lootNotes';
-            content = generateParchmentHTML(name, d1, d2, d3, img);
-            if(isWep) window.saveHomebrewWeapon(); else window.saveHomebrewMagicItem();
+            title = document.getElementById('hb-item-name').value;
+            content = `${document.getElementById('hb-item-rarity').value}\n${document.getElementById('hb-item-desc').value}`;
+            tab = 'lootNotes';
         }
         structuredNotes[tab].unshift({ id, title, content, timestamp: new Date().toISOString() });
         await window.saveStructuredNotes(tab, structuredNotes[tab]);
-        if(confirm("Saved to Notes! View?")) { window.switchTab('notes'); window.switchSubTab(tab); }
+        if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- DIRECT SHARE (NO DB LOOKUP) ---
-    // This version receives the data directly from the list, bypassing the need to read the DB again.
-    window.shareHomebrewItemObject = async (dataString) => {
-        if(!window.isAuthReady) return;
+    // --- 5. COMMUNITY SHARING (Debugged) ---
+    window.shareHomebrewItem = async (id) => {
+        // 1. Check Auth
+        if(!window.isAuthReady) { alert("Error: You are not logged in."); return; }
+        
         try {
-            const item = JSON.parse(decodeURIComponent(dataString));
-            if(!confirm(`Publish "${item.name}"?`)) return;
+            // 2. Get Reference
+            const docRef = getDocRef('dm_toolkit_homebrew_items', id);
             
-            // Clean up ID/Timestamp before sharing a new copy
-            const { id, ...cleanItem } = item;
+            // 3. Fetch Document (Using window.getDoc to be safe)
+            const snapshot = await window.getDoc(docRef);
             
-            await window.addDoc(getPublicBrewCol(), { ...cleanItem, sharedBy: "Fellow DM", timestamp: new Date().toISOString() });
-            alert("Published! Check Community tab.");
-        } catch(e) { console.error(e); alert("Error: " + e.message); }
+            if (!snapshot.exists()) { 
+                alert("Error: Item not found in your database."); 
+                return; 
+            }
+            
+            const item = snapshot.data();
+            if(!confirm(`Publish "${item.name}" to Community?`)) return;
+
+            // 4. Save to Public
+            await window.addDoc(getPublicBrewCol(), {
+                ...item, // Copies all fields (including imageData, isParchment, category)
+                sharedBy: "Fellow DM", 
+                timestamp: new Date().toISOString()
+            });
+            
+            alert("Published! Switch to the Community tab to see it.");
+            
+        } catch(e) { 
+            console.error(e); 
+            alert("Publish Error: " + e.message); 
+        }
     };
 
+    // SMART IMPORT
     window.importCommunityItem = async (dataString) => {
         try {
             const item = JSON.parse(decodeURIComponent(dataString));
-            await window.addDoc(getCol('dm_toolkit_homebrew_items'), item);
             
-            // Auto-Save to Notes
-            let noteContent = "", tab = "lootNotes";
+            // 1. Save to Inventory
+            await window.addDoc(getCol('dm_toolkit_homebrew_items'), item);
+
+            // 2. Save to Notes
+            let noteContent = "";
+            let tab = "lootNotes"; 
+            
+            // Generate appropriate HTML for the note
             if (item.category === 'monster') {
                 tab = "enemyNotes";
-                let d = item; if(typeof item.fullStats === 'string') d = JSON.parse(item.fullStats);
-                noteContent = generateMonsterHTML(d.name, d.type, d.ac, d.hp, d.spd, d.str, d.dex, d.con, d.int, d.wis, d.cha, d.init, d.tohit, d.atk, d.dmg, d.desc);
-                await window.addDoc(getCol('dm_toolkit_statblocks'), { name: d.name, hp: parseInt(d.hp), ac: parseInt(d.ac), toHit: parseInt(d.tohit), initMod: parseInt(d.init), dmg: `${d.atk}: ${d.dmg}`, timestamp: new Date().toISOString() });
-            } else if (item.isParchment || item.category === 'weapon') {
-                noteContent = generateParchmentHTML(item.name, item.dmg, item.type, item.props, item.imageData);
+                // Save to Stats for combat
+                const fullDmg = `${item.atk}: ${item.dmg}`;
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: item.name, hp: parseInt(item.hp), ac: parseInt(item.ac), 
+                    toHit: parseInt(item.tohit), initMod: parseInt(item.init), 
+                    dmg: fullDmg, timestamp: new Date().toISOString() 
+                });
+                // Rebuild Statblock HTML
+                noteContent = `<div class="dnd-statblock text-left text-sm"><div class="dnd-header">${item.name}</div><div class="text-red-900 font-serif"><p><strong>AC</strong> ${item.ac}</p><p><strong>HP</strong> ${item.hp}</p></div><div class="tapered-rule"></div><p>${item.desc}</p></div>`;
+            } 
+            else if (item.isParchment || item.category === 'weapon') {
+                // Rebuild Parchment Card
+                 noteContent = `
+                <div class="parchment-card" style="margin:0;">
+                    <div class="card-title">${item.name}</div>
+                    ${item.imageData ? `<img src="${item.imageData}" class="card-image">` : ''}
+                    <div class="card-meta-1">${item.dmg || "Rare"}</div>
+                    <div class="card-meta-2">${item.type || "Weapon"}</div>
+                    <div class="card-body">${item.props || ""}</div>
+                </div>`;
             } else {
-                noteContent = `<strong>${item.name}</strong><br>${item.dmg} ${item.type}<br><br>${item.props}`;
+                noteContent = `<strong>${item.name}</strong><br>${item.props}`;
             }
-            structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: item.name + " (Imported)", content: noteContent, timestamp: new Date().toISOString() });
+
+            structuredNotes[tab].unshift({ 
+                id: crypto.randomUUID(), title: item.name + " (Imported)", content: noteContent, timestamp: new Date().toISOString() 
+            });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
-            alert("Imported!");
+            alert(`Imported ${item.name} to Inventory & Notes!`);
+            
         } catch(e) { console.error(e); alert("Import failed."); }
     };
 
-    window.deleteCommunityItem = async (id) => { if(confirm("ADMIN: Delete?")) try { await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id)); } catch(e) { alert("Delete Failed"); } };
-    window.deleteHomebrewWeapon = async (id) => { if(confirm("Delete?")) await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
-
-    // 6. RENDERERS
-    const renderBrewCard = (item, isPublic) => {
-        let html = "";
-        if (item.category === 'monster' || item.fullStats) {
-            let d = item; if(typeof item.fullStats === 'string') d = JSON.parse(item.fullStats);
-            html = generateMonsterHTML(d.name, d.type, d.ac, d.hp, d.spd, d.str, d.dex, d.con, d.int, d.wis, d.cha, d.init, d.tohit, d.atk, d.dmg, d.desc);
-        } else if (item.category === 'weapon' || item.isParchment) {
-            html = generateParchmentHTML(item.name, item.dmg, item.type, item.props, item.imageData);
-        } else {
-            html = `<div class="p-4 bg-gray-700 rounded text-sm"><strong class="text-orange-300">${item.name}</strong><br><span class="text-xs">${item.dmg} ${item.type}</span><p class="mt-2 text-gray-300">${item.props}</p></div>`;
-        }
-        
-        // Prepare data string for buttons
-        const itemString = encodeURIComponent(JSON.stringify(item));
-        
-        const isAdmin = (window.userId === ADMIN_ID);
-        const deleteBtn = (isPublic && !isAdmin) ? '' : 
-            `<button onclick="window.${isPublic?'deleteCommunityItem':'deleteHomebrewWeapon'}('${item.id}')" class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full shadow-lg font-bold hover:bg-red-500 z-10">×</button>`;
-        
-        const actionBtn = isPublic 
-            ? `<button onclick="window.importCommunityItem('${itemString}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-b-lg mt-[-5px] z-10 relative shadow-lg">Save to Inventory</button>`
-            : `<button onclick="window.shareHomebrewItemObject('${itemString}')" class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-2 rounded-b-lg mt-[-5px] z-10 relative shadow-lg">Publish to Community 🌍</button>`;
-
-        return `<div class="mb-8 relative animate-fade-in transform transition hover:scale-[1.01]">${deleteBtn}<div class="rounded-t-lg overflow-hidden border border-gray-600">${html}</div>${actionBtn}</div>`;
+    window.deleteCommunityItem = async (id) => {
+        if(!confirm("ADMIN: Delete?")) return;
+        try { await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id)); alert("Deleted."); } catch(e) { console.error(e); }
     };
 
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
         const q = window.query(getPublicBrewCol(), window.limit(50));
+        
         window.unsubCommunity = window.onSnapshot(q, (snap) => {
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 pt-4">No items.</p>'; return; }
+            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items.</p>'; return; }
             list.innerHTML = '';
-            snap.forEach(d => list.innerHTML += renderBrewCard({id: d.id, ...d.data()}, true));
+            snap.forEach(d => {
+                const item = d.data();
+                const itemString = encodeURIComponent(JSON.stringify(item));
+                const isAdmin = (window.userId === ADMIN_ID);
+                const deleteBtn = isAdmin ? `<button onclick="window.deleteCommunityItem('${d.id}')" class="absolute top-2 right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold shadow">×</button>` : '';
+                
+                // VISUALS
+                let visual = '';
+                if (item.imageData) visual = `<img src="${item.imageData}" class="w-full h-32 object-contain bg-black/20 rounded-lg mb-2">`;
+                else if (item.category === 'monster') visual = `<div class="w-full h-16 bg-red-900/20 rounded-lg flex items-center justify-center mb-2 border border-red-500/30"><span class="text-2xl">🐲</span></div>`;
+
+                const div = document.createElement('div');
+                div.className = 'bg-gray-800 p-3 rounded-xl border border-gray-700 relative shadow-lg mb-4';
+                div.innerHTML = `
+                    ${deleteBtn}
+                    ${visual}
+                    <div class="flex justify-between items-end">
+                        <div class="overflow-hidden pr-2">
+                            <div class="font-cinzel text-lg text-orange-200 truncate">${item.name}</div>
+                            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">${item.dmg || ""} • ${item.type || "Item"}</div>
+                        </div>
+                        <button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow shrink-0">Save</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
         });
     };
 
+    window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
+    
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
             const list = document.getElementById('homebrew-weapon-list'); if(!list) return;
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; return; }
             const items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
-            items.sort((a,b) => (a.name||"").localeCompare(b.name||"")); 
-            list.innerHTML = '';
-            items.forEach(item => list.innerHTML += renderBrewCard(item, false));
+            if(items.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items.</p>'; return; }
+            items.sort((a,b) => a.name.localeCompare(b.name)); list.innerHTML = '';
+            items.forEach(item => {
+                let thumb = item.imageData ? `<img src="${item.imageData}" class="w-8 h-8 object-cover rounded border border-orange-500/50 mr-2">` : '';
+                const div = document.createElement('div'); div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center mb-1';
+                div.innerHTML = `
+                    <div class="flex items-center overflow-hidden">${thumb}<div><div class="font-bold text-orange-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg}</div></div></div>
+                    <div class="flex gap-2 shrink-0"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share">🌍</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button></div>`;
+                list.appendChild(div);
+            });
         });
     };
 
