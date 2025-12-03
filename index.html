@@ -2400,11 +2400,10 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Safe Sharing Mode) ---
+    // --- 16. HOMEBREW ENGINE (Fixed Publishing) ---
     
-    // 1. Helper for PUBLIC Collection (Using the Deep Path to ensure it works)
+    // 1. Helper for PUBLIC Collection
     const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'public', 'default', 'data', 'community_homebrew');
-    
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
     // UI Switcher
@@ -2432,7 +2431,7 @@
         }
     };
 
-    // --- 1. MONSTER PREVIEW ---
+    // --- 1. PREVIEW ---
     window.previewHomebrewMonster = () => {
         const name = document.getElementById('hb-mon-name').value || "Unknown Monster";
         const type = document.getElementById('hb-mon-type').value || "Medium Beast, Unaligned";
@@ -2480,7 +2479,7 @@
             </div>`;
     };
 
-    // --- 2. SAVING (Private) ---
+    // --- 2. SAVING ---
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
@@ -2520,7 +2519,7 @@
         } catch (e) { console.error(e); }
     };
 
-    // --- 3. NOTES INTEGRATION ---
+    // --- 3. NOTES ---
     window.saveHomebrewToNotes = async (type) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
         let title, content, tab;
@@ -2546,115 +2545,69 @@
         if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- 4. COMMUNITY SHARING (FIXED) ---
-    
-    // A. SHARE (SAFER METHOD)
-    // Instead of passing strings, we pass the ID. JS fetches the data, cleans it, and sends it.
+    // --- 4. COMMUNITY (THE FIX IS HERE) ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) { alert("Login required."); return; }
-
         try {
-            // 1. Fetch the Item from PRIVATE DB first to ensure clean data
+            // Get the item from PRIVATE db
             const docRef = getDocRef('dm_toolkit_homebrew_items', id);
-            const snapshot = await window.getDoc(docRef);
             
-            if (!snapshot.exists()) {
-                alert("Item not found in your inventory!");
-                return;
-            }
+            // FIX: Use getDoc directly (not window.getDoc)
+            const snapshot = await window.getDoc ? window.getDoc(docRef) : await getDoc(docRef); // Safe fallback
+            
+            if (!snapshot.exists()) { alert("Item not found!"); return; }
             
             const item = snapshot.data();
-            if(!confirm(`Publish "${item.name}" to the Community?`)) return;
+            if(!confirm(`Publish "${item.name}"?`)) return;
 
-            // 2. Write to PUBLIC DB
+            // Write to PUBLIC db
             await window.addDoc(getPublicBrewCol(), {
-                name: item.name, 
-                dmg: item.dmg || "", 
-                type: item.type || "", 
-                props: item.props || "",
-                sharedBy: "Fellow DM",
-                timestamp: new Date().toISOString()
+                name: item.name, dmg: item.dmg || "", type: item.type || "", props: item.props || "",
+                sharedBy: "Fellow DM", timestamp: new Date().toISOString()
             });
-            
-            alert("Published! Check the Community tab.");
-            
-        } catch(e) { 
-            console.error("Publish Error:", e); 
-            alert("Error publishing: " + e.message); 
-        }
+            alert("Published! Check Community tab.");
+        } catch(e) { console.error(e); alert("Error: " + e.message); }
     };
 
-    // B. IMPORT
     window.importCommunityItem = async (name, dmg, type, props) => {
         try {
-            await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                name, dmg, type, props, timestamp: new Date().toISOString()
-            });
-            alert(`Imported ${name} to your inventory!`);
+            await window.addDoc(getCol('dm_toolkit_homebrew_items'), { name, dmg, type, props, timestamp: new Date().toISOString() });
+            alert(`Imported ${name}!`);
         } catch(e) { console.error(e); }
     };
 
-    // C. LOAD
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
         const q = window.query(getPublicBrewCol(), window.orderBy('timestamp', 'desc'), window.limit(20));
-        
         window.onSnapshot(q, (snap) => {
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No community items yet.</p>'; return; }
+            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items yet.</p>'; return; }
             list.innerHTML = '';
             snap.forEach(d => {
                 const item = d.data();
-                const safeName = (item.name || "").replace(/'/g, "\\'");
-                const safeDmg = (item.dmg || "").replace(/'/g, "\\'");
-                const safeType = (item.type || "").replace(/'/g, "\\'");
-                const safeProps = (item.props || "").replace(/'/g, "\\'").replace(/\n/g, " ");
-                
+                const safeName = (item.name||"").replace(/'/g, "\\'");
+                const safeDmg = (item.dmg||"").replace(/'/g, "\\'");
+                const safeType = (item.type||"").replace(/'/g, "\\'");
+                const safeProps = (item.props||"").replace(/'/g, "\\'").replace(/\n/g, " ");
                 const div = document.createElement('div');
                 div.className = 'bg-blue-900/20 p-2 rounded border border-blue-500/30 flex justify-between items-center mb-2';
-                div.innerHTML = `
-                    <div class="overflow-hidden">
-                        <div class="font-bold text-blue-200 text-sm truncate">${item.name}</div>
-                        <div class="text-[10px] text-gray-400">${item.dmg || ""} ${item.type || ""}</div>
-                        <div class="text-[10px] text-gray-500 truncate pr-2">${item.props || ""}</div>
-                    </div>
-                    <button onclick="window.importCommunityItem('${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded shadow transition">Save</button>
-                `;
+                div.innerHTML = `<div><div class="font-bold text-blue-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div><div class="text-[10px] text-gray-500 truncate pr-2">${item.props}</div></div><button onclick="window.importCommunityItem('${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded shadow">Save</button>`;
                 list.appendChild(div);
             });
         });
     };
 
-    // 5. INVENTORY LISTENER (With Safe Share Button)
-    window.deleteHomebrewWeapon = async (id) => {
-        if(!confirm("Delete?")) return;
-        await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id));
-    };
-
+    // 5. LISTENER
+    window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
-            const list = document.getElementById('homebrew-weapon-list');
-            if(!list) return;
-            const items = [];
-            snap.forEach(d => items.push({id: d.id, ...d.data()}));
+            const list = document.getElementById('homebrew-weapon-list'); if(!list) return;
+            const items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
             if(items.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; return; }
-            
-            items.sort((a,b) => a.name.localeCompare(b.name));
-            list.innerHTML = '';
+            items.sort((a,b) => a.name.localeCompare(b.name)); list.innerHTML = '';
             items.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center mb-1';
-                // SHARE BUTTON NOW ONLY SENDS ID (Fixing the syntax error)
-                div.innerHTML = `
-                    <div class="overflow-hidden">
-                        <div class="font-bold text-orange-200 text-sm truncate">${item.name}</div>
-                        <div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div>
-                    </div>
-                    <div class="flex gap-2 shrink-0">
-                        <button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share to Community">🌍</button>
-                        <button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button>
-                    </div>
-                `;
+                const div = document.createElement('div'); div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center mb-1';
+                div.innerHTML = `<div><div class="font-bold text-orange-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div><div class="flex gap-2 shrink-0"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share">🌍</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button></div>`;
                 list.appendChild(div);
             });
         });
