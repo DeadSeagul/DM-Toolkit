@@ -733,9 +733,10 @@
                 <div class="card p-4 rounded-lg shadow-xl border border-orange-500/30">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-orange-300">🍺 Homebrew Workshop</h2>
-                        <div class="flex bg-gray-800 rounded-lg p-1">
+                        <div class="flex bg-gray-800 rounded-lg p-1 gap-1">
                             <button class="brew-sub-tab active px-3 py-1 text-xs font-bold rounded bg-orange-600 text-white transition" onclick="switchBrewMode('monster', this)">Monster</button>
                             <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('weapon', this)">Weapon</button>
+                            <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('magic', this)">Item</button>
                         </div>
                     </div>
 
@@ -744,43 +745,24 @@
                             <div class="space-y-2">
                                 <label class="block text-xs text-gray-500 uppercase">Name</label>
                                 <input type="text" id="hb-mon-name" placeholder="e.g. Void Stalker" class="w-full p-2 rounded input-style text-sm font-bold">
-                                
                                 <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs text-gray-500 uppercase">AC</label>
-                                        <input type="number" id="hb-mon-ac" placeholder="15" class="w-full p-2 rounded input-style text-sm">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-gray-500 uppercase">HP</label>
-                                        <input type="number" id="hb-mon-hp" placeholder="45" class="w-full p-2 rounded input-style text-sm">
-                                    </div>
+                                    <div><label class="block text-xs text-gray-500 uppercase">AC</label><input type="number" id="hb-mon-ac" placeholder="15" class="w-full p-2 rounded input-style text-sm"></div>
+                                    <div><label class="block text-xs text-gray-500 uppercase">HP</label><input type="number" id="hb-mon-hp" placeholder="45" class="w-full p-2 rounded input-style text-sm"></div>
                                 </div>
-
                                 <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs text-gray-500 uppercase">Init Mod</label>
-                                        <input type="number" id="hb-mon-init" placeholder="+2" class="w-full p-2 rounded input-style text-sm">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-gray-500 uppercase">To Hit Bonus</label>
-                                        <input type="number" id="hb-mon-tohit" placeholder="+5" class="w-full p-2 rounded input-style text-sm">
-                                    </div>
+                                    <div><label class="block text-xs text-gray-500 uppercase">Init Mod</label><input type="number" id="hb-mon-init" placeholder="+2" class="w-full p-2 rounded input-style text-sm"></div>
+                                    <div><label class="block text-xs text-gray-500 uppercase">To Hit</label><input type="number" id="hb-mon-tohit" placeholder="+5" class="w-full p-2 rounded input-style text-sm"></div>
                                 </div>
                             </div>
-
                             <div class="space-y-2">
                                 <label class="block text-xs text-gray-500 uppercase">Main Attack Name</label>
                                 <input type="text" id="hb-mon-atkname" placeholder="e.g. Shadow Claw" class="w-full p-2 rounded input-style text-sm">
-                                
                                 <label class="block text-xs text-gray-500 uppercase">Damage Roll</label>
                                 <input type="text" id="hb-mon-dmg" placeholder="e.g. 2d6 + 3 slashing" class="w-full p-2 rounded input-style text-sm">
-                                
-                                <button onclick="window.saveHomebrewMonster()" class="w-full mt-6 bg-orange-700 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow-lg transition">
-                                    💾 Save to Statblocks
-                                </button>
+                                <button onclick="window.saveHomebrewMonster()" class="w-full mt-6 bg-orange-700 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow-lg transition">💾 Save to Statblocks</button>
                             </div>
                         </div>
-                        <p class="text-xs text-center text-gray-500">Saved monsters will appear in the <strong>Stats Tab</strong> and can be added to the Tracker.</p>
+                        <p class="text-xs text-center text-gray-500">Saved monsters appear in the <strong>Stats Tab</strong>.</p>
                     </div>
 
                     <div id="brew-weapon-area" class="hidden animate-fade-in">
@@ -788,33 +770,60 @@
                             <div class="space-y-2">
                                 <label class="block text-xs text-gray-500 uppercase">Weapon Name</label>
                                 <input type="text" id="hb-wep-name" placeholder="e.g. Blade of Embers" class="w-full p-2 rounded input-style text-sm font-bold">
-                                
                                 <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs text-gray-500 uppercase">Damage</label>
-                                        <input type="text" id="hb-wep-dmg" placeholder="1d8" class="w-full p-2 rounded input-style text-sm">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-gray-500 uppercase">Type</label>
-                                        <input type="text" id="hb-wep-type" placeholder="Fire" class="w-full p-2 rounded input-style text-sm">
-                                    </div>
+                                    <div><label class="block text-xs text-gray-500 uppercase">Damage</label><input type="text" id="hb-wep-dmg" placeholder="1d8" class="w-full p-2 rounded input-style text-sm"></div>
+                                    <div><label class="block text-xs text-gray-500 uppercase">Type</label><input type="text" id="hb-wep-type" placeholder="Fire" class="w-full p-2 rounded input-style text-sm"></div>
                                 </div>
                             </div>
                             <div class="space-y-2">
                                 <label class="block text-xs text-gray-500 uppercase">Properties / Lore</label>
-                                <textarea id="hb-wep-props" rows="3" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="Finesse, Light. Sheds dim light..."></textarea>
-                                
-                                <button onclick="window.saveHomebrewWeapon()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg shadow-lg transition">
-                                    Save Weapon
-                                </button>
+                                <textarea id="hb-wep-props" rows="3" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="Finesse, Light..."></textarea>
+                                <button onclick="window.saveHomebrewWeapon()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg shadow-lg transition">Save Weapon</button>
                             </div>
                         </div>
-                        
-                        <hr class="border-gray-700 my-4">
-                        <h3 class="text-sm font-bold text-indigo-300 mb-2">Inventory</h3>
-                        <div id="homebrew-weapon-list" class="space-y-2 max-h-60 overflow-y-auto">
-                            <p class="text-center text-gray-500 text-xs">No custom weapons saved.</p>
+                    </div>
+
+                    <div id="brew-magic-area" class="hidden animate-fade-in">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div class="space-y-2">
+                                <label class="block text-xs text-gray-500 uppercase">Item Name</label>
+                                <input type="text" id="hb-item-name" placeholder="e.g. Ring of Jumping" class="w-full p-2 rounded input-style text-sm font-bold">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-xs text-gray-500 uppercase">Rarity</label>
+                                        <select id="hb-item-rarity" class="w-full p-2 rounded input-style text-sm">
+                                            <option value="Common">Common</option><option value="Uncommon">Uncommon</option>
+                                            <option value="Rare">Rare</option><option value="Very Rare">Very Rare</option>
+                                            <option value="Legendary">Legendary</option><option value="Artifact">Artifact</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 uppercase">Type</label>
+                                        <select id="hb-item-type" class="w-full p-2 rounded input-style text-sm">
+                                            <option value="Wondrous Item">Wondrous</option><option value="Ring">Ring</option>
+                                            <option value="Wand">Wand</option><option value="Potion">Potion</option>
+                                            <option value="Scroll">Scroll</option><option value="Staff">Staff</option>
+                                            <option value="Armor">Armor</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 pt-2">
+                                    <input type="checkbox" id="hb-item-attune" class="w-4 h-4 accent-indigo-500">
+                                    <label for="hb-item-attune" class="text-sm text-gray-300">Requires Attunement</label>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="block text-xs text-gray-500 uppercase">Description / Effect</label>
+                                <textarea id="hb-item-desc" rows="3" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="While wearing this ring..."></textarea>
+                                <button onclick="window.saveHomebrewMagicItem()" class="w-full bg-pink-700 hover:bg-pink-600 text-white font-bold py-2 rounded-lg shadow-lg transition">Save Item</button>
+                            </div>
                         </div>
+                    </div>
+                    
+                    <hr class="border-gray-700 my-4">
+                    <h3 class="text-sm font-bold text-indigo-300 mb-2">Inventory</h3>
+                    <div id="homebrew-weapon-list" class="space-y-2 max-h-60 overflow-y-auto">
+                        <p class="text-center text-gray-500 text-xs">No items saved.</p>
                     </div>
                 </div>
             </div>
@@ -2317,9 +2326,8 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE ---
+    // --- 16. HOMEBREW ENGINE (Monsters, Weapons, & Items) ---
     window.switchBrewMode = (mode, btn) => {
-        // Update UI
         document.querySelectorAll('.brew-sub-tab').forEach(b => {
             b.classList.remove('bg-orange-600', 'text-white');
             b.classList.add('text-gray-400');
@@ -2327,71 +2335,86 @@
         btn.classList.remove('text-gray-400');
         btn.classList.add('bg-orange-600', 'text-white');
 
-        // Switch Content
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
+        document.getElementById('brew-magic-area').classList.add('hidden'); // New
+        
         document.getElementById(`brew-${mode}-area`).classList.remove('hidden');
     };
 
-    // Save Monster (Connects to existing Statblocks system)
+    // 1. Save Monster
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
-
         const hp = parseInt(document.getElementById('hb-mon-hp').value) || 10;
         const ac = parseInt(document.getElementById('hb-mon-ac').value) || 10;
         const init = parseInt(document.getElementById('hb-mon-init').value) || 0;
         const tohit = parseInt(document.getElementById('hb-mon-tohit').value) || 0;
         const atkName = document.getElementById('hb-mon-atkname').value || "Attack";
         const dmg = document.getElementById('hb-mon-dmg').value || "1d4";
-
-        // Combine Attack Name and Damage for the "dmg" field display
         const fullDmgStr = `${atkName}: ${dmg}`;
 
         if(!window.isAuthReady) { alert("Login required."); return; }
 
         try {
             await window.addDoc(getCol('dm_toolkit_statblocks'), {
-                name: name,
-                hp: hp,
-                ac: ac,
-                toHit: tohit,
-                initMod: init,
-                dmg: fullDmgStr,
-                timestamp: new Date().toISOString()
+                name: name, hp: hp, ac: ac, toHit: tohit, initMod: init, dmg: fullDmgStr, timestamp: new Date().toISOString()
             });
             alert(`Saved ${name} to Stats Tab!`);
-            // Clear inputs
             document.getElementById('hb-mon-name').value = '';
         } catch (e) { console.error(e); }
     };
 
-    // Save Weapon (New Collection)
+    // 2. Save Weapon
     window.saveHomebrewWeapon = async () => {
         const name = document.getElementById('hb-wep-name').value.trim();
         if (!name) return;
-        
         const dmg = document.getElementById('hb-wep-dmg').value;
         const type = document.getElementById('hb-wep-type').value;
         const props = document.getElementById('hb-wep-props').value;
 
         try {
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                name, dmg, type, props,
-                timestamp: new Date().toISOString()
+                name, dmg, type, props, timestamp: new Date().toISOString()
             });
-            document.getElementById('hb-wep-name').value = ''; // Clear
+            document.getElementById('hb-wep-name').value = ''; 
         } catch (e) { console.error(e); }
     };
 
-        // --- FIX: The Delete Helper ---
+    // 3. Save Magic Item (NEW)
+    window.saveHomebrewMagicItem = async () => {
+        const name = document.getElementById('hb-item-name').value.trim();
+        if (!name) return;
+        
+        const rarity = document.getElementById('hb-item-rarity').value;
+        const type = document.getElementById('hb-item-type').value;
+        const attune = document.getElementById('hb-item-attune').checked ? "(Attunement)" : "";
+        const desc = document.getElementById('hb-item-desc').value;
+        
+        // We map the fields to match the existing "Weapon" structure so they list together
+        // Dmg -> Rarity | Type -> Item Type | Props -> Description
+        const fullProps = `${attune} ${desc}`.trim();
+
+        try {
+            await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
+                name: name,
+                dmg: rarity, // Re-using 'dmg' field for Rarity
+                type: type,
+                props: fullProps,
+                timestamp: new Date().toISOString()
+            });
+            document.getElementById('hb-item-name').value = ''; 
+            document.getElementById('hb-item-desc').value = '';
+        } catch (e) { console.error(e); }
+    };
+
+    // 4. Delete Helper
     window.deleteHomebrewWeapon = async (id) => {
         if(!confirm("Delete this item?")) return;
-        // Uses the existing getDocRef helper to find the correct private path
         await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id));
     };
 
-    // Listener for Weapons List (Updated with Fix)
+    // 5. Listener (Lists both Weapons and Items)
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
@@ -2402,7 +2425,7 @@
             snap.forEach(d => items.push({id: d.id, ...d.data()}));
             
             if(items.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No custom weapons saved.</p>';
+                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>';
                 return;
             }
 
@@ -2412,7 +2435,6 @@
             items.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center';
-                // FIX: Updated onclick to use the simple helper function
                 div.innerHTML = `
                     <div>
                         <div class="font-bold text-orange-200 text-sm">${item.name}</div>
