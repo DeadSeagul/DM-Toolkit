@@ -393,7 +393,7 @@
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
                     <h2 class="text-xl font-semibold mb-4 text-pink-300">Name Generator</h2>
                     <div class="flex gap-2 mb-4">
-                        <select id="name-race" class="flex-1 p-2 rounded-lg input-style text-sm">
+                       <select id="name-race" class="flex-1 p-2 rounded-lg input-style text-sm">
                             <option value="Human">Human</option>
                             <option value="Elf">Elf</option>
                             <option value="Dwarf">Dwarf</option>
@@ -402,6 +402,10 @@
                             <option value="Tiefling">Tiefling</option>
                             <option value="Dragonborn">Dragonborn</option>
                             <option value="Gnome">Gnome</option>
+                            <option value="Goblin">Goblin</option>
+                            <option value="Tabaxi">Tabaxi (Catfolk)</option>
+                            <option value="Kenku">Kenku</option>
+                            <option value="Genasi">Genasi</option>
                         </select>
                         <select id="name-gender" class="w-24 p-2 rounded-lg input-style text-sm">
                             <option value="male">Male</option>
@@ -2270,47 +2274,67 @@
         }
     };
 
-    // --- 15. NAME GENERATOR (Gendered) ---
+// --- 15. NAME GENERATOR (Expanded & Gendered) ---
     const nameDatabase = {
         "Human": { 
-            male: ["Alaric", "Bram", "Dorian", "Garret", "Ivo", "Kael", "Niles", "Orin", "Silas", "Vane", "Alden", "Roric"], 
-            female: ["Celia", "Elara", "Fiora", "Halia", "Jessa", "Lora", "Maren", "Petra", "Ria", "Tamsin", "Veda", "Lyra"], 
-            last: ["Stormwind", "Blackwood", "Thorne", "Rivera", "Crowley", "Falconer", "Weaver", "Dunn", "Hart", "Mercer"] 
+            male: ["Alaric", "Bram", "Dorian", "Garret", "Ivo", "Kael", "Niles", "Orin", "Silas", "Vane", "Alden", "Roric", "Ewan", "Gareth", "Lucian", "Torian", "Victor", "Xander", "Hollis", "Jareth"], 
+            female: ["Celia", "Elara", "Fiora", "Halia", "Jessa", "Lora", "Maren", "Petra", "Ria", "Tamsin", "Veda", "Lyra", "Amara", "Brenna", "Dalia", "Elena", "Kiera", "Nora", "Ophelia", "Serena"], 
+            last: ["Stormwind", "Blackwood", "Thorne", "Rivera", "Crowley", "Falconer", "Weaver", "Dunn", "Hart", "Mercer", "Ashford", "Brightwood", "Drake", "Fletcher", "Grimm", "Hawthorne", "Ironwood", "Sterling", "Vance", "Whitmore"] 
         },
         "Elf": { 
-            male: ["Adran", "Carric", "Erdan", "Galin", "Himo", "Ivellios", "Mindartis", "Paelias", "Riardon", "Thamior"], 
-            female: ["Bylia", "Deara", "Faen", "Lia", "Naivara", "Quillathe", "Silaqui", "Thia", "Vadania", "Valanthe"], 
-            last: ["Amakiir", "Caerdonel", "Galanodel", "Holimion", "Ilphelkiir", "Liadon", "Meliamne", "Nailo", "Siannodel", "Xiloscient"] 
+            male: ["Adran", "Carric", "Erdan", "Galin", "Himo", "Ivellios", "Mindartis", "Paelias", "Riardon", "Thamior", "Aramil", "Aust", "Enialis", "Heian", "Laucian", "Quarion", "Soveliss", "Tharivol", "Varis"], 
+            female: ["Bylia", "Deara", "Faen", "Lia", "Naivara", "Quillathe", "Silaqui", "Thia", "Vadania", "Valanthe", "Adrie", "Althaea", "Anastrianna", "Andraste", "Bethrynna", "Caelynn", "Drusilia", "Ielenia", "Jelenneth", "Keyleth", "Leshanna", "Meriele", "Mialee", "Theirastra"], 
+            last: ["Amakiir", "Caerdonel", "Galanodel", "Holimion", "Ilphelkiir", "Liadon", "Meliamne", "Nailo", "Siannodel", "Xiloscient", "Gemflower", "Moonwhisper", "Oakwalker", "Nightbreeze", "Starflower", "Silverfrond"] 
         },
         "Dwarf": { 
-            male: ["Adrik", "Baern", "Brottor", "Dain", "Darrak", "Eberk", "Fargrim", "Gardain", "Harbek", "Kildrak", "Morgran", "Orsik", "Rangrim", "Thoradin", "Tordek"], 
-            female: ["Amber", "Artin", "Audhild", "Bardryn", "Dagnal", "Diesa", "Eldeth", "Falkrunn", "Finellen", "Gunnloda", "Gurdis", "Helja", "Hlin", "Kathra"], 
-            last: ["Battlehammer", "Brawnanvil", "Fireforge", "Frostbeard", "Gorunn", "Ironfist", "Loderr", "Strakeln", "Torunn", "Ungart"] 
+            male: ["Adrik", "Baern", "Brottor", "Dain", "Darrak", "Eberk", "Fargrim", "Gardain", "Harbek", "Kildrak", "Morgran", "Orsik", "Rangrim", "Thoradin", "Tordek", "Travok", "Ulfgar", "Veit", "Vondal"], 
+            female: ["Amber", "Artin", "Audhild", "Bardryn", "Dagnal", "Diesa", "Eldeth", "Falkrunn", "Finellen", "Gunnloda", "Gurdis", "Helja", "Hlin", "Kathra", "Kristryd", "Ilde", "Liftrasa", "Mardred", "Riswynn", "Torbera", "Vistra"], 
+            last: ["Battlehammer", "Brawnanvil", "Fireforge", "Frostbeard", "Gorunn", "Ironfist", "Loderr", "Strakeln", "Torunn", "Ungart", "Balderk", "Dankil", "Holderhek", "Loderr", "Lutgehr", "Rumnaheim", "Strakeln", "Torunn"] 
         },
         "Orc": { 
-            male: ["Dench", "Feng", "Gell", "Henk", "Holg", "Imsh", "Keth", "Krusk", "Mhurren", "Ront", "Shump", "Thokk"], 
-            female: ["Baggi", "Emen", "Engong", "Kansif", "Myev", "Neega", "Ovak", "Ownka", "Shautha", "Sutha", "Vola", "Volen"], 
-            last: ["Ironhide", "Bonebreaker", "Doomhammer", "Skullcrusher", "Fist of Grumsh", "The Vile", "Bloodaxe", "Stormcaller", "Eye-Gouger", "Rot-Tooth"] 
+            male: ["Dench", "Feng", "Gell", "Henk", "Holg", "Imsh", "Keth", "Krusk", "Mhurren", "Ront", "Shump", "Thokk", "Grom", "Horgar", "Drago", "Rath", "Sark", "Varg"], 
+            female: ["Baggi", "Emen", "Engong", "Kansif", "Myev", "Neega", "Ovak", "Ownka", "Shautha", "Sutha", "Vola", "Volen", "Grel", "Mog", "Nargol", "Urzoth"], 
+            last: ["Ironhide", "Bonebreaker", "Doomhammer", "Skullcrusher", "Fist of Grumsh", "The Vile", "Bloodaxe", "Stormcaller", "Eye-Gouger", "Rot-Tooth", "Darkblood", "Deathblade", "Hell-Scream", "Iron-Tusk", "Red-Eye", "Steel-Jaw"] 
         },
         "Halfling": { 
             male: ["Alton", "Ander", "Cade", "Corrin", "Eldon", "Errich", "Finnan", "Garret", "Lindal", "Lyle", "Merric", "Milo", "Osborn", "Perrin", "Reed", "Roscoe", "Wellby"], 
-            female: ["Andry", "Bree", "Callie", "Cora", "Euphemia", "Jillian", "Kithri", "Lavinia", "Lidda", "Merla", "Nedda", "Paela", "Portia", "Seraphina", "Shaena", "Trym"], 
-            last: ["Brushgather", "Goodbarrel", "Greenbottle", "High-hill", "Hilltopple", "Leagallow", "Tealeaf", "Thorngage", "Tosscobble", "Underbough"] 
+            female: ["Andry", "Bree", "Callie", "Cora", "Euphemia", "Jillian", "Kithri", "Lavinia", "Lidda", "Merla", "Nedda", "Paela", "Portia", "Seraphina", "Shaena", "Trym", "Vani", "Verna"], 
+            last: ["Brushgather", "Goodbarrel", "Greenbottle", "High-hill", "Hilltopple", "Leagallow", "Tealeaf", "Thorngage", "Tosscobble", "Underbough", "Alderleaf", "Blackberry", "Bramblefoot", "Cherrycheeks", "Elderberry", "Kettlewhistle", "Nimblefingers"] 
         },
         "Tiefling": { 
             male: ["Akmenos", "Amnon", "Barakas", "Damakos", "Ekemon", "Iados", "Kairon", "Leucis", "Melech", "Mordai", "Morthos", "Pelaios", "Skamos", "Therai"], 
-            female: ["Akta", "Bryseis", "Damaia", "Ea", "Kallista", "Lerissa", "Makaria", "Nemeia", "Orianna", "Phelaia", "Rieta"], 
-            last: ["Art", "Carrion", "Chant", "Creed", "Despair", "Excellence", "Fear", "Glory", "Hope", "Ideal", "Music", "Nowhere", "Open", "Poetry", "Quest", "Random", "Reverence", "Sorrow"] 
+            female: ["Akta", "Bryseis", "Damaia", "Ea", "Kallista", "Lerissa", "Makaria", "Nemeia", "Orianna", "Phelaia", "Rieta", "Levidia", "Mehetabel", "Nezznar", "Ophelia"], 
+            last: ["Art", "Carrion", "Chant", "Creed", "Despair", "Excellence", "Fear", "Glory", "Hope", "Ideal", "Music", "Nowhere", "Open", "Poetry", "Quest", "Random", "Reverence", "Sorrow", "Temerity", "Torment", "Weary", "Zeal"] 
         },
         "Dragonborn": {
              male: ["Arjhan", "Balasar", "Bharash", "Donaar", "Ghesh", "Heskan", "Kriv", "Medrash", "Mehen", "Nadarr", "Pandjed", "Patrin", "Rhogar", "Shamash", "Shedinn", "Tarhun", "Torinn"],
              female: ["Akra", "Biri", "Daar", "Farideh", "Harann", "Havilar", "Jheri", "Kava", "Korinn", "Mishann", "Nala", "Perra", "Raiann", "Sora", "Surina", "Thava", "Uadjit"],
-             last: ["Clethtinthiallor", "Daardendrian", "Delmirev", "Drachedandion", "Fenkenkabradon", "Kepeshkmolik", "Kerrhylon", "Kimbatuul", "Linxakasendalor", "Myistan", "Nemmonis", "Norixius"]
+             last: ["Clethtinthiallor", "Daardendrian", "Delmirev", "Drachedandion", "Fenkenkabradon", "Kepeshkmolik", "Kerrhylon", "Kimbatuul", "Linxakasendalor", "Myistan", "Nemmonis", "Norixius", "Ophinshtalajiir", "Prexijandilin", "Shestendeliath", "Turnuroth", "Verthisathurgiesh", "Yarjerit"]
         },
         "Gnome": {
              male: ["Boddynock", "Dimble", "Fonkin", "Gimble", "Glim", "Gerbo", "Jebeddo", "Namfoodle", "Roondar", "Seebo", "Zook"],
              female: ["Bimpnottin", "Breena", "Caramip", "Carlin", "Donella", "Duvamil", "Ella", "Ellyjobell", "Ellywick", "Lilli", "Loopmottin", "Lorilla", "Mardnab", "Nissa", "Nyx", "Oda"],
              last: ["Beren", "Daergel", "Folkor", "Garrick", "Nackle", "Murnig", "Ningel", "Raulnor", "Scheppen", "Timbers", "Turen"]
+        },
+        "Goblin": {
+             male: ["Griz", "Raz", "Tark", "Vig", "Zog", "Bok", "Nark", "Rik", "Snik", "Grob", "Krag", "Mok"],
+             female: ["Gree", "Mee", "Vola", "Yig", "Zeka", "Bree", "Nola", "Rika", "Sola", "Tika", "Vika", "Zola"],
+             last: ["Mudfoot", "Red-Eye", "Ear-Biter", "Rat-Catcher", "Toad-Licker", "Worm-Eater", "Sneak-Thief", "Back-Stabber", "Gold-Stealer", "Sharp-Tooth"]
+        },
+        "Tabaxi": {
+             male: ["Cloud", "Rain", "Storm", "Thunder", "River", "Smoke", "Shadow", "Midnight", "Flicker", "Sprint", "Claw", "Fang"],
+             female: ["Mist", "Ember", "Dawn", "Dusk", "Star", "Moon", "Sun", "Sky", "Leaf", "Flower", "Berry", "Root"],
+             last: ["of the Mountains", "on the Water", "in the Wind", "under the Stars", "walking softly", "running fast", "hiding in shadows", "singing loudly", "dancing wildly", "sleeping soundly"]
+        },
+        "Kenku": {
+             male: ["Click", "Clack", "Snap", "Pop", "Whistle", "Hoot", "Caw", "Screech", "Chirp", "Rustle", "Thump", "Crash"],
+             female: ["Ring", "Chime", "Echo", "Whisper", "Murmur", "Hum", "Song", "Melody", "Harmony", "Rhythm", "Beat", "Tune"],
+             last: ["Sounder", "Mimic", "Copycat", "Repeater", "Echoer", "Parrot", "Mocker", "Imitator", "Simulator", "Replicator"]
+        },
+        "Genasi": {
+             male: ["Ignis", "Aqua", "Terra", "Aero", "Pyro", "Hydro", "Geo", "Zephyr", "Blaze", "Tide", "Stone", "Gale"],
+             female: ["Ember", "River", "Gem", "Bree", "Ash", "Rain", "Jade", "Skye", "Flame", "Mist", "Crystal", "Cloud"],
+             last: ["Fireborn", "Waterwalker", "Earthshaker", "Windrider", "Stormcaller", "Tidemaker", "Stoneforger", "Skywatcher", "Flamekeeper", "Wavebreaker"]
         }
     };
 
