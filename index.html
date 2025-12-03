@@ -455,10 +455,16 @@
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-indigo-300">Tracker</h2>
                         
-                        <div class="flex items-center gap-2 bg-gray-900 px-3 py-1 rounded-lg border border-gray-700 shadow-inner">
-                            <span id="combat-timer-display" class="font-mono font-bold text-lg text-red-400 w-16 text-center">00:00</span>
-                            <button onclick="window.toggleCombatTimer()" id="btn-timer-toggle" class="text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded font-bold transition">▶</button>
-                            <button onclick="window.resetCombatTimer()" class="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded font-bold transition">↺</button>
+                        <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-indigo-300">Tracker</h2>
+                        
+                        <div class="flex items-center gap-1 bg-gray-900 px-2 py-1 rounded-lg border border-gray-700 shadow-inner">
+                            <input type="number" id="timer-min" value="00" min="0" max="99" class="w-7 bg-transparent text-red-400 font-mono font-bold text-lg text-center outline-none p-0 border-none focus:ring-0 placeholder-red-400/50" onfocus="this.select()">
+                            <span class="text-red-400 font-bold">:</span>
+                            <input type="number" id="timer-sec" value="00" min="0" max="59" class="w-7 bg-transparent text-red-400 font-mono font-bold text-lg text-center outline-none p-0 border-none focus:ring-0 placeholder-red-400/50" onfocus="this.select()">
+                            
+                            <button onclick="window.toggleTimer()" id="btn-timer-toggle" class="ml-2 text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded font-bold transition">▶</button>
+                            <button onclick="window.resetTimer()" class="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded font-bold transition">↺</button>
                         </div>
                     </div>
 
@@ -2519,45 +2525,79 @@
         });
     };
 
-        // --- 17. COMBAT TIMER ---
-    let combatTimerInterval = null;
-    let combatTimerSeconds = 0;
+        // --- 17. DUAL COMBAT TIMER (Stopwatch & Countdown) ---
+    let timerInterval = null;
+    let timerMode = null; // 'countup' or 'countdown'
 
-    window.toggleCombatTimer = () => {
+    window.toggleTimer = () => {
         const btn = document.getElementById('btn-timer-toggle');
-        const display = document.getElementById('combat-timer-display');
+        const minInput = document.getElementById('timer-min');
+        const secInput = document.getElementById('timer-sec');
         
-        if (combatTimerInterval) {
-            // Stop Timer
-            clearInterval(combatTimerInterval);
-            combatTimerInterval = null;
+        if (timerInterval) {
+            // PAUSE
+            clearInterval(timerInterval);
+            timerInterval = null;
             btn.textContent = "▶";
             btn.classList.replace('bg-red-700', 'bg-green-700');
             btn.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
-            display.classList.replace('text-green-400', 'text-red-400');
         } else {
-            // Start Timer
-            combatTimerInterval = setInterval(() => {
-                combatTimerSeconds++;
-                const m = Math.floor(combatTimerSeconds / 60).toString().padStart(2, '0');
-                const s = (combatTimerSeconds % 60).toString().padStart(2, '0');
-                display.textContent = `${m}:${s}`;
+            // START
+            let m = parseInt(minInput.value) || 0;
+            let s = parseInt(secInput.value) || 0;
+            let total = m * 60 + s;
+
+            // Determine Mode (Only if starting fresh)
+            if (!timerMode) {
+                if (total > 0) timerMode = 'countdown';
+                else timerMode = 'countup';
+            }
+
+            timerInterval = setInterval(() => {
+                if (timerMode === 'countdown') {
+                    if (total <= 0) {
+                        // TIME'S UP!
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        timerMode = null; // Reset mode
+                        btn.textContent = "▶";
+                        btn.classList.replace('bg-red-700', 'bg-green-700');
+                        // Play Sound if available
+                        if(window.playTone) window.playTone('trap'); 
+                        alert("⏰ Time is up!");
+                        return;
+                    }
+                    total--;
+                } else {
+                    // Stopwatch
+                    total++;
+                }
+
+                // Update UI
+                const nm = Math.floor(total / 60).toString().padStart(2, '0');
+                const ns = (total % 60).toString().padStart(2, '0');
+                minInput.value = nm;
+                secInput.value = ns;
             }, 1000);
-            
+
             btn.textContent = "⏸";
             btn.classList.replace('bg-green-700', 'bg-red-700');
             btn.classList.replace('hover:bg-green-600', 'hover:bg-red-600');
-            display.classList.replace('text-red-400', 'text-green-400');
         }
     };
 
-    window.resetCombatTimer = () => {
-        // Stop first if running
-        if(combatTimerInterval) window.toggleCombatTimer();
+    window.resetTimer = () => {
+        if(timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        timerMode = null; // Clear mode so next click decides fresh
         
-        combatTimerSeconds = 0;
-        const display = document.getElementById('combat-timer-display');
-        if(display) display.textContent = "00:00";
+        // UI Reset
+        document.getElementById('btn-timer-toggle').textContent = "▶";
+        document.getElementById('btn-timer-toggle').classList.replace('bg-red-700', 'bg-green-700');
+        document.getElementById('timer-min').value = "00";
+        document.getElementById('timer-sec').value = "00";
     };
     
 </script>
