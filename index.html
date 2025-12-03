@@ -745,60 +745,36 @@
                             <button class="brew-sub-tab active px-3 py-1 text-xs font-bold rounded bg-orange-600 text-white transition" onclick="switchBrewMode('monster', this)">Monster</button>
                             <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('weapon', this)">Weapon</button>
                             <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('magic', this)">Item</button>
+                            <div class="w-[1px] bg-gray-600 mx-1"></div>
+                            <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-blue-300 hover:text-white hover:bg-blue-700 transition" onclick="switchBrewMode('community', this)">🌎 Community</button>
                         </div>
                     </div>
 
-                   <div id="brew-monster-area" class="animate-fade-in">
+                    <div id="brew-monster-area" class="animate-fade-in">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            
                             <div class="space-y-2">
-                                <label class="block text-xs text-gray-500 uppercase">Name & Type</label>
-                                <input type="text" id="hb-mon-name" placeholder="Name (e.g. Void Stalker)" class="w-full p-2 rounded input-style text-sm font-bold mb-1">
-                                <input type="text" id="hb-mon-type" placeholder="Type (e.g. Medium Undead, Chaotic Evil)" class="w-full p-2 rounded input-style text-xs">
-
-                                <div class="grid grid-cols-3 gap-2">
-                                    <div><label class="block text-[10px] text-gray-500 uppercase">AC</label><input type="number" id="hb-mon-ac" placeholder="15" class="w-full p-2 rounded input-style text-sm text-center"></div>
-                                    <div><label class="block text-[10px] text-gray-500 uppercase">HP</label><input type="number" id="hb-mon-hp" placeholder="45" class="w-full p-2 rounded input-style text-sm text-center"></div>
-                                    <div><label class="block text-[10px] text-gray-500 uppercase">Spd</label><input type="text" id="hb-mon-spd" placeholder="30 ft." class="w-full p-2 rounded input-style text-sm text-center"></div>
-                                </div>
-
-                                <label class="block text-xs text-gray-500 uppercase mt-2">Ability Scores</label>
-                                <div class="grid grid-cols-6 gap-1">
-                                    <input type="number" id="hb-mon-str" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="STR">
-                                    <input type="number" id="hb-mon-dex" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="DEX">
-                                    <input type="number" id="hb-mon-con" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="CON">
-                                    <input type="number" id="hb-mon-int" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="INT">
-                                    <input type="number" id="hb-mon-wis" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="WIS">
-                                    <input type="number" id="hb-mon-cha" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="CHA">
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <label class="block text-xs text-gray-500 uppercase">Combat Stats</label>
+                                <label class="block text-xs text-gray-500 uppercase">Name</label>
+                                <input type="text" id="hb-mon-name" placeholder="e.g. Void Stalker" class="w-full p-2 rounded input-style text-sm font-bold">
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="number" id="hb-mon-init" placeholder="Init Mod (+2)" class="w-full p-2 rounded input-style text-sm">
-                                    <input type="number" id="hb-mon-tohit" placeholder="Hit Bonus (+5)" class="w-full p-2 rounded input-style text-sm">
+                                    <div><label class="block text-xs text-gray-500 uppercase">AC</label><input type="number" id="hb-mon-ac" placeholder="15" class="w-full p-2 rounded input-style text-sm"></div>
+                                    <div><label class="block text-xs text-gray-500 uppercase">HP</label><input type="number" id="hb-mon-hp" placeholder="45" class="w-full p-2 rounded input-style text-sm"></div>
                                 </div>
-                                
-                                <label class="block text-xs text-gray-500 uppercase">Main Attack</label>
-                                <input type="text" id="hb-mon-atkname" placeholder="Attack Name (e.g. Claw)" class="w-full p-2 rounded input-style text-sm">
-                                <input type="text" id="hb-mon-dmg" placeholder="Damage (e.g. 1d6 + 3 slashing)" class="w-full p-2 rounded input-style text-sm">
-                                
-                                <label class="block text-xs text-gray-500 uppercase">Abilities / Actions (Text)</label>
-                                <textarea id="hb-mon-desc" rows="2" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="Multiattack. The monster makes two attacks..."></textarea>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div><label class="block text-xs text-gray-500 uppercase">Init Mod</label><input type="number" id="hb-mon-init" placeholder="+2" class="w-full p-2 rounded input-style text-sm"></div>
+                                    <div><label class="block text-xs text-gray-500 uppercase">To Hit</label><input type="number" id="hb-mon-tohit" placeholder="+5" class="w-full p-2 rounded input-style text-sm"></div>
+                                </div>
                             </div>
-                        </div>
-
-                        <button onclick="window.previewHomebrewMonster()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg mb-4">👁️ Generate Statblock Preview</button>
-
-                        <div id="hb-monster-preview" class="hidden mb-4">
+                            <div class="space-y-2">
+                                <label class="block text-xs text-gray-500 uppercase">Main Attack Name</label>
+                                <input type="text" id="hb-mon-atkname" placeholder="e.g. Shadow Claw" class="w-full p-2 rounded input-style text-sm">
+                                <label class="block text-xs text-gray-500 uppercase">Damage Roll</label>
+                                <input type="text" id="hb-mon-dmg" placeholder="e.g. 2d6 + 3 slashing" class="w-full p-2 rounded input-style text-sm">
+                                
+                                <div class="flex gap-2 mt-6">
+                                    <button onclick="window.saveHomebrewMonster()" class="flex-1 bg-orange-700 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow-lg transition">💾 Save to Stats</button>
+                                    <button onclick="window.saveHomebrewToNotes('monster')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-lg transition">📜 Save Note</button>
+                                </div>
                             </div>
-
-                        <div class="flex gap-2">
-                            <button onclick="window.saveHomebrewMonster()" class="flex-1 bg-orange-700 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow-lg transition">💾 Save to Stats</button>
-                            <button onclick="window.saveHomebrewToNotes('monster')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-lg transition">📜 Save Note</button>
-                        </div>
-                    </div>
                         </div>
                         <p class="text-xs text-center text-gray-500">Saved monsters appear in the <strong>Stats Tab</strong>.</p>
                     </div>
@@ -866,10 +842,22 @@
                         </div>
                     </div>
                     
-                    <hr class="border-gray-700 my-4">
-                    <h3 class="text-sm font-bold text-indigo-300 mb-2">Inventory</h3>
-                    <div id="homebrew-weapon-list" class="space-y-2 max-h-60 overflow-y-auto">
-                        <p class="text-center text-gray-500 text-xs">No items saved.</p>
+                    <div id="brew-community-area" class="hidden animate-fade-in">
+                        <div class="bg-blue-900/20 p-3 rounded-lg border border-blue-500/30 mb-4 text-center">
+                            <h3 class="text-sm font-bold text-blue-200">🌎 Community Creations</h3>
+                            <p class="text-[10px] text-gray-400">Items shared by other DMs. Click 'Save' to add them to your inventory.</p>
+                        </div>
+                        <div id="community-list" class="space-y-2 max-h-80 overflow-y-auto">
+                            <p class="text-center text-gray-500 text-xs pt-4">Loading community items...</p>
+                        </div>
+                    </div>
+                    
+                    <div id="my-inventory-container">
+                        <hr class="border-gray-700 my-4">
+                        <h3 class="text-sm font-bold text-indigo-300 mb-2">My Inventory</h3>
+                        <div id="homebrew-weapon-list" class="space-y-2 max-h-60 overflow-y-auto">
+                            <p class="text-center text-gray-500 text-xs">No items saved.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2392,34 +2380,45 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Complete) ---
+    // --- 16. HOMEBREW ENGINE (Complete: Preview + Community + Saving) ---
     
-    // Helper to calculate Ability Modifiers (e.g. 16 -> +3)
-    const calcMod = (score) => { 
-        const m = Math.floor(((parseInt(score)||10) - 10) / 2); 
-        return m >= 0 ? `+${m}` : m; 
-    };
+    // Helpers
+    const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'public', 'default', 'data', 'community_homebrew');
+    const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
+    // UI Switcher
     window.switchBrewMode = (mode, btn) => {
-        // Update Buttons
         document.querySelectorAll('.brew-sub-tab').forEach(b => {
-            b.classList.remove('bg-orange-600', 'text-white');
+            b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600');
             b.classList.add('text-gray-400');
         });
         btn.classList.remove('text-gray-400');
-        btn.classList.add('bg-orange-600', 'text-white');
+        
+        // Color logic
+        if(mode === 'community') btn.classList.add('bg-blue-600', 'text-white');
+        else btn.classList.add('bg-orange-600', 'text-white');
 
-        // Switch Content Areas
+        // Hide all areas
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
+        document.getElementById('brew-community-area').classList.add('hidden');
         
+        // Show selected
         document.getElementById(`brew-${mode}-area`).classList.remove('hidden');
+        
+        // Toggle Inventory vs Community List
+        const inv = document.getElementById('my-inventory-container');
+        if(mode === 'community') {
+            if(inv) inv.classList.add('hidden');
+            window.loadCommunityItems(); 
+        } else {
+            if(inv) inv.classList.remove('hidden');
+        }
     };
 
-    // --- MONSTER PREVIEW GENERATOR ---
+    // --- 1. MONSTER PREVIEW (The "Parchment" Generator) ---
     window.previewHomebrewMonster = () => {
-        // 1. Get Values
         const name = document.getElementById('hb-mon-name').value || "Unknown Monster";
         const type = document.getElementById('hb-mon-type').value || "Medium Beast, Unaligned";
         const ac = document.getElementById('hb-mon-ac').value || 10;
@@ -2444,7 +2443,6 @@
         
         preview.classList.remove('hidden');
         
-        // 2. Render HTML (Official Style)
         preview.innerHTML = `
             <div class="dnd-statblock text-left text-sm">
                 <div class="dnd-header">${name}</div>
@@ -2467,7 +2465,6 @@
                 <div class="tapered-rule"></div>
                 <div class="text-black mt-2 space-y-2">
                     ${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}
-                    
                     <div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div>
                     <p>
                         <strong class="italic font-bold text-black">${atkName}.</strong> 
@@ -2481,127 +2478,130 @@
         `;
     };
 
-    // --- SAVE FUNCTIONS ---
-
-    // 1. Save Monster (Stats DB)
+    // --- 2. SAVING FUNCTIONS (Private DB) ---
+    
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
-
-        const hp = parseInt(document.getElementById('hb-mon-hp').value) || 10;
-        const ac = parseInt(document.getElementById('hb-mon-ac').value) || 10;
-        const init = parseInt(document.getElementById('hb-mon-init').value) || 0;
-        const tohit = parseInt(document.getElementById('hb-mon-tohit').value) || 0;
-        const atkName = document.getElementById('hb-mon-atkname').value || "Attack";
-        const dmg = document.getElementById('hb-mon-dmg').value || "1d4";
-        const fullDmgStr = `${atkName}: ${dmg}`;
+        const hp = parseInt(document.getElementById('hb-mon-hp').value)||10;
+        const ac = parseInt(document.getElementById('hb-mon-ac').value)||10;
+        const init = parseInt(document.getElementById('hb-mon-init').value)||0;
+        const tohit = parseInt(document.getElementById('hb-mon-tohit').value)||0;
+        const fullDmgStr = `${document.getElementById('hb-mon-atkname').value}: ${document.getElementById('hb-mon-dmg').value}`;
 
         if(!window.isAuthReady) { alert("Login required."); return; }
-
         try {
             await window.addDoc(getCol('dm_toolkit_statblocks'), {
-                name: name, hp: hp, ac: ac, toHit: tohit, initMod: init, dmg: fullDmgStr, timestamp: new Date().toISOString()
+                name, hp, ac, toHit: tohit, initMod: init, dmg: fullDmgStr, timestamp: new Date().toISOString()
             });
-            alert(`Saved ${name} to Stats Tab!`);
+            alert(`Saved ${name} to Stats!`);
             document.getElementById('hb-mon-name').value = '';
         } catch (e) { console.error(e); }
     };
 
-    // 2. Save Weapon (Inventory DB)
     window.saveHomebrewWeapon = async () => {
         const name = document.getElementById('hb-wep-name').value.trim();
         if (!name) return;
-        const dmg = document.getElementById('hb-wep-dmg').value;
-        const type = document.getElementById('hb-wep-type').value;
-        const props = document.getElementById('hb-wep-props').value;
-
         try {
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                name, dmg, type, props, timestamp: new Date().toISOString()
+                name, 
+                dmg: document.getElementById('hb-wep-dmg').value, 
+                type: document.getElementById('hb-wep-type').value, 
+                props: document.getElementById('hb-wep-props').value, 
+                timestamp: new Date().toISOString()
             });
             document.getElementById('hb-wep-name').value = ''; 
         } catch (e) { console.error(e); }
     };
 
-    // 3. Save Magic Item (Inventory DB)
     window.saveHomebrewMagicItem = async () => {
         const name = document.getElementById('hb-item-name').value.trim();
         if (!name) return;
-        const rarity = document.getElementById('hb-item-rarity').value;
-        const type = document.getElementById('hb-item-type').value;
-        const attune = document.getElementById('hb-item-attune').checked ? "(Attunement)" : "";
-        const desc = document.getElementById('hb-item-desc').value;
-        const fullProps = `${attune} ${desc}`.trim();
-
+        const fullProps = `${document.getElementById('hb-item-attune').checked ? "(Attunement)" : ""} ${document.getElementById('hb-item-desc').value}`;
         try {
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                name: name, dmg: rarity, type: type, props: fullProps, timestamp: new Date().toISOString()
+                name, 
+                dmg: document.getElementById('hb-item-rarity').value, 
+                type: document.getElementById('hb-item-type').value, 
+                props: fullProps, 
+                timestamp: new Date().toISOString()
             });
             document.getElementById('hb-item-name').value = ''; 
-            document.getElementById('hb-item-desc').value = '';
         } catch (e) { console.error(e); }
     };
 
-    // 4. Save to Notes (Handles formatted HTML for Monsters)
+    // --- 3. NOTES INTEGRATION ---
     window.saveHomebrewToNotes = async (type) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
-        
         let title, content, tab;
         const id = crypto.randomUUID();
-        const timestamp = new Date().toISOString();
-
+        
         if (type === 'monster') {
-            // Force generate preview first to get the HTML
+            // Force generate preview to grab the HTML
             window.previewHomebrewMonster();
             const previewHTML = document.getElementById('hb-monster-preview').innerHTML;
-            const name = document.getElementById('hb-mon-name').value || "Unnamed Monster";
-            
-            title = name + " (Homebrew)";
-            content = previewHTML; // Saves the parchment style!
+            title = (document.getElementById('hb-mon-name').value || "Monster") + " (Homebrew)";
+            content = previewHTML;
             tab = 'enemyNotes';
-        } 
-        else if (type === 'weapon') {
-            const name = document.getElementById('hb-wep-name').value || "Unnamed Weapon";
-            const dmg = document.getElementById('hb-wep-dmg').value;
-            const dtype = document.getElementById('hb-wep-type').value;
-            const props = document.getElementById('hb-wep-props').value;
-            
-            title = name;
-            content = `Type: Weapon\nDamage: ${dmg} ${dtype}\nProperties: ${props}`;
+        } else if (type === 'weapon') {
+            title = document.getElementById('hb-wep-name').value;
+            content = `Type: Weapon\nDamage: ${document.getElementById('hb-wep-dmg').value}\nProps: ${document.getElementById('hb-wep-props').value}`;
+            tab = 'lootNotes';
+        } else {
+            title = document.getElementById('hb-item-name').value;
+            content = `${document.getElementById('hb-item-rarity').value} ${document.getElementById('hb-item-type').value}\n\n${document.getElementById('hb-item-desc').value}`;
             tab = 'lootNotes';
         }
-        else if (type === 'item') {
-             const name = document.getElementById('hb-item-name').value || "Unnamed Item";
-             const rarity = document.getElementById('hb-item-rarity').value;
-             const itype = document.getElementById('hb-item-type').value;
-             const attune = document.getElementById('hb-item-attune').checked ? "(Requires Attunement)" : "";
-             const desc = document.getElementById('hb-item-desc').value;
-             
-             title = name;
-             content = `${rarity} ${itype} ${attune}\n\n${desc}`;
-             tab = 'lootNotes';
-        }
-
-        // Push to global state
-        structuredNotes[tab].unshift({ id, title, content, timestamp });
         
-        // Save to DB
+        structuredNotes[tab].unshift({ id, title, content, timestamp: new Date().toISOString() });
         await window.saveStructuredNotes(tab, structuredNotes[tab]);
-        
-        // Confirm & Switch
-        if(confirm(`Saved to Notes! Go to ${tab === 'enemyNotes' ? 'Enemies' : 'Loot'} tab now?`)) {
-            window.switchTab('notes');
-            window.switchSubTab(tab);
-        }
+        if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // 5. Delete Helper
+    // --- 4. COMMUNITY & SHARING ---
+    window.shareHomebrewItem = async (id, name, dmg, type, props) => {
+        if(!confirm(`Publish "${name}" to the Community list?`)) return;
+        try {
+            await window.addDoc(getPublicBrewCol(), {
+                name, dmg, type, props, sharedBy: "Fellow DM", timestamp: new Date().toISOString()
+            });
+            alert("Published! Check the Community tab.");
+        } catch(e) { console.error(e); alert("Error publishing."); }
+    };
+
+    window.importCommunityItem = async (name, dmg, type, props) => {
+        try {
+            await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
+                name, dmg, type, props, timestamp: new Date().toISOString()
+            });
+            alert(`Imported ${name} to your inventory!`);
+        } catch(e) { console.error(e); }
+    };
+
+    window.loadCommunityItems = () => {
+        const list = document.getElementById('community-list');
+        const q = window.query(getPublicBrewCol(), window.orderBy('timestamp', 'desc'), window.limit(20));
+        window.onSnapshot(q, (snap) => {
+            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No community items yet.</p>'; return; }
+            list.innerHTML = '';
+            snap.forEach(d => {
+                const item = d.data();
+                const safeName = item.name.replace(/'/g, "\\'");
+                const safeProps = item.props.replace(/'/g, "\\'").replace(/\n/g, " ");
+                const div = document.createElement('div');
+                div.className = 'bg-blue-900/20 p-2 rounded border border-blue-500/30 flex justify-between items-center';
+                div.innerHTML = `<div><div class="font-bold text-blue-200 text-sm">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div><button onclick="window.importCommunityItem('${safeName}', '${item.dmg}', '${item.type}', '${safeProps}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">Save</button>`;
+                list.appendChild(div);
+            });
+        });
+    };
+
+    // --- 5. INVENTORY LISTENER & DELETE ---
     window.deleteHomebrewWeapon = async (id) => {
-        if(!confirm("Delete this item?")) return;
+        if(!confirm("Delete?")) return;
         await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id));
     };
 
-    // 6. Inventory Listener
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
@@ -2613,16 +2613,17 @@
             
             items.sort((a,b) => a.name.localeCompare(b.name));
             list.innerHTML = '';
-            
             items.forEach(item => {
+                const safeName = item.name.replace(/'/g, "\\'");
+                const safeProps = item.props.replace(/'/g, "\\'").replace(/\n/g, " ");
                 const div = document.createElement('div');
                 div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center';
                 div.innerHTML = `
-                    <div>
-                        <div class="font-bold text-orange-200 text-sm">${item.name}</div>
-                        <div class="text-[10px] text-gray-400">${item.dmg} ${item.type} • ${item.props}</div>
+                    <div><div class="font-bold text-orange-200 text-sm">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div>
+                    <div class="flex gap-2">
+                        <button onclick="window.shareHomebrewItem('${item.id}', '${safeName}', '${item.dmg}', '${item.type}', '${safeProps}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share">🌍</button>
+                        <button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button>
                     </div>
-                    <button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold px-2">×</button>
                 `;
                 list.appendChild(div);
             });
