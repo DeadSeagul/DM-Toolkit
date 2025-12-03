@@ -2400,10 +2400,10 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Complete: Preview + Community + Saving) ---
+    // --- 16. HOMEBREW ENGINE (Fixed Community Path) ---
     
-    // 1. Helper for PUBLIC Collection (Simplified Path for reliable sharing)
-    const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'community_homebrew');
+    // 1. Helper for PUBLIC Collection (Fixed to match the app's public structure)
+    const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'public', 'default', 'data', 'community_homebrew');
     
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
@@ -2415,20 +2415,16 @@
         });
         btn.classList.remove('text-gray-400');
         
-        // Color logic
         if(mode === 'community') btn.classList.add('bg-blue-600', 'text-white');
         else btn.classList.add('bg-orange-600', 'text-white');
 
-        // Hide all areas
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
         document.getElementById('brew-community-area').classList.add('hidden');
         
-        // Show selected
         document.getElementById(`brew-${mode}-area`).classList.remove('hidden');
         
-        // Toggle Inventory vs Community List
         const inv = document.getElementById('my-inventory-container');
         if(mode === 'community') {
             if(inv) inv.classList.add('hidden');
@@ -2438,7 +2434,7 @@
         }
     };
 
-    // --- 1. MONSTER PREVIEW (The "Parchment" Generator) ---
+    // --- 1. MONSTER PREVIEW ---
     window.previewHomebrewMonster = () => {
         const name = document.getElementById('hb-mon-name').value || "Unknown Monster";
         const type = document.getElementById('hb-mon-type').value || "Medium Beast, Unaligned";
@@ -2461,7 +2457,6 @@
 
         const preview = document.getElementById('hb-monster-preview');
         if(!preview) return;
-        
         preview.classList.remove('hidden');
         
         preview.innerHTML = `
@@ -2487,19 +2482,12 @@
                 <div class="text-black mt-2 space-y-2">
                     ${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}
                     <div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div>
-                    <p>
-                        <strong class="italic font-bold text-black">${atkName}.</strong> 
-                        <span class="text-black">
-                            <em>Melee Weapon Attack:</em> +${toHit} to hit, one target. 
-                            <em>Hit:</em> ${dmg} damage.
-                        </span>
-                    </p>
+                    <p><strong class="italic font-bold text-black">${atkName}.</strong> <span class="text-black"><em>Melee Weapon Attack:</em> +${toHit} to hit, one target. <em>Hit:</em> ${dmg} damage.</span></p>
                 </div>
-            </div>
-        `;
+            </div>`;
     };
 
-    // --- 2. SAVING FUNCTIONS (Private DB) ---
+    // --- 2. SAVING (Private) ---
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
@@ -2511,9 +2499,7 @@
 
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
-            await window.addDoc(getCol('dm_toolkit_statblocks'), {
-                name, hp, ac, toHit: tohit, initMod: init, dmg: fullDmgStr, timestamp: new Date().toISOString()
-            });
+            await window.addDoc(getCol('dm_toolkit_statblocks'), { name, hp, ac, toHit: tohit, initMod: init, dmg: fullDmgStr, timestamp: new Date().toISOString() });
             alert(`Saved ${name} to Stats!`);
             document.getElementById('hb-mon-name').value = '';
         } catch (e) { console.error(e); }
@@ -2524,11 +2510,7 @@
         if (!name) return;
         try {
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                name, 
-                dmg: document.getElementById('hb-wep-dmg').value, 
-                type: document.getElementById('hb-wep-type').value, 
-                props: document.getElementById('hb-wep-props').value, 
-                timestamp: new Date().toISOString()
+                name, dmg: document.getElementById('hb-wep-dmg').value, type: document.getElementById('hb-wep-type').value, props: document.getElementById('hb-wep-props').value, timestamp: new Date().toISOString()
             });
             document.getElementById('hb-wep-name').value = ''; 
         } catch (e) { console.error(e); }
@@ -2540,17 +2522,13 @@
         const fullProps = `${document.getElementById('hb-item-attune').checked ? "(Attunement)" : ""} ${document.getElementById('hb-item-desc').value}`;
         try {
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                name, 
-                dmg: document.getElementById('hb-item-rarity').value, 
-                type: document.getElementById('hb-item-type').value, 
-                props: fullProps, 
-                timestamp: new Date().toISOString()
+                name, dmg: document.getElementById('hb-item-rarity').value, type: document.getElementById('hb-item-type').value, props: fullProps, timestamp: new Date().toISOString()
             });
             document.getElementById('hb-item-name').value = ''; 
         } catch (e) { console.error(e); }
     };
 
-    // --- 3. NOTES INTEGRATION ---
+    // --- 3. NOTE INTEGRATION ---
     window.saveHomebrewToNotes = async (type) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
         let title, content, tab;
@@ -2576,10 +2554,9 @@
         if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- 4. COMMUNITY SHARING (FIXED) ---
+    // --- 4. COMMUNITY SHARING (Corrected Arguments) ---
     
     // A. SHARE (Private -> Public)
-    // FIXED: Added 'id' to the arguments list so it matches what the button sends
     window.shareHomebrewItem = async (id, name, dmg, type, props) => {
         if(!confirm(`Publish "${name}" to the Community list?`)) return;
         try {
@@ -2603,34 +2580,39 @@
     };
 
     // C. LOAD (Fetch Public)
+    // Removed complex sorting for now to ensure it loads quickly
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
-        const q = window.query(getPublicBrewCol(), window.orderBy('timestamp', 'desc'), window.limit(20));
+        const q = window.query(getPublicBrewCol(), window.limit(50));
         
         window.onSnapshot(q, (snap) => {
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No community items yet.</p>'; return; }
+            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No community items yet. Be the first!</p>'; return; }
             list.innerHTML = '';
             snap.forEach(d => {
                 const item = d.data();
-                const safeName = item.name.replace(/'/g, "\\'");
+                const safeName = (item.name || "").replace(/'/g, "\\'");
+                const safeDmg = (item.dmg || "").replace(/'/g, "\\'");
+                const safeType = (item.type || "").replace(/'/g, "\\'");
                 const safeProps = (item.props || "").replace(/'/g, "\\'").replace(/\n/g, " ");
                 
                 const div = document.createElement('div');
-                div.className = 'bg-blue-900/20 p-2 rounded border border-blue-500/30 flex justify-between items-center';
+                div.className = 'bg-blue-900/20 p-2 rounded border border-blue-500/30 flex justify-between items-center mb-2';
                 div.innerHTML = `
-                    <div>
-                        <div class="font-bold text-blue-200 text-sm">${item.name}</div>
-                        <div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div>
-                        <div class="text-[10px] text-gray-500 truncate w-48">${item.props}</div>
+                    <div class="overflow-hidden">
+                        <div class="font-bold text-blue-200 text-sm truncate">${item.name}</div>
+                        <div class="text-[10px] text-gray-400">${item.dmg || ""} ${item.type || ""}</div>
+                        <div class="text-[10px] text-gray-500 truncate pr-2">${item.props || ""}</div>
                     </div>
-                    <button onclick="window.importCommunityItem('${safeName}', '${item.dmg}', '${item.type}', '${safeProps}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">Save</button>
+                    <button onclick="window.importCommunityItem('${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded shadow transition">
+                        Save
+                    </button>
                 `;
                 list.appendChild(div);
             });
         });
     };
 
-    // 5. INVENTORY LISTENER (With Fixed Share Button)
+    // 5. INVENTORY LISTENER
     window.deleteHomebrewWeapon = async (id) => {
         if(!confirm("Delete?")) return;
         await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id));
@@ -2654,10 +2636,13 @@
                 const safeProps = (item.props || "").replace(/'/g, "\\'").replace(/\n/g, " ");
                 
                 const div = document.createElement('div');
-                div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center';
+                div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center mb-1';
                 div.innerHTML = `
-                    <div><div class="font-bold text-orange-200 text-sm">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div>
-                    <div class="flex gap-2">
+                    <div class="overflow-hidden">
+                        <div class="font-bold text-orange-200 text-sm truncate">${item.name}</div>
+                        <div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
                         <button onclick="window.shareHomebrewItem('${item.id}', '${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share to Community">🌍</button>
                         <button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button>
                     </div>
