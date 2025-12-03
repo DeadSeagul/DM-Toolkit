@@ -2400,9 +2400,9 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Fixed Community Path) ---
+    // --- 16. HOMEBREW ENGINE (Community Fix: No Sort) ---
     
-    // 1. Helper for PUBLIC Collection (FIXED: 3 Segments = Valid Collection)
+    // 1. Helper for PUBLIC Collection
     const getPublicBrewCol = () => window.collection(window.db, 'artifacts', 'default', 'community_homebrew');
     
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
@@ -2432,7 +2432,7 @@
         }
     };
 
-    // --- 1. MONSTER PREVIEW ---
+    // --- 1. PREVIEW ---
     window.previewHomebrewMonster = () => {
         const name = document.getElementById('hb-mon-name').value || "Unknown Monster";
         const type = document.getElementById('hb-mon-type').value || "Medium Beast, Unaligned";
@@ -2480,7 +2480,7 @@
             </div>`;
     };
 
-    // --- 2. SAVING (Private) ---
+    // --- 2. SAVING ---
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
@@ -2520,7 +2520,7 @@
         } catch (e) { console.error(e); }
     };
 
-    // --- 3. NOTES INTEGRATION ---
+    // --- 3. NOTES ---
     window.saveHomebrewToNotes = async (type) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
         let title, content, tab;
@@ -2546,11 +2546,10 @@
         if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- 4. COMMUNITY SHARING (FIXED) ---
+    // --- 4. COMMUNITY (FIXED: NO SORTING) ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
-            // Get Item from PRIVATE DB
             const docRef = getDocRef('dm_toolkit_homebrew_items', id);
             const snapshot = await (window.getDoc ? window.getDoc(docRef) : getDoc(docRef));
             
@@ -2558,7 +2557,6 @@
             const item = snapshot.data();
             if(!confirm(`Publish "${item.name}"?`)) return;
 
-            // Write to PUBLIC DB (Using Fixed Path)
             await window.addDoc(getPublicBrewCol(), {
                 name: item.name, dmg: item.dmg || "", type: item.type || "", props: item.props || "",
                 sharedBy: "Fellow DM", timestamp: new Date().toISOString()
@@ -2576,9 +2574,12 @@
 
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
-        const q = window.query(getPublicBrewCol(), window.orderBy('timestamp', 'desc'), window.limit(20));
+        // REMOVED 'orderBy' to prevent index errors. 
+        // Just fetch last 50 items in default order.
+        const q = window.query(getPublicBrewCol(), window.limit(50));
+        
         window.onSnapshot(q, (snap) => {
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items yet.</p>'; return; }
+            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No community items yet.</p>'; return; }
             list.innerHTML = '';
             snap.forEach(d => {
                 const item = d.data();
@@ -2604,6 +2605,10 @@
             if(items.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; return; }
             items.sort((a,b) => a.name.localeCompare(b.name)); list.innerHTML = '';
             items.forEach(item => {
+                const safeName = item.name.replace(/'/g, "\\'");
+                const safeDmg = (item.dmg || "").replace(/'/g, "\\'");
+                const safeType = (item.type || "").replace(/'/g, "\\'");
+                const safeProps = (item.props || "").replace(/'/g, "\\'").replace(/\n/g, " ");
                 const div = document.createElement('div'); div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center mb-1';
                 div.innerHTML = `<div><div class="font-bold text-orange-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div><div class="flex gap-2 shrink-0"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share">🌍</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button></div>`;
                 list.appendChild(div);
