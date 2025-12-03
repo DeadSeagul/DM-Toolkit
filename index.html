@@ -53,6 +53,9 @@
     <meta name="apple-mobile-web-app-title" content="Aegis DM">
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=IM+Fell+English+SC&display=swap" rel="stylesheet">
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -801,26 +804,43 @@
                         </div>
                     </div>
 
-                    <div id="brew-weapon-area" class="hidden animate-fade-in">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div class="space-y-2">
-                                <label class="block text-xs text-gray-500 uppercase">Weapon Name</label>
-                                <input type="text" id="hb-wep-name" placeholder="e.g. Blade of Embers" class="w-full p-2 rounded input-style text-sm font-bold">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="block text-xs text-gray-500 uppercase">Damage</label><input type="text" id="hb-wep-dmg" placeholder="1d8" class="w-full p-2 rounded input-style text-sm"></div>
-                                    <div><label class="block text-xs text-gray-500 uppercase">Type</label><input type="text" id="hb-wep-type" placeholder="Fire" class="w-full p-2 rounded input-style text-sm"></div>
-                                </div>
+                    <div id="brew-weapon-area" class="hidden space-y-6 animate-fade-in">
+                        
+                        <div class="bg-gray-900/80 p-4 rounded-xl border border-orange-500/30 space-y-4">
+                            <h3 class="text-orange-300 text-xl font-bold mb-4 text-center">Forge New Weapon</h3>
+                            
+                            <div>
+                                <label class="block text-orange-200 text-xs uppercase mb-1">Weapon Image</label>
+                                <input type="file" id="hb-wep-image-input" accept="image/*" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-600 file:text-white hover:file:bg-orange-700"/>
+                                <input type="hidden" id="hb-wep-image-data">
                             </div>
-                            <div class="space-y-2">
-                                <label class="block text-xs text-gray-500 uppercase">Properties / Lore</label>
-                                <textarea id="hb-wep-props" rows="3" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="Finesse, Light..."></textarea>
-                                <div class="flex gap-2">
-                                    <button onclick="window.saveHomebrewWeapon()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg shadow-lg transition">Save Weapon</button>
-                                    <button onclick="window.saveHomebrewToNotes('weapon')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 rounded-lg shadow-lg transition">📜 Save Note</button>
-                                </div>
+
+                            <input type="text" id="hb-wep-name" placeholder="Weapon Name (e.g., The Shadow's Edge)" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-3 focus:border-orange-500 outline-none" oninput="window.updateWeaponPreview()">
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                 <input type="text" id="hb-wep-meta1" placeholder="Rarity (e.g., Rare, Attunement)" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-2 text-sm focus:border-orange-500 outline-none" oninput="window.updateWeaponPreview()">
+                                 <input type="text" id="hb-wep-meta2" placeholder="Type (e.g., +1 Sword)" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-2 text-sm focus:border-orange-500 outline-none" oninput="window.updateWeaponPreview()">
+                            </div>
+
+                            <textarea id="hb-wep-desc" rows="6" placeholder="Description & Mechanics..." class="w-full bg-gray-800 text-white border border-gray-700 rounded p-3 focus:border-orange-500 outline-none resize-none font-mono text-sm" oninput="window.updateWeaponPreview()"></textarea>
+
+                            <button onclick="window.saveHomebrewWeapon()" class="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 rounded-lg shadow-lg transition transform hover:scale-[1.02] active:scale-95 tracking-wider">
+                                FORGE WEAPON
+                            </button>
+                        </div>
+
+                        <div>
+                            <h3 class="text-orange-300 text-sm text-center mb-2">- Live Preview -</h3>
+                            <div id="hb-weapon-card-preview" class="parchment-card">
+                                <div class="card-title" id="prev-wep-name">Weapon Name</div>
+                                <img id="prev-wep-img" src="" class="card-image hidden">
+                                <div class="card-meta-1" id="prev-wep-meta1">Rarity, Attunement</div>
+                                <div class="card-meta-2" id="prev-wep-meta2">Weapon Type</div>
+                                <div class="card-body" id="prev-wep-desc">Description...</div>
                             </div>
                         </div>
                     </div>
+                </div>
 
                     <div id="brew-magic-area" class="hidden animate-fade-in">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -2404,17 +2424,16 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Delete Path Fixed) ---
+    // --- 16. HOMEBREW ENGINE (Complete: Monster/Weapon Parchment + Community) ---
     
-    // 1. Helper for PUBLIC Collection (ROOT PATH: aegis_community_items)
+    // 1. CONFIGURATION
     const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
-    
-    // 🔴 ADMIN ID SETUP 🔴
+    // 🔴 ADMIN ID - Keep your ID here
     const ADMIN_ID = "DBFLOO3aeeZ4ySvDi2lSzUdTNzY2"; 
     
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
-    // UI Switcher
+    // 2. UI SWITCHER
     window.unsubCommunity = null;
     window.switchBrewMode = (mode, btn) => {
         if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
@@ -2432,6 +2451,7 @@
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
         document.getElementById('brew-community-area').classList.add('hidden');
+        
         document.getElementById(`brew-${mode}-area`).classList.remove('hidden');
         
         const inv = document.getElementById('my-inventory-container');
@@ -2443,7 +2463,9 @@
         }
     };
 
-    // --- 1. PREVIEW ---
+    // --- 3. PREVIEW LOGIC (Monsters & Weapons) ---
+
+    // A. Monster Parchment
     window.previewHomebrewMonster = () => {
         const name = document.getElementById('hb-mon-name').value || "Unknown Monster";
         const type = document.getElementById('hb-mon-type').value || "Medium Beast, Unaligned";
@@ -2491,7 +2513,34 @@
             </div>`;
     };
 
-    // --- 2. SAVING ---
+    // B. Weapon Parchment (Image Handler)
+    const wepImgInput = document.getElementById('hb-wep-image-input');
+    if(wepImgInput) {
+        wepImgInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 500000) { alert("Image too large! Keep under 500KB."); this.value = ""; return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('prev-wep-img').src = e.target.result;
+                    document.getElementById('prev-wep-img').classList.remove('hidden');
+                    document.getElementById('hb-wep-image-data').value = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    window.updateWeaponPreview = () => {
+        document.getElementById('prev-wep-name').textContent = document.getElementById('hb-wep-name').value || "Weapon Name";
+        document.getElementById('prev-wep-meta1').textContent = document.getElementById('hb-wep-meta1').value || "Rarity, Attunement";
+        document.getElementById('prev-wep-meta2').textContent = document.getElementById('hb-wep-meta2').value || "Weapon Type";
+        document.getElementById('prev-wep-desc').innerText = document.getElementById('hb-wep-desc').value || "Description mechanics...";
+    };
+
+    // --- 4. SAVING FUNCTIONS ---
+    
+    // Save Monster
     window.saveHomebrewMonster = async () => {
         const name = document.getElementById('hb-mon-name').value.trim();
         if (!name) { alert("Name required!"); return; }
@@ -2509,17 +2558,31 @@
         } catch (e) { console.error(e); }
     };
 
+    // Save Weapon (Parchment Style)
     window.saveHomebrewWeapon = async () => {
         const name = document.getElementById('hb-wep-name').value.trim();
-        if (!name) return;
+        if (!name) { alert("Name required!"); return; }
         try {
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                name, dmg: document.getElementById('hb-wep-dmg').value, type: document.getElementById('hb-wep-type').value, props: document.getElementById('hb-wep-props').value, timestamp: new Date().toISOString()
+                name: name,
+                imageData: document.getElementById('hb-wep-image-data').value || "", 
+                // We map parchment fields to the generic inventory fields for list display
+                dmg: document.getElementById('hb-wep-meta1').value, 
+                type: document.getElementById('hb-wep-meta2').value, 
+                props: document.getElementById('hb-wep-desc').value,
+                isParchment: true, 
+                timestamp: new Date().toISOString()
             });
+            alert(`Forged ${name}!`);
+            // Clear form
             document.getElementById('hb-wep-name').value = ''; 
-        } catch (e) { console.error(e); }
+            document.getElementById('hb-wep-desc').value = '';
+            document.getElementById('prev-wep-img').classList.add('hidden');
+            document.getElementById('prev-wep-img').src = '';
+        } catch (e) { console.error("Error:", e); }
     };
 
+    // Save Magic Item (Simple Style)
     window.saveHomebrewMagicItem = async () => {
         const name = document.getElementById('hb-item-name').value.trim();
         if (!name) return;
@@ -2532,7 +2595,7 @@
         } catch (e) { console.error(e); }
     };
 
-    // --- 3. NOTES ---
+    // --- 5. NOTES INTEGRATION ---
     window.saveHomebrewToNotes = async (type) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
         let title, content, tab;
@@ -2540,13 +2603,13 @@
         
         if (type === 'monster') {
             window.previewHomebrewMonster();
-            const previewHTML = document.getElementById('hb-monster-preview').innerHTML;
             title = (document.getElementById('hb-mon-name').value || "Monster") + " (Homebrew)";
-            content = previewHTML;
+            content = document.getElementById('hb-monster-preview').innerHTML;
             tab = 'enemyNotes';
         } else if (type === 'weapon') {
-            title = document.getElementById('hb-wep-name').value;
-            content = `Type: Weapon\nDamage: ${document.getElementById('hb-wep-dmg').value}\nProps: ${document.getElementById('hb-wep-props').value}`;
+            // For Weapons, save the Parchment HTML!
+            title = document.getElementById('hb-wep-name').value || "Weapon";
+            content = document.getElementById('hb-weapon-card-preview').outerHTML;
             tab = 'lootNotes';
         } else {
             title = document.getElementById('hb-item-name').value;
@@ -2558,7 +2621,7 @@
         if(confirm("Saved! Go to notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
     };
 
-    // --- 4. COMMUNITY ---
+    // --- 6. COMMUNITY & INVENTORY ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) { alert("Login required."); return; }
         try {
@@ -2570,48 +2633,52 @@
             if(!confirm(`Publish "${item.name}"?`)) return;
 
             await window.addDoc(getPublicBrewCol(), {
-                name: item.name, dmg: item.dmg || "", type: item.type || "", props: item.props || "",
-                sharedBy: "Fellow DM", timestamp: new Date().toISOString()
+                name: item.name, 
+                dmg: item.dmg || "", 
+                type: item.type || "", 
+                props: item.props || "",
+                imageData: item.imageData || "", // Share the image too!
+                isParchment: item.isParchment || false,
+                sharedBy: "Fellow DM", 
+                timestamp: new Date().toISOString()
             });
             alert("Published! Check Community tab.");
         } catch(e) { console.error(e); alert("Error: " + e.message); }
     };
 
-    window.importCommunityItem = async (name, dmg, type, props) => {
+    window.importCommunityItem = async (dataString) => {
+        // We pass data as JSON string to avoid argument limits
         try {
-            await window.addDoc(getCol('dm_toolkit_homebrew_items'), { name, dmg, type, props, timestamp: new Date().toISOString() });
-            alert(`Imported ${name}!`);
+            const item = JSON.parse(decodeURIComponent(dataString));
+            await window.addDoc(getCol('dm_toolkit_homebrew_items'), item);
+            alert(`Imported ${item.name}!`);
         } catch(e) { console.error(e); }
     };
 
-    // DELETE: FIX IS HERE (Pointing to 'aegis_community_items')
+    // Delete (Admin & Personal)
     window.deleteCommunityItem = async (id) => {
         if(!confirm("ADMIN: Delete this public item?")) return;
-        try {
-            // FIX: Ensure we delete from the SAME root collection we read from
-            await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id));
-            alert("Deleted.");
-        } catch(e) { console.error(e); alert("Delete failed. Check permissions."); }
+        try { await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id)); } catch(e) { console.error(e); }
+    };
+    
+    window.deleteHomebrewWeapon = async (id) => { 
+        if(!confirm("Delete?")) return; 
+        await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); 
     };
 
+    // Loaders
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
         const q = window.query(getPublicBrewCol(), window.limit(50));
-        
         window.unsubCommunity = window.onSnapshot(q, (snap) => {
             if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No community items yet.</p>'; return; }
             list.innerHTML = '';
             snap.forEach(d => {
                 const item = d.data();
-                const safeName = (item.name||"").replace(/'/g, "\\'");
-                const safeDmg = (item.dmg||"").replace(/'/g, "\\'");
-                const safeType = (item.type||"").replace(/'/g, "\\'");
-                const safeProps = (item.props||"").replace(/'/g, "\\'").replace(/\n/g, " ");
+                const itemString = encodeURIComponent(JSON.stringify(item)); // Encode object for button
                 
                 const isAdmin = (window.userId === ADMIN_ID);
-                const deleteBtn = isAdmin 
-                    ? `<button onclick="window.deleteCommunityItem('${d.id}')" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs font-bold px-2 py-1 rounded border border-red-700 ml-2">×</button>` 
-                    : '';
+                const deleteBtn = isAdmin ? `<button onclick="window.deleteCommunityItem('${d.id}')" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs px-2 rounded border border-red-700 ml-2">×</button>` : '';
 
                 const div = document.createElement('div');
                 div.className = 'bg-blue-900/20 p-2 rounded border border-blue-500/30 flex justify-between items-center mb-2';
@@ -2619,20 +2686,16 @@
                     <div class="overflow-hidden">
                         <div class="font-bold text-blue-200 text-sm truncate">${item.name}</div>
                         <div class="text-[10px] text-gray-400">${item.dmg || ""} ${item.type || ""}</div>
-                        <div class="text-[10px] text-gray-500 truncate pr-2">${item.props || ""}</div>
                     </div>
                     <div class="flex items-center">
-                        <button onclick="window.importCommunityItem('${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded shadow">Save</button>
+                        <button onclick="window.importCommunityItem('${itemString}')" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded shadow">Save</button>
                         ${deleteBtn}
-                    </div>
-                `;
+                    </div>`;
                 list.appendChild(div);
             });
         });
     };
 
-    // 5. LISTENER
-    window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
@@ -2641,12 +2704,8 @@
             if(items.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; return; }
             items.sort((a,b) => a.name.localeCompare(b.name)); list.innerHTML = '';
             items.forEach(item => {
-                const safeName = item.name.replace(/'/g, "\\'");
-                const safeDmg = (item.dmg || "").replace(/'/g, "\\'");
-                const safeType = (item.type || "").replace(/'/g, "\\'");
-                const safeProps = (item.props || "").replace(/'/g, "\\'").replace(/\n/g, " ");
                 const div = document.createElement('div'); div.className = 'bg-gray-900 p-2 rounded border border-gray-700 flex justify-between items-center mb-1';
-                div.innerHTML = `<div><div class="font-bold text-orange-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div><div class="flex gap-2 shrink-0"><button onclick="window.shareHomebrewItem('${item.id}', '${safeName}', '${safeDmg}', '${safeType}', '${safeProps}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share">🌍</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button></div>`;
+                div.innerHTML = `<div><div class="font-bold text-orange-200 text-sm truncate">${item.name}</div><div class="text-[10px] text-gray-400">${item.dmg} ${item.type}</div></div><div class="flex gap-2 shrink-0"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs" title="Share">🌍</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold">×</button></div>`;
                 list.appendChild(div);
             });
         });
