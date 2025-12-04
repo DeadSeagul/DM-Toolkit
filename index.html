@@ -2304,7 +2304,7 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Robust Likes & Ghost Killer) ---
+    // --- 16. HOMEBREW ENGINE (Instant Visual Likes) ---
     
     // 1. CONFIGURATION
     const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
@@ -2331,14 +2331,56 @@
         const inv = document.getElementById('my-inventory-container');
         if(mode === 'community') {
             if(inv) inv.classList.add('hidden');
-            // FORCE REFRESH to clear ghost items
             window.loadCommunityItems(); 
         } else {
             if(inv) inv.classList.remove('hidden');
         }
     };
 
-    // --- 3. LIKES (Simplified "Fire & Forget") ---
+    // --- 3. INSTANT LIKE SYSTEM ---
+    window.toggleLike = async (id) => {
+        if(event) event.stopPropagation();
+        if(!window.isAuthReady) { alert("Login to like."); return; }
+        
+        // Find the specific button on screen
+        const btn = document.getElementById(`like-btn-${id}`);
+        if (!btn) return;
+
+        // 1. Get Current State from Local Storage
+        let likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
+        const wasLiked = likedItems.includes(id);
+        
+        // 2. Get Current Number from the Button Text (Screen Truth)
+        let currentNum = parseInt(btn.innerText.replace(/\D/g, '')) || 0;
+        let newNum = currentNum;
+
+        // 3. Toggle Logic (Visuals First)
+        if (wasLiked) {
+            // UNLIKE: Turn Grey, Subtract 1
+            newNum = Math.max(0, currentNum - 1);
+            likedItems = likedItems.filter(itemId => itemId !== id); // Remove ID
+            
+            btn.classList.remove('text-red-500');
+            btn.classList.add('text-gray-600', 'hover:text-red-400');
+            btn.innerHTML = `<span>♡</span> ${newNum}`;
+        } else {
+            // LIKE: Turn Red, Add 1
+            newNum = currentNum + 1;
+            likedItems.push(id); // Add ID
+            
+            btn.classList.remove('text-gray-600', 'hover:text-red-400');
+            btn.classList.add('text-red-500');
+            btn.innerHTML = `<span>♥</span> ${newNum}`;
+        }
+
+        // 4. Save State Locally & DB
+        localStorage.setItem('aegis_liked_items', JSON.stringify(likedItems));
+        
+        try {
+            await window.updateDoc(window.doc(window.db, 'aegis_community_items', id), { likes: newNum });
+        } catch(e) { console.error("DB Update Failed", e); }
+    };
+
     window.filterCommunity = (type) => {
         window.currentCommunityFilter = type;
         document.querySelectorAll('.com-filter-btn').forEach(btn => {
@@ -2349,40 +2391,6 @@
             }
         });
         window.loadCommunityItems(); 
-    };
-
-    window.toggleLike = async (id, currentLikes) => {
-        if(event) event.stopPropagation();
-        if(!window.isAuthReady) { alert("Login to like."); return; }
-        
-        // 1. Calculate Math (Locally)
-        let likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
-        const isLiked = likedItems.includes(id);
-        
-        let newLikes = parseInt(currentLikes) || 0;
-        if (isLiked) {
-            newLikes = Math.max(0, newLikes - 1);
-            likedItems = likedItems.filter(itemId => itemId !== id);
-        } else {
-            newLikes = newLikes + 1;
-            likedItems.push(id);
-        }
-
-        // 2. Save Local State (Instant UI Feedback)
-        localStorage.setItem('aegis_liked_items', JSON.stringify(likedItems));
-
-        // 3. Update Database (Robust)
-        try {
-            const docRef = window.doc(window.db, 'aegis_community_items', id);
-            await window.updateDoc(docRef, { likes: newLikes });
-        } catch(e) {
-            console.error("Like Error:", e);
-            // If item is missing, refresh the list to remove the ghost card
-            if (e.code === 'not-found') {
-                console.warn("Item not found on server. Refreshing list...");
-                window.loadCommunityItems();
-            }
-        }
     };
 
     // --- 4. PREVIEW LOGIC ---
@@ -2431,7 +2439,6 @@
         preview.innerHTML = generateMonsterHTML(name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atkName, dmg, desc);
     };
 
-    // HTML GENERATORS
     const generateMonsterHTML = (name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atk, dmg, desc) => {
         return `<div class="dnd-statblock text-left text-sm" style="width:100%; margin-bottom:10px;"><div class="dnd-header">${name}</div><div class="italic text-black text-xs mb-2">${type}</div><div class="tapered-rule"></div><div class="text-red-900 font-serif"><p><strong>AC</strong> ${ac}</p><p><strong>HP</strong> ${hp}</p><p><strong>Speed</strong> ${spd}</p></div><div class="tapered-rule"></div><div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold"><div>STR<br>${str} (${calcMod(str)})</div><div>DEX<br>${dex} (${calcMod(dex)})</div><div>CON<br>${con} (${calcMod(con)})</div><div>INT<br>${int} (${calcMod(int)})</div><div>WIS<br>${wis} (${calcMod(wis)})</div><div>CHA<br>${cha} (${calcMod(cha)})</div></div><div class="tapered-rule"></div><div class="text-black mt-2 space-y-2">${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}<div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div><p><strong class="italic font-bold text-black">${atk}.</strong> <span class="text-black"><em>Melee:</em> +${toHit} hit. <em>Hit:</em> ${dmg}.</span></p></div></div>`;
     };
@@ -2455,51 +2462,27 @@
                 const name = document.getElementById('hb-mon-name').value.trim();
                 if (!name) return alert("Name required!");
                 const mData = {
-                    name, category: 'monster',
-                    hp: document.getElementById('hb-mon-hp').value, ac: document.getElementById('hb-mon-ac').value,
-                    init: document.getElementById('hb-mon-init').value, tohit: document.getElementById('hb-mon-tohit').value,
-                    atk: document.getElementById('hb-mon-atkname').value, dmg: document.getElementById('hb-mon-dmg').value,
-                    type: document.getElementById('hb-mon-type').value, spd: document.getElementById('hb-mon-spd').value,
-                    str: document.getElementById('hb-mon-str').value, dex: document.getElementById('hb-mon-dex').value,
-                    con: document.getElementById('hb-mon-con').value, int: document.getElementById('hb-mon-int').value,
-                    wis: document.getElementById('hb-mon-wis').value, cha: document.getElementById('hb-mon-cha').value,
-                    desc: document.getElementById('hb-mon-desc').value, timestamp
+                    name, category: 'monster', hp: document.getElementById('hb-mon-hp').value, ac: document.getElementById('hb-mon-ac').value, init: document.getElementById('hb-mon-init').value, tohit: document.getElementById('hb-mon-tohit').value, atk: document.getElementById('hb-mon-atkname').value, dmg: document.getElementById('hb-mon-dmg').value, type: document.getElementById('hb-mon-type').value, spd: document.getElementById('hb-mon-spd').value, str: document.getElementById('hb-mon-str').value, dex: document.getElementById('hb-mon-dex').value, con: document.getElementById('hb-mon-con').value, int: document.getElementById('hb-mon-int').value, wis: document.getElementById('hb-mon-wis').value, cha: document.getElementById('hb-mon-cha').value, desc: document.getElementById('hb-mon-desc').value, timestamp
                 };
                 const fullDmg = `${mData.atk}: ${mData.dmg}`;
                 await window.addDoc(getCol('dm_toolkit_statblocks'), { name: mData.name, hp: parseInt(mData.hp), ac: parseInt(mData.ac), toHit: parseInt(mData.tohit), initMod: parseInt(mData.init), dmg: fullDmg, timestamp: mData.timestamp });
                 await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ? • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
                 window.previewHomebrewMonster();
-                title = name + " (Homebrew)";
-                content = document.getElementById('hb-monster-preview').innerHTML;
-                tab = 'enemyNotes';
+                title = name + " (Homebrew)"; content = document.getElementById('hb-monster-preview').innerHTML; tab = 'enemyNotes';
                 if(!createNote) { alert("Saved to Stats & Inventory!"); document.getElementById('hb-mon-name').value=''; return; }
             } 
             else if (type === 'weapon') {
-                const name = document.getElementById('hb-wep-name').value.trim();
-                if (!name) return alert("Name required!");
-                await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                    name, category: 'weapon', imageData: document.getElementById('hb-wep-image-data').value || "", dmg: document.getElementById('hb-wep-meta1').value, type: document.getElementById('hb-wep-meta2').value, props: document.getElementById('hb-wep-desc').value, isParchment: true, timestamp
-                });
+                const name = document.getElementById('hb-wep-name').value.trim(); if (!name) return alert("Name required!");
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { name, category: 'weapon', imageData: document.getElementById('hb-wep-image-data').value || "", dmg: document.getElementById('hb-wep-meta1').value, type: document.getElementById('hb-wep-meta2').value, props: document.getElementById('hb-wep-desc').value, isParchment: true, timestamp });
                 window.updateWeaponPreview();
-                title = name;
-                content = document.getElementById('hb-weapon-card-preview').outerHTML;
-                tab = 'lootNotes';
-                if(!createNote) { 
-                    alert("Saved to Inventory!"); 
-                    document.getElementById('hb-wep-name').value=''; document.getElementById('hb-wep-desc').value=''; document.getElementById('hb-wep-image-input').value=''; document.getElementById('prev-wep-img').classList.add('hidden');
-                    return; 
-                }
+                title = name; content = document.getElementById('hb-weapon-card-preview').outerHTML; tab = 'lootNotes';
+                if(!createNote) { alert("Saved to Inventory!"); document.getElementById('hb-wep-name').value=''; document.getElementById('hb-wep-desc').value=''; document.getElementById('hb-wep-image-input').value=''; document.getElementById('prev-wep-img').classList.add('hidden'); return; }
             } 
             else {
-                const name = document.getElementById('hb-item-name').value.trim();
-                if (!name) return alert("Name required!");
+                const name = document.getElementById('hb-item-name').value.trim(); if (!name) return alert("Name required!");
                 const fullProps = `${document.getElementById('hb-item-attune').checked ? "(Attunement)" : ""} ${document.getElementById('hb-item-desc').value}`;
-                await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                    name, category: 'item', dmg: document.getElementById('hb-item-rarity').value, type: document.getElementById('hb-item-type').value, props: fullProps, timestamp
-                });
-                title = name;
-                content = `${document.getElementById('hb-item-rarity').value}\n${document.getElementById('hb-item-desc').value}`;
-                tab = 'lootNotes';
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { name, category: 'item', dmg: document.getElementById('hb-item-rarity').value, type: document.getElementById('hb-item-type').value, props: fullProps, timestamp });
+                title = name; content = `${document.getElementById('hb-item-rarity').value}\n${document.getElementById('hb-item-desc').value}`; tab = 'lootNotes';
                 if(!createNote) { alert("Saved to Inventory!"); document.getElementById('hb-item-name').value=''; return; }
             }
             structuredNotes[tab].unshift({ id, title, content, timestamp });
@@ -2514,11 +2497,13 @@
         try {
             const docRef = getDocRef('dm_toolkit_homebrew_items', id);
             const snapshot = await getDoc(docRef); 
-            if (!snapshot.exists()) { alert("Item not found! Try deleting and creating again."); return; }
+            if (!snapshot.exists()) { alert("Item not found!"); return; }
             const item = snapshot.data();
             if(!confirm(`Publish "${item.name}"?`)) return;
             await window.addDoc(getPublicBrewCol(), { ...item, sharedBy: "Fellow DM", likes: 0, timestamp: new Date().toISOString() });
             alert("Published! Check Community tab.");
+            // Force refresh to see your new item immediately
+            window.filterCommunity('all');
         } catch(e) { console.error(e); alert("Error: " + e.message); }
     };
 
@@ -2550,12 +2535,12 @@
         const q = window.query(getPublicBrewCol(), window.limit(100));
         window.unsubCommunity = window.onSnapshot(q, (snap) => {
             if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs col-span-full pt-10">No items.</p>'; return; }
-            list.innerHTML = '';
             let items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
 
             if (window.currentCommunityFilter !== 'all') items = items.filter(i => i.category === window.currentCommunityFilter || (window.currentCommunityFilter==='item' && i.category==='magic'));
             items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
 
+            list.innerHTML = '';
             const likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
 
             items.forEach(item => {
@@ -2580,15 +2565,16 @@
 
                 const card = document.createElement('div');
                 card.className = "break-inside-avoid mb-4 bg-gray-800 rounded-xl border border-gray-700 shadow-lg overflow-hidden hover:shadow-xl transition relative group";
-                card.innerHTML = `${deleteBtn}<div class="p-1">${visualHTML}</div><div class="bg-gray-900/90 p-2 flex justify-between items-center border-t border-gray-700"><button onclick="window.toggleLike('${item.id}', ${likes})" class="flex items-center gap-1 text-sm font-bold ${heartColor} transition"><span>${heartIcon}</span> ${likes}</button><button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow transition">Save</button></div>`;
+                // ADDED ID TO LIKE BUTTON for easy finding
+                card.innerHTML = `${deleteBtn}<div class="p-1">${visualHTML}</div><div class="bg-gray-900/90 p-2 flex justify-between items-center border-t border-gray-700"><button id="like-btn-${item.id}" onclick="window.toggleLike('${item.id}', ${likes})" class="flex items-center gap-1 text-sm font-bold ${heartColor} transition"><span>${heartIcon}</span> ${likes}</button><button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow transition">Save</button></div>`;
                 list.appendChild(card);
             });
         });
     };
 
+    // 7. INVENTORY LISTENER (Big Cards)
     window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
     
-    // 7. INVENTORY LISTENER
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
