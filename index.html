@@ -594,40 +594,86 @@
                     <!-- 1. MONSTER BUILDER -->
                     <div id="brew-monster-area" class="animate-fade-in">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div class="space-y-2">
-                                <label class="block text-xs text-gray-500 uppercase">Name & Type</label>
-                                <input type="text" id="hb-mon-name" placeholder="Name (e.g. Void Stalker)" class="w-full p-2 rounded input-style text-sm font-bold mb-1">
-                                <input type="text" id="hb-mon-type" placeholder="Type (e.g. Medium Undead)" class="w-full p-2 rounded input-style text-xs">
-                                <div class="grid grid-cols-3 gap-2">
-                                    <div><label class="block text-[10px] text-gray-500 uppercase">AC</label><input type="number" id="hb-mon-ac" placeholder="15" class="w-full p-2 rounded input-style text-sm text-center"></div>
-                                    <div><label class="block text-[10px] text-gray-500 uppercase">HP</label><input type="number" id="hb-mon-hp" placeholder="45" class="w-full p-2 rounded input-style text-sm text-center"></div>
-                                    <div><label class="block text-[10px] text-gray-500 uppercase">Spd</label><input type="text" id="hb-mon-spd" placeholder="30 ft." class="w-full p-2 rounded input-style text-sm text-center"></div>
+                            
+                            <div class="space-y-2 bg-gray-900/50 p-3 rounded border border-gray-700">
+                                <h3 class="text-gray-400 text-xs font-bold uppercase border-b border-gray-700 pb-1 mb-2">Core Stats</h3>
+                                
+                                <label class="block text-xs text-gray-500 uppercase">Name</label>
+                                <input type="text" id="hb-mon-name" placeholder="e.g. Ancient Red Dragon" class="w-full p-2 rounded input-style text-sm font-bold mb-1">
+                                
+                                <label class="block text-xs text-gray-500 uppercase">Size, Type, Alignment</label>
+                                <input type="text" id="hb-mon-type" placeholder="e.g. Gargantuan Dragon, Chaotic Evil" class="w-full p-2 rounded input-style text-xs">
+
+                                <div class="grid grid-cols-3 gap-2 mt-2">
+                                    <div><label class="block text-[10px] text-gray-500 uppercase">AC</label><input type="text" id="hb-mon-ac" placeholder="22 (natural armor)" class="w-full p-2 rounded input-style text-sm"></div>
+                                    <div><label class="block text-[10px] text-gray-500 uppercase">HP</label><input type="text" id="hb-mon-hp" placeholder="546" class="w-full p-2 rounded input-style text-sm"></div>
+                                    <div><label class="block text-[10px] text-gray-500 uppercase">Hit Dice</label><input type="text" id="hb-mon-hitdice" placeholder="(28d20 + 252)" class="w-full p-2 rounded input-style text-sm"></div>
                                 </div>
+                                
+                                <div class="mt-2">
+                                    <label class="block text-[10px] text-gray-500 uppercase">Speed</label>
+                                    <input type="text" id="hb-mon-spd" placeholder="40 ft., fly 80 ft., swim 40 ft." class="w-full p-2 rounded input-style text-sm">
+                                </div>
+
                                 <label class="block text-xs text-gray-500 uppercase mt-2">Ability Scores</label>
                                 <div class="grid grid-cols-6 gap-1">
-                                    <input type="number" id="hb-mon-str" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="STR">
-                                    <input type="number" id="hb-mon-dex" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="DEX">
-                                    <input type="number" id="hb-mon-con" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="CON">
-                                    <input type="number" id="hb-mon-int" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="INT">
-                                    <input type="number" id="hb-mon-wis" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="WIS">
-                                    <input type="number" id="hb-mon-cha" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="CHA">
+                                    <div class="text-center"><span class="text-[10px] text-gray-500">STR</span><input type="number" id="hb-mon-str" placeholder="10" class="p-1 w-full rounded input-style text-xs text-center"></div>
+                                    <div class="text-center"><span class="text-[10px] text-gray-500">DEX</span><input type="number" id="hb-mon-dex" placeholder="10" class="p-1 w-full rounded input-style text-xs text-center"></div>
+                                    <div class="text-center"><span class="text-[10px] text-gray-500">CON</span><input type="number" id="hb-mon-con" placeholder="10" class="p-1 w-full rounded input-style text-xs text-center"></div>
+                                    <div class="text-center"><span class="text-[10px] text-gray-500">INT</span><input type="number" id="hb-mon-int" placeholder="10" class="p-1 w-full rounded input-style text-xs text-center"></div>
+                                    <div class="text-center"><span class="text-[10px] text-gray-500">WIS</span><input type="number" id="hb-mon-wis" placeholder="10" class="p-1 w-full rounded input-style text-xs text-center"></div>
+                                    <div class="text-center"><span class="text-[10px] text-gray-500">CHA</span><input type="number" id="hb-mon-cha" placeholder="10" class="p-1 w-full rounded input-style text-xs text-center"></div>
                                 </div>
                             </div>
-                            <div class="space-y-2">
-                                <label class="block text-xs text-gray-500 uppercase">Combat Stats</label>
+
+                            <div class="space-y-2 bg-gray-900/50 p-3 rounded border border-gray-700">
+                                <h3 class="text-gray-400 text-xs font-bold uppercase border-b border-gray-700 pb-1 mb-2">Proficiencies & Info</h3>
+                                
+                                <label class="block text-[10px] text-gray-500 uppercase">Saving Throws</label>
+                                <input type="text" id="hb-mon-saves" placeholder="Dex +6, Con +13, Wis +9" class="w-full p-2 rounded input-style text-xs">
+                                
+                                <label class="block text-[10px] text-gray-500 uppercase">Skills</label>
+                                <input type="text" id="hb-mon-skills" placeholder="Perception +16, Stealth +6" class="w-full p-2 rounded input-style text-xs">
+                                
+                                <label class="block text-[10px] text-gray-500 uppercase">Senses</label>
+                                <input type="text" id="hb-mon-senses" placeholder="Blindsight 60 ft., Darkvision 120 ft." class="w-full p-2 rounded input-style text-xs">
+                                
+                                <label class="block text-[10px] text-gray-500 uppercase">Languages</label>
+                                <input type="text" id="hb-mon-langs" placeholder="Common, Draconic" class="w-full p-2 rounded input-style text-xs">
+                                
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="number" id="hb-mon-init" placeholder="Init Mod (+2)" class="w-full p-2 rounded input-style text-sm">
-                                    <input type="number" id="hb-mon-tohit" placeholder="Hit Bonus (+5)" class="w-full p-2 rounded input-style text-sm">
+                                    <div><label class="block text-[10px] text-gray-500 uppercase">Challenge</label><input type="text" id="hb-mon-cr" placeholder="24" class="w-full p-2 rounded input-style text-xs"></div>
+                                    <div><label class="block text-[10px] text-gray-500 uppercase">XP</label><input type="text" id="hb-mon-xp" placeholder="62,000 XP" class="w-full p-2 rounded input-style text-xs"></div>
                                 </div>
-                                <label class="block text-xs text-gray-500 uppercase">Main Attack</label>
-                                <input type="text" id="hb-mon-atkname" placeholder="Attack Name (e.g. Claw)" class="w-full p-2 rounded input-style text-sm">
-                                <input type="text" id="hb-mon-dmg" placeholder="Damage (e.g. 1d6 + 3 slashing)" class="w-full p-2 rounded input-style text-sm">
-                                <label class="block text-xs text-gray-500 uppercase">Abilities / Actions (Text)</label>
-                                <textarea id="hb-mon-desc" rows="2" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="Multiattack. The monster makes two attacks..."></textarea>
+                                
+                                <div class="hidden">
+                                    <input type="number" id="hb-mon-init" value="0">
+                                    <input type="number" id="hb-mon-tohit" value="0">
+                                    <input type="text" id="hb-mon-atkname" value="Multiattack">
+                                    <input type="text" id="hb-mon-dmg" value="See Actions">
+                                </div>
                             </div>
                         </div>
+
+                        <div class="space-y-3 mb-4">
+                            <div>
+                                <label class="block text-xs text-gray-500 uppercase mb-1">Traits (Passive Abilities)</label>
+                                <textarea id="hb-mon-traits" rows="3" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="**Legendary Resistance (3/Day).** If the dragon fails a saving throw, it can choose to succeed instead."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 uppercase mb-1">Actions</label>
+                                <textarea id="hb-mon-actions" rows="4" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="**Multiattack.** The dragon makes three attacks: one with its bite and two with its claws.&#10;**Bite.** Melee Weapon Attack: +17 to hit, reach 15 ft. Hit: 21 (2d10 + 10) piercing damage."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 uppercase mb-1">Reactions</label>
+                                <textarea id="hb-mon-reactions" rows="2" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="**Tail Attack.** The dragon makes a tail attack when a creature moves within 10 ft."></textarea>
+                            </div>
+                        </div>
+
                         <button onclick="window.previewHomebrewMonster()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg mb-4 transition">👁️ Generate Statblock Preview</button>
+
                         <div id="hb-monster-preview" class="hidden mb-4 border border-yellow-700/50 rounded-lg overflow-hidden shadow-inner"></div>
+
                         <div class="flex gap-2">
                             <button onclick="window.saveHomebrewMonster()" class="flex-1 bg-orange-700 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow-lg transition">💾 Save to Stats</button>
                             <button onclick="window.saveHomebrewToNotes('monster')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-lg transition">📜 Save Note</button>
@@ -2310,13 +2356,12 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Complete: Items, Weapons, Monsters) ---
+    // --- 16. HOMEBREW ENGINE (Full 5e Statblock Support) ---
     
     const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
     const ADMIN_ID = "DBFLOO3aeeZ4ySvDi2lSzUdTNzY2"; 
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
-    // 2. UI SWITCHER
     window.unsubCommunity = null;
     window.switchBrewMode = (mode, btn) => {
         if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
@@ -2336,38 +2381,92 @@
         const inv = document.getElementById('my-inventory-container');
         if(mode === 'community') {
             if(inv) inv.classList.add('hidden');
-            window.filterCommunity('all'); 
+            window.loadCommunityItems(); 
         } else {
             if(inv) inv.classList.remove('hidden');
         }
     };
 
-    // --- 3. PREVIEW LOGIC ---
+    // --- HTML GENERATORS (The Visuals) ---
+    
+    // A. Full 5e Statblock HTML
+    const generateMonsterHTML = (data) => {
+        const formatText = (text) => text ? text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') : '';
+        
+        return `
+        <div class="dnd-statblock text-left text-sm w-full" style="margin-bottom:10px;">
+            <div class="tapered-rule"></div>
+            <div class="dnd-header">${data.name}</div>
+            <div class="italic text-black text-xs mb-2">${data.type}</div>
+            <div class="tapered-rule"></div>
+            
+            <div class="text-red-900 font-serif leading-snug">
+                <p><strong>Armor Class</strong> ${data.ac}</p>
+                <p><strong>Hit Points</strong> ${data.hp} ${data.hitDice ? `<span class="text-black">(${data.hitDice})</span>` : ''}</p>
+                <p><strong>Speed</strong> ${data.spd}</p>
+            </div>
+            
+            <div class="tapered-rule"></div>
+            <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
+                <div>STR<br>${data.str} (${calcMod(data.str)})</div>
+                <div>DEX<br>${data.dex} (${calcMod(data.dex)})</div>
+                <div>CON<br>${data.con} (${calcMod(data.con)})</div>
+                <div>INT<br>${data.int} (${calcMod(data.int)})</div>
+                <div>WIS<br>${data.wis} (${calcMod(data.wis)})</div>
+                <div>CHA<br>${data.cha} (${calcMod(data.cha)})</div>
+            </div>
+            <div class="tapered-rule"></div>
+            
+            <div class="text-red-900 font-serif leading-snug text-xs mb-2">
+                ${data.saves ? `<p><strong>Saving Throws</strong> <span class="text-black">${data.saves}</span></p>` : ''}
+                ${data.skills ? `<p><strong>Skills</strong> <span class="text-black">${data.skills}</span></p>` : ''}
+                <p><strong>Senses</strong> <span class="text-black">${data.senses || "passive Perception 10"}</span></p>
+                <p><strong>Languages</strong> <span class="text-black">${data.langs || "-"}</span></p>
+                <p><strong>Challenge</strong> <span class="text-black">${data.cr} (${data.xp || "0 XP"})</span></p>
+            </div>
+            
+            <div class="tapered-rule"></div>
+            
+            <div class="text-black mt-2 space-y-3 font-serif">
+                ${data.traits ? `<div>${formatText(data.traits)}</div>` : ''}
+                
+                ${data.actions ? `
+                    <div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2 text-lg">Actions</div>
+                    <div>${formatText(data.actions)}</div>
+                ` : ''}
+                
+                ${data.reactions ? `
+                    <div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2 text-lg">Reactions</div>
+                    <div>${formatText(data.reactions)}</div>
+                ` : ''}
+            </div>
+            <div class="tapered-rule"></div>
+        </div>`;
+    };
 
-    // A. WEAPON IMAGE
+    // B. Parchment Weapon HTML
+    const generateWeaponHTML = (name, imgData, meta1, meta2, desc) => {
+        return `<div class="parchment-card" style="margin: 10px auto; width: 100%;"><div class="card-title">${name}</div>${imgData ? `<img src="${imgData}" class="card-image">` : ''}<div class="card-meta-1">${meta1}</div><div class="card-meta-2">${meta2}</div><div class="card-body">${desc}</div></div>`;
+    };
+
+    // --- 4. PREVIEW LOGIC ---
+    
+    // Image Handler
     const wepImgInput = document.getElementById('hb-wep-image-input');
     if(wepImgInput) {
-        wepImgInput.addEventListener('change', function(event) { handleImageUpload(event, 'hb-wep-image-data', 'prev-wep-img'); });
-    }
-    // B. ITEM IMAGE
-    const itemImgInput = document.getElementById('hb-item-image-input');
-    if(itemImgInput) {
-        itemImgInput.addEventListener('change', function(event) { handleImageUpload(event, 'hb-item-image-data', 'prev-item-img'); });
-    }
-
-    // Generic Image Handler
-    function handleImageUpload(event, hiddenInputId, previewImgId) {
-        const file = event.target.files[0];
-        if (file) {
-            if (file.size > 500000) { alert("Image too large! Keep under 500KB."); event.target.value = ""; return; }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = document.getElementById(previewImgId);
-                if(img) { img.src = e.target.result; img.classList.remove('hidden'); }
-                document.getElementById(hiddenInputId).value = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
+        wepImgInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 500000) { alert("Image too large! Keep under 500KB."); this.value = ""; return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('prev-wep-img');
+                    if(img) { img.src = e.target.result; img.classList.remove('hidden'); }
+                    document.getElementById('hb-wep-image-data').value = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
     }
 
     window.updateWeaponPreview = () => {
@@ -2377,44 +2476,49 @@
         document.getElementById('prev-wep-desc').innerText = document.getElementById('hb-wep-desc').value || "Description mechanics...";
     };
 
-    window.updateItemPreview = () => {
-        document.getElementById('prev-item-name').textContent = document.getElementById('hb-item-name').value || "Item Name";
-        const rarity = document.getElementById('hb-item-rarity').value;
-        const attune = document.getElementById('hb-item-attune').checked ? "(Requires Attunement)" : "";
-        document.getElementById('prev-item-meta1').textContent = `${rarity} ${attune}`;
-        document.getElementById('prev-item-meta2').textContent = document.getElementById('hb-item-type').value;
-        document.getElementById('prev-item-desc').innerText = document.getElementById('hb-item-desc').value || "Description...";
+    // Helper to gather all monster data from inputs
+    const getMonsterData = () => {
+        return {
+            name: document.getElementById('hb-mon-name').value,
+            type: document.getElementById('hb-mon-type').value,
+            ac: document.getElementById('hb-mon-ac').value,
+            hp: document.getElementById('hb-mon-hp').value,
+            hitDice: document.getElementById('hb-mon-hitdice').value,
+            spd: document.getElementById('hb-mon-spd').value,
+            str: document.getElementById('hb-mon-str').value,
+            dex: document.getElementById('hb-mon-dex').value,
+            con: document.getElementById('hb-mon-con').value,
+            int: document.getElementById('hb-mon-int').value,
+            wis: document.getElementById('hb-mon-wis').value,
+            cha: document.getElementById('hb-mon-cha').value,
+            saves: document.getElementById('hb-mon-saves').value,
+            skills: document.getElementById('hb-mon-skills').value,
+            senses: document.getElementById('hb-mon-senses').value,
+            langs: document.getElementById('hb-mon-langs').value,
+            cr: document.getElementById('hb-mon-cr').value,
+            xp: document.getElementById('hb-mon-xp').value,
+            traits: document.getElementById('hb-mon-traits').value,
+            actions: document.getElementById('hb-mon-actions').value,
+            reactions: document.getElementById('hb-mon-reactions').value,
+            // Hidden fields for tracker compatibility
+            init: document.getElementById('hb-mon-init').value,
+            tohit: document.getElementById('hb-mon-tohit').value,
+            atk: document.getElementById('hb-mon-atkname').value,
+            dmg: document.getElementById('hb-mon-dmg').value,
+            category: 'monster',
+            timestamp: new Date().toISOString()
+        };
     };
 
     window.previewHomebrewMonster = () => {
-        const name = document.getElementById('hb-mon-name').value || "Unknown";
-        const type = document.getElementById('hb-mon-type').value || "Monster";
-        const ac = document.getElementById('hb-mon-ac').value || 10;
-        const hp = document.getElementById('hb-mon-hp').value || 10;
-        const spd = document.getElementById('hb-mon-spd').value || "30 ft.";
-        const str = document.getElementById('hb-mon-str').value||10; const dex = document.getElementById('hb-mon-dex').value||10;
-        const con = document.getElementById('hb-mon-con').value||10; const int = document.getElementById('hb-mon-int').value||10;
-        const wis = document.getElementById('hb-mon-wis').value||10; const cha = document.getElementById('hb-mon-cha').value||10;
-        const init = document.getElementById('hb-mon-init').value || 0;
-        const toHit = document.getElementById('hb-mon-tohit').value || 0;
-        const atkName = document.getElementById('hb-mon-atkname').value || "Attack";
-        const dmg = document.getElementById('hb-mon-dmg').value || "1d4";
-        const desc = document.getElementById('hb-mon-desc').value || "";
+        const data = getMonsterData();
         const preview = document.getElementById('hb-monster-preview');
         if(!preview) return;
         preview.classList.remove('hidden');
-        preview.innerHTML = generateMonsterHTML(name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atkName, dmg, desc);
+        preview.innerHTML = generateMonsterHTML(data);
     };
 
-    // --- HTML GENERATORS ---
-    const generateMonsterHTML = (name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atk, dmg, desc) => {
-        return `<div class="dnd-statblock text-left text-sm" style="width:100%; margin-bottom:10px;"><div class="dnd-header">${name}</div><div class="italic text-black text-xs mb-2">${type}</div><div class="tapered-rule"></div><div class="text-red-900 font-serif"><p><strong>AC</strong> ${ac}</p><p><strong>HP</strong> ${hp}</p><p><strong>Speed</strong> ${spd}</p></div><div class="tapered-rule"></div><div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold"><div>STR<br>${str} (${calcMod(str)})</div><div>DEX<br>${dex} (${calcMod(dex)})</div><div>CON<br>${con} (${calcMod(con)})</div><div>INT<br>${int} (${calcMod(int)})</div><div>WIS<br>${wis} (${calcMod(wis)})</div><div>CHA<br>${cha} (${calcMod(cha)})</div></div><div class="tapered-rule"></div><div class="text-black mt-2 space-y-2">${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}<div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div><p><strong class="italic font-bold text-black">${atk}.</strong> <span class="text-black"><em>Melee:</em> +${toHit} hit. <em>Hit:</em> ${dmg}.</span></p></div></div>`;
-    };
-    const generateWeaponHTML = (name, imgData, meta1, meta2, desc) => {
-        return `<div class="parchment-card" style="margin: 10px auto; width: 100%;"><div class="card-title">${name}</div>${imgData ? `<img src="${imgData}" class="card-image">` : ''}<div class="card-meta-1">${meta1}</div><div class="card-meta-2">${meta2}</div><div class="card-body">${desc}</div></div>`;
-    };
-
-    // --- 4. MASTER SAVE & DATABASE ---
+    // --- 5. SAVING ---
     window.saveHomebrewMonster = async () => { window.saveHomebrewToNotes('monster', false); };
     window.saveHomebrewWeapon = async () => { window.saveHomebrewToNotes('weapon', false); };
     window.saveHomebrewMagicItem = async () => { window.saveHomebrewToNotes('item', false); };
@@ -2422,132 +2526,76 @@
     window.saveHomebrewToNotes = async (type, createNote = true) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
         try {
-            let title, content, tab, mData;
+            let title, content, tab;
             const id = crypto.randomUUID();
             const timestamp = new Date().toISOString();
 
             if (type === 'monster') {
-                const name = document.getElementById('hb-mon-name').value.trim();
-                if (!name) return alert("Name required!");
-                mData = {
-                    name, category: 'monster',
-                    hp: document.getElementById('hb-mon-hp').value, ac: document.getElementById('hb-mon-ac').value,
-                    init: document.getElementById('hb-mon-init').value, tohit: document.getElementById('hb-mon-tohit').value,
-                    atk: document.getElementById('hb-mon-atkname').value, dmg: document.getElementById('hb-mon-dmg').value,
-                    type: document.getElementById('hb-mon-type').value, spd: document.getElementById('hb-mon-spd').value,
-                    str: document.getElementById('hb-mon-str').value, dex: document.getElementById('hb-mon-dex').value,
-                    con: document.getElementById('hb-mon-con').value, int: document.getElementById('hb-mon-int').value,
-                    wis: document.getElementById('hb-mon-wis').value, cha: document.getElementById('hb-mon-cha').value,
-                    desc: document.getElementById('hb-mon-desc').value, timestamp
-                };
-                const fullDmg = `${mData.atk}: ${mData.dmg}`;
-                await window.addDoc(getCol('dm_toolkit_statblocks'), { name: mData.name, hp: parseInt(mData.hp), ac: parseInt(mData.ac), toHit: parseInt(mData.tohit), initMod: parseInt(mData.init), dmg: fullDmg, timestamp: mData.timestamp });
-                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ? • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
+                const mData = getMonsterData();
+                if (!mData.name) return alert("Name required!");
                 
+                // 1. Save to Stats (Tracker Data)
+                // We try to extract basic combat data for the tracker functionality
+                const fullDmg = `${mData.atk}: ${mData.dmg}`;
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: mData.name, hp: parseInt(mData.hp)||10, ac: parseInt(mData.ac)||10, 
+                    toHit: parseInt(mData.tohit)||0, initMod: parseInt(mData.init)||0, dmg: fullDmg, timestamp 
+                });
+                
+                // 2. Save to Inventory (Full Data for View)
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ${mData.cr} • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
+
+                // 3. Note
                 window.previewHomebrewMonster();
-                title = name + " (Homebrew)"; content = document.getElementById('hb-monster-preview').innerHTML; tab = 'enemyNotes';
-                if(!createNote) { alert("Saved to Stats & Inventory!"); document.getElementById('hb-mon-name').value=''; return; }
+                title = mData.name + " (Homebrew)";
+                content = document.getElementById('hb-monster-preview').innerHTML;
+                tab = 'enemyNotes';
+                
+                if(!createNote) { alert("Saved to Stats & Inventory!"); return; }
             } 
             else if (type === 'weapon') {
                 const name = document.getElementById('hb-wep-name').value.trim();
                 if (!name) return alert("Name required!");
                 await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                    name, category: 'weapon',
-                    imageData: document.getElementById('hb-wep-image-data').value || "", 
-                    dmg: document.getElementById('hb-wep-meta1').value, 
-                    type: document.getElementById('hb-wep-meta2').value, 
-                    props: document.getElementById('hb-wep-desc').value,
-                    isParchment: true, timestamp
+                    name, category: 'weapon', imageData: document.getElementById('hb-wep-image-data').value || "", dmg: document.getElementById('hb-wep-meta1').value, type: document.getElementById('hb-wep-meta2').value, props: document.getElementById('hb-wep-desc').value, isParchment: true, timestamp
                 });
                 window.updateWeaponPreview();
                 title = name; content = document.getElementById('hb-weapon-card-preview').outerHTML; tab = 'lootNotes';
-                if(!createNote) { 
-                    alert("Saved to Inventory!"); 
-                    document.getElementById('hb-wep-name').value=''; document.getElementById('hb-wep-desc').value='';
-                    document.getElementById('hb-wep-image-input').value=''; document.getElementById('prev-wep-img').classList.add('hidden');
-                    return; 
-                }
+                if(!createNote) { alert("Saved to Inventory!"); return; }
             } 
             else {
-                // MAGIC ITEM
                 const name = document.getElementById('hb-item-name').value.trim();
                 if (!name) return alert("Name required!");
-                const rarity = document.getElementById('hb-item-rarity').value;
-                const attune = document.getElementById('hb-item-attune').checked ? "(Attunement)" : "";
-                const itype = document.getElementById('hb-item-type').value;
-                const desc = document.getElementById('hb-item-desc').value;
-                const imgData = document.getElementById('hb-item-image-data').value || "";
-
+                const fullProps = `${document.getElementById('hb-item-attune').checked ? "(Attunement)" : ""} ${document.getElementById('hb-item-desc').value}`;
                 await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                    name, category: 'item', imageData: imgData,
-                    dmg: `${rarity} ${attune}`, 
-                    type: itype, 
-                    props: desc, 
-                    isParchment: true, // Makes it show big in community
-                    timestamp
+                    name, category: 'item', dmg: document.getElementById('hb-item-rarity').value, type: document.getElementById('hb-item-type').value, props: fullProps, timestamp
                 });
-                
-                // Generate HTML for Note
-                window.updateItemPreview();
-                title = name; 
-                content = document.getElementById('hb-item-card-preview').outerHTML;
-                tab = 'lootNotes';
-                
-                if(!createNote) { 
-                    alert("Saved to Inventory!"); 
-                    document.getElementById('hb-item-name').value=''; document.getElementById('hb-item-desc').value='';
-                    document.getElementById('hb-item-image-input').value=''; document.getElementById('prev-item-img').classList.add('hidden');
-                    return; 
-                }
+                title = name; content = `${document.getElementById('hb-item-rarity').value}\n${document.getElementById('hb-item-desc').value}`; tab = 'lootNotes';
+                if(!createNote) { alert("Saved to Inventory!"); return; }
             }
 
             structuredNotes[tab].unshift({ id, title, content, timestamp });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
-            if(confirm(`Saved to Inventory & Notes! Switch to Notes?`)) { window.switchTab('notes'); window.switchSubTab(tab); }
-        } catch(e) { console.error("Master Save Error:", e); }
+            if(confirm("Saved! Switch to Notes?")) { window.switchTab('notes'); window.switchSubTab(tab); }
+        } catch(e) { console.error("Save Error:", e); }
     };
 
-    // --- 5. COMMUNITY & LIKES ---
-    window.filterCommunity = (type) => {
-        window.currentCommunityFilter = type;
-        document.querySelectorAll('.com-filter-btn').forEach(btn => {
-            if (btn.textContent.toLowerCase().includes(type) || (type==='all' && btn.textContent==='All')) {
-                btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('text-gray-400');
-            } else {
-                btn.classList.remove('bg-indigo-600', 'text-white'); btn.classList.add('text-gray-400');
-            }
-        });
-        window.loadCommunityItems(); 
-    };
-
-    window.toggleLike = async (id, currentLikes) => {
-        if(event) event.stopPropagation();
-        if(!window.isAuthReady) { alert("Login to like."); return; }
-        let likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
-        const isLiked = likedItems.includes(id);
-        let newLikes = parseInt(currentLikes) || 0;
-        if (isLiked) {
-            newLikes = Math.max(0, newLikes - 1);
-            likedItems = likedItems.filter(itemId => itemId !== id);
-        } else {
-            newLikes = newLikes + 1;
-            likedItems.push(id);
-        }
-        localStorage.setItem('aegis_liked_items', JSON.stringify(likedItems));
-        try { await window.updateDoc(window.doc(window.db, 'aegis_community_items', id), { likes: newLikes }); } catch(e) { console.error(e); }
-    };
-
+    // --- 6. COMMUNITY ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) return;
         try {
-            const docRef = window.doc(getCol('dm_toolkit_homebrew_items'), id);
-            const snapshot = await getDoc(docRef); 
+            const docRef = window.doc(window.db, id);
+            let snapshot = await getDoc(docRef);
+            // Fallback if path is wrong
+            if (!snapshot.exists()) {
+                 snapshot = await getDoc(getDocRef('dm_toolkit_homebrew_items', id));
+            }
             if (!snapshot.exists()) { alert("Item not found!"); return; }
+            
             const item = snapshot.data();
             if(!confirm(`Publish "${item.name}"?`)) return;
             await window.addDoc(getPublicBrewCol(), { ...item, sharedBy: "Fellow DM", likes: 0, timestamp: new Date().toISOString() });
-            alert("Published! Check Community tab.");
-            window.filterCommunity('all');
+            alert("Published!");
         } catch(e) { console.error(e); alert("Error: " + e.message); }
     };
 
@@ -2558,18 +2606,17 @@
             let noteContent = "", tab = "lootNotes";
             if (item.category === 'monster') {
                 tab = "enemyNotes";
-                await window.addDoc(getCol('dm_toolkit_statblocks'), { name: item.name, hp: parseInt(item.hp), ac: parseInt(item.ac), toHit: parseInt(item.tohit), initMod: parseInt(item.init), dmg: `${item.atk}: ${item.dmg}`, timestamp: new Date().toISOString() });
-                noteContent = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
+                // Add to Stats
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { name: item.name, hp: parseInt(item.hp)||10, ac: parseInt(item.ac)||10, toHit: parseInt(item.tohit)||0, initMod: parseInt(item.init)||0, dmg: `${item.atk}: ${item.dmg}`, timestamp: new Date().toISOString() });
+                // Render Full Statblock
+                noteContent = generateMonsterHTML(item);
             } 
-            else if (item.isParchment || item.category === 'weapon' || item.category === 'item') { 
-                // Magic Item / Weapon Parchment
-                noteContent = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props); 
-            } else { 
-                noteContent = `<strong>${item.name}</strong><br>${item.props}`; 
-            }
+            else if (item.isParchment || item.category === 'weapon') { noteContent = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props); } 
+            else { noteContent = `<strong>${item.name}</strong><br>${item.props}`; }
+            
             structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: item.name + " (Imported)", content: noteContent, timestamp: new Date().toISOString() });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
-            alert(`Imported ${item.name} to Inventory & Notes!`);
+            alert(`Imported ${item.name}!`);
         } catch(e) { console.error(e); alert("Import failed."); }
     };
 
@@ -2587,9 +2634,10 @@
 
             if (window.currentCommunityFilter !== 'all') items = items.filter(i => i.category === window.currentCommunityFilter || (window.currentCommunityFilter==='item' && i.category==='magic'));
             items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+
             const likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
-            
             list.innerHTML = '';
+
             items.forEach(item => {
                 const itemString = encodeURIComponent(JSON.stringify(item));
                 const isAdmin = (window.userId === ADMIN_ID);
@@ -2601,9 +2649,8 @@
 
                 let visualHTML = "";
                 if (item.category === 'monster') {
-                    const rawHTML = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
-                    visualHTML = `<div class="transform scale-95 origin-top">${rawHTML}</div>`;
-                } else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
+                    visualHTML = `<div class="transform scale-95 origin-top">${generateMonsterHTML(item)}</div>`;
+                } else if (item.category === 'weapon' || item.isParchment) {
                     visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
                 } else {
                     visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""} ${item.type || ""}</div><div class="text-xs text-gray-500 mt-2 italic line-clamp-4">${item.props || ""}</div></div>`;
@@ -2611,37 +2658,35 @@
 
                 const card = document.createElement('div');
                 card.className = "break-inside-avoid mb-4 bg-gray-800 rounded-xl border border-gray-700 shadow-lg overflow-hidden hover:shadow-xl transition relative group";
-                card.innerHTML = `${deleteBtn}<div class="p-1">${visualHTML}</div><div class="bg-gray-900/90 p-2 flex justify-between items-center border-t border-gray-700"><button onclick="window.toggleLike('${item.id}', ${likes})" class="flex items-center gap-1 text-sm font-bold ${heartColor} transition"><span>${heartIcon}</span> ${likes}</button><button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow transition">Save to Collection</button></div>`;
+                card.innerHTML = `${deleteBtn}<div class="p-1">${visualHTML}</div><div class="bg-gray-900/90 p-2 flex justify-between items-center border-t border-gray-700"><button onclick="window.toggleLike('${item.id}', ${likes})" class="flex items-center gap-1 text-sm font-bold ${heartColor} transition"><span>${heartIcon}</span> ${likes}</button><button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow transition">Save</button></div>`;
                 list.appendChild(card);
             });
         });
     };
 
-    // 7. INVENTORY LISTENER
-    window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(window.doc(getCol('dm_toolkit_homebrew_items'), id)); };
+    window.deleteHomebrewWeapon = async (path) => { if(!confirm("Delete?")) return; try { await window.deleteDoc(window.doc(window.db, path)); } catch(e) { console.error(e); alert("Delete failed."); } };
     
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
             const list = document.getElementById('homebrew-weapon-list'); if(!list) return;
             if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; return; }
-            const items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
+            const items = []; snap.forEach(d => items.push({id: d.id, refPath: d.ref.path, ...d.data()}));
             items.sort((a,b) => a.name.localeCompare(b.name)); 
             list.innerHTML = '';
             list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20";
             items.forEach(item => {
                 let visualHTML = "";
                 if (item.category === 'monster') {
-                    const rawHTML = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
-                    visualHTML = `<div class="transform scale-90 origin-top-left">${rawHTML}</div>`;
-                } else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
+                    visualHTML = `<div class="transform scale-90 origin-top-left">${generateMonsterHTML(item)}</div>`;
+                } else if (item.category === 'weapon' || item.isParchment) {
                     visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
                 } else {
                     visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""}</div></div>`;
                 }
                 const div = document.createElement('div'); 
                 div.className = 'break-inside-avoid mb-4 bg-gray-900 p-1 rounded border border-gray-700 relative shadow-lg';
-                div.innerHTML = `<div class="p-1">${visualHTML}</div><div class="flex justify-end gap-2 mt-2 p-2 border-t border-gray-700 bg-gray-800"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase" title="Share">🌍 Share</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Delete</button></div>`;
+                div.innerHTML = `<div class="p-1">${visualHTML}</div><div class="flex justify-end gap-2 mt-2 p-2 border-t border-gray-700 bg-gray-800"><button onclick="window.shareHomebrewItem('${item.refPath}')" class="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase" title="Share">🌍 Share</button><button onclick="window.deleteHomebrewWeapon('${item.refPath}')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Delete</button></div>`;
                 list.appendChild(div);
             });
         });
