@@ -1583,7 +1583,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         if(userApiKey) { document.getElementById('user-api-key').value = userApiKey; window.updateApiKey(userApiKey); }
-        if(isChristmasMode) document.body.classList.add('christmas-mode');
+        applyTheme();
         window.switchTab('improv');
         // --- DICE VISUALS (Colors, Textures & Reset Fixed) ---
         (function() {
