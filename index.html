@@ -937,10 +937,10 @@
     // --- 2. GLOBAL VARIABLES ---
     // We attach these to 'window' so the HTML buttons can see them!
     window.currentTab = 'improv'; 
-    window.currentSubTab = 'prepNotes';
-    
+    window.currentTab = 'improv'; window.currentSubTab = 'prepNotes';
     let savedStatblocks = [], combatants = [], currentTurnIndex = -1;
-    let structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+    // ADDED: pcNotes array
+    let structuredNotes = { prepNotes: [], pcNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
     let userApiKey = localStorage.getItem('dm_toolkit_api_key') || "";
     let isChristmasMode = localStorage.getItem('aegis_theme') === 'christmas';
     let lastGeneratedNpc = null, lastGeneratedMonster = null, lastRoll = 0;
@@ -1106,18 +1106,20 @@
 
     window.setupNotesListener = () => {
         if(!window.isAuthReady) return;
-        if (window.unsubNotes) window.unsubNotes();
-        window.unsubNotes = window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
+        window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
             if(doc.exists()) {
                 const d = doc.data();
-                structuredNotes.prepNotes = d.structuredPrepNotes || [];
-                structuredNotes.enemyNotes = d.structuredEnemyNotes || [];
-                structuredNotes.npcNotes = d.structuredNpcNotes || [];
-                structuredNotes.lootNotes = d.structuredLootNotes || [];
+                structuredNotes = { 
+                    prepNotes: d.structuredPrepNotes||[], 
+                    pcNotes: d.structuredPcNotes||[], // <--- NEW
+                    enemyNotes: d.structuredEnemyNotes||[], 
+                    npcNotes: d.structuredNpcNotes||[], 
+                    lootNotes: d.structuredLootNotes||[] 
+                };
             } else {
-                structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+                structuredNotes = { prepNotes: [], pcNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
             }
-            if(currentTab==='notes') renderStructuredNotes(currentSubTab);
+            if(window.currentTab==='notes') window.renderStructuredNotes(window.currentSubTab);
         });
     };
 
@@ -1563,12 +1565,11 @@
 
     // --- 11. STARTUP & AUTH LISTENER ---
     onAuthStateChanged(window.auth, async (user) => {
-        // Force Clear Data to ensure privacy on switch/refresh
+        // Reset data including pcNotes
         combatants = []; 
         savedStatblocks = []; 
-        structuredNotes = { prepNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+        structuredNotes = { prepNotes: [], pcNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
         
-        // Re-render empty state
         if(typeof renderCombatants === 'function') renderCombatants();
         if(typeof renderStatblocks === 'function') renderStatblocks();
         if(typeof renderStructuredNotes === 'function') renderStructuredNotes(currentSubTab);
