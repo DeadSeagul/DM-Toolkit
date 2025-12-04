@@ -2304,7 +2304,7 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Auto-Load Fix + Likes) ---
+    // --- 16. HOMEBREW ENGINE (Likes Fixed) ---
     
     // 1. CONFIGURATION
     const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
@@ -2313,19 +2313,15 @@
 
     // 2. UI SWITCHER
     window.unsubCommunity = null;
-    window.currentCommunityFilter = 'all';
-
     window.switchBrewMode = (mode, btn) => {
         if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
-        
-        // Update Tab Buttons
         document.querySelectorAll('.brew-sub-tab').forEach(b => {
-            b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600'); 
-            b.classList.add('text-gray-400');
+            b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600'); b.classList.add('text-gray-400');
         });
         btn.classList.remove('text-gray-400');
-        
-        // Content Switching
+        if(mode === 'community') btn.classList.add('bg-blue-600', 'text-white');
+        else btn.classList.add('bg-orange-600', 'text-white');
+
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
@@ -2333,72 +2329,72 @@
         document.getElementById(`brew-${mode}-area`).classList.remove('hidden');
         
         const inv = document.getElementById('my-inventory-container');
-        
         if(mode === 'community') {
-            btn.classList.add('bg-blue-600', 'text-white');
             if(inv) inv.classList.add('hidden');
-            // FIX: Force "All" filter to run immediately so list isn't empty!
-            window.filterCommunity('all'); 
+            window.loadCommunityItems(); 
         } else {
-            btn.classList.add('bg-orange-600', 'text-white');
             if(inv) inv.classList.remove('hidden');
         }
     };
 
-    // --- 3. FILTERS & LIKES ---
+    // --- 3. FILTERS & ROBUST LIKES ---
     window.filterCommunity = (type) => {
         window.currentCommunityFilter = type;
-        
-        // Visual update for filter buttons
         document.querySelectorAll('.com-filter-btn').forEach(btn => {
-            // Reset all
-            btn.classList.remove('bg-indigo-600', 'text-white');
-            btn.classList.add('text-gray-400');
-            
-            // Highlight active
-            if (btn.textContent.toLowerCase().includes(type) || (type==='all' && btn.textContent.includes('All'))) {
-                btn.classList.add('bg-indigo-600', 'text-white');
-                btn.classList.remove('text-gray-400');
+            if (btn.textContent.toLowerCase().includes(type) || (type==='all' && btn.textContent==='All')) {
+                btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('text-gray-400');
+            } else {
+                btn.classList.remove('bg-indigo-600', 'text-white'); btn.classList.add('text-gray-400');
             }
         });
-        
-        // Trigger Load
         window.loadCommunityItems(); 
     };
 
-    window.toggleLike = async (id, currentLikes) => {
-        // Stop click from bubbling up
+    window.toggleLike = async (id) => {
+        // Prevent bubbling
         if(event) event.stopPropagation();
         
         if(!window.isAuthReady) { alert("Login to like items."); return; }
         
         try {
-            // 1. Check Local Storage
+            // 1. Get Reference
+            const docRef = window.doc(window.db, 'aegis_community_items', id);
+            
+            // 2. Fetch FRESH Data (Use internal getDoc, not window)
+            const snapshot = await getDoc(docRef);
+            if(!snapshot.exists()) return;
+            
+            const currentData = snapshot.data();
+            let currentLikes = currentData.likes || 0;
+            
+            // 3. Check Local Storage
             let likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
             const isLiked = likedItems.includes(id);
             
-            // 2. Calculate New Count
-            let newLikes = parseInt(currentLikes) || 0;
-            
+            let newLikes;
             if (isLiked) {
-                newLikes = Math.max(0, newLikes - 1); // Unlike
+                newLikes = Math.max(0, currentLikes - 1); // Unlike
                 likedItems = likedItems.filter(itemId => itemId !== id);
             } else {
-                newLikes = newLikes + 1; // Like
+                newLikes = currentLikes + 1; // Like
                 likedItems.push(id);
             }
 
-            // 3. Update Local Storage immediately for responsiveness
-            localStorage.setItem('aegis_liked_items', JSON.stringify(likedItems));
-
-            // 4. Update Database
-            const docRef = window.doc(window.db, 'aegis_community_items', id);
+            // 4. Update DB & Local
             await window.updateDoc(docRef, { likes: newLikes });
+            localStorage.setItem('aegis_liked_items', JSON.stringify(likedItems));
             
         } catch(e) { console.error("Like Error:", e); }
     };
 
-    // --- 4. PREVIEW LOGIC ---
+    // --- 4. PREVIEW & HTML GENERATORS ---
+    const generateMonsterHTML = (name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atk, dmg, desc) => {
+        return `<div class="dnd-statblock text-left text-sm" style="width:100%; margin-bottom:10px;"><div class="dnd-header">${name}</div><div class="italic text-black text-xs mb-2">${type}</div><div class="tapered-rule"></div><div class="text-red-900 font-serif"><p><strong>AC</strong> ${ac}</p><p><strong>HP</strong> ${hp}</p><p><strong>Speed</strong> ${spd}</p></div><div class="tapered-rule"></div><div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold"><div>STR<br>${str} (${calcMod(str)})</div><div>DEX<br>${dex} (${calcMod(dex)})</div><div>CON<br>${con} (${calcMod(con)})</div><div>INT<br>${int} (${calcMod(int)})</div><div>WIS<br>${wis} (${calcMod(wis)})</div><div>CHA<br>${cha} (${calcMod(cha)})</div></div><div class="tapered-rule"></div><div class="text-black mt-2 space-y-2">${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}<div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div><p><strong class="italic font-bold text-black">${atk}.</strong> <span class="text-black"><em>Melee:</em> +${toHit} hit. <em>Hit:</em> ${dmg}.</span></p></div></div>`;
+    };
+    const generateWeaponHTML = (name, imgData, meta1, meta2, desc) => {
+        return `<div class="parchment-card" style="margin: 10px auto; width: 100%;"><div class="card-title">${name}</div>${imgData ? `<img src="${imgData}" class="card-image">` : ''}<div class="card-meta-1">${meta1}</div><div class="card-meta-2">${meta2}</div><div class="card-body">${desc}</div></div>`;
+    };
+
     const wepImgInput = document.getElementById('hb-wep-image-input');
     if(wepImgInput) {
         wepImgInput.addEventListener('change', function(event) {
@@ -2444,18 +2440,13 @@
         preview.innerHTML = generateMonsterHTML(name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atkName, dmg, desc);
     };
 
-    // HTML GENERATORS
-    const generateMonsterHTML = (name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atk, dmg, desc) => {
-        return `<div class="dnd-statblock text-left text-sm" style="width:100%; margin-bottom:10px;"><div class="dnd-header">${name}</div><div class="italic text-black text-xs mb-2">${type}</div><div class="tapered-rule"></div><div class="text-red-900 font-serif"><p><strong>AC</strong> ${ac}</p><p><strong>HP</strong> ${hp}</p><p><strong>Speed</strong> ${spd}</p></div><div class="tapered-rule"></div><div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold"><div>STR<br>${str} (${calcMod(str)})</div><div>DEX<br>${dex} (${calcMod(dex)})</div><div>CON<br>${con} (${calcMod(con)})</div><div>INT<br>${int} (${calcMod(int)})</div><div>WIS<br>${wis} (${calcMod(wis)})</div><div>CHA<br>${cha} (${calcMod(cha)})</div></div><div class="tapered-rule"></div><div class="text-black mt-2 space-y-2">${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}<div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div><p><strong class="italic font-bold text-black">${atk}.</strong> <span class="text-black"><em>Melee:</em> +${toHit} hit. <em>Hit:</em> ${dmg}.</span></p></div></div>`;
-    };
-    const generateWeaponHTML = (name, imgData, meta1, meta2, desc) => {
-        return `<div class="parchment-card" style="margin: 10px auto; width: 100%;"><div class="card-title">${name}</div>${imgData ? `<img src="${imgData}" class="card-image">` : ''}<div class="card-meta-1">${meta1}</div><div class="card-meta-2">${meta2}</div><div class="card-body">${desc}</div></div>`;
-    };
+    // --- 5. SAVING ---
+    window.saveHomebrewMonster = async () => { window.saveHomebrewToNotes('monster', false); };
+    window.saveHomebrewWeapon = async () => { window.saveHomebrewToNotes('weapon', false); };
+    window.saveHomebrewMagicItem = async () => { window.saveHomebrewToNotes('item', false); };
 
-    // --- 5. SAVING FUNCTIONS ---
     window.saveHomebrewToNotes = async (type, createNote = true) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
-        
         try {
             let title, content, tab;
             const id = crypto.randomUUID();
@@ -2475,12 +2466,16 @@
                     wis: document.getElementById('hb-mon-wis').value, cha: document.getElementById('hb-mon-cha').value,
                     desc: document.getElementById('hb-mon-desc').value, timestamp
                 };
+
                 const fullDmg = `${mData.atk}: ${mData.dmg}`;
                 await window.addDoc(getCol('dm_toolkit_statblocks'), { 
                     name: mData.name, hp: parseInt(mData.hp), ac: parseInt(mData.ac), 
-                    toHit: parseInt(mData.tohit), initMod: parseInt(mData.init), dmg: fullDmg, timestamp 
+                    toHit: parseInt(mData.tohit), initMod: parseInt(mData.init), dmg: fullDmg, timestamp: mData.timestamp 
                 });
-                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ? • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
+                    ...mData, props: `CR ? • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}`
+                });
+
                 window.previewHomebrewMonster();
                 title = name + " (Homebrew)";
                 content = document.getElementById('hb-monster-preview').innerHTML;
@@ -2527,21 +2522,17 @@
 
             structuredNotes[tab].unshift({ id, title, content, timestamp });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
-            if(confirm("Saved to Notes! View now?")) { window.switchTab('notes'); window.switchSubTab(tab); }
-        } catch(e) { console.error("Save Error:", e); }
+            if(confirm(`Saved to Inventory & Notes! Switch to Notes?`)) { window.switchTab('notes'); window.switchSubTab(tab); }
+
+        } catch (e) { console.error("Save Error:", e); }
     };
 
-    // Button Wrappers
-    window.saveHomebrewMonster = () => window.saveHomebrewToNotes('monster', false);
-    window.saveHomebrewWeapon = () => window.saveHomebrewToNotes('weapon', false);
-    window.saveHomebrewMagicItem = () => window.saveHomebrewToNotes('item', false);
-
-    // --- 6. COMMUNITY SHARING & LOADERS ---
+    // --- 6. COMMUNITY SHARING ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) return;
         try {
             const docRef = window.doc(getCol('dm_toolkit_homebrew_items'), id);
-            const snapshot = await window.getDoc(docRef); 
+            const snapshot = await getDoc(docRef); 
             if (!snapshot.exists()) { alert("Item not found!"); return; }
             const item = snapshot.data();
             if(!confirm(`Publish "${item.name}"?`)) return;
@@ -2568,30 +2559,44 @@
         } catch(e) { console.error(e); alert("Import failed."); }
     };
 
-    window.deleteCommunityItem = async (id) => { if(!confirm("ADMIN: Delete?")) return; try { await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id)); alert("Deleted."); } catch(e) { console.error(e); } };
-    
+    window.deleteCommunityItem = async (id) => {
+        if(!confirm("ADMIN: Delete?")) return;
+        try { await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id)); alert("Deleted."); } catch(e) { console.error(e); }
+    };
+
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
         const q = window.query(getPublicBrewCol(), window.limit(50));
         window.unsubCommunity = window.onSnapshot(q, (snap) => {
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs pt-10 col-span-full">No items found.</p>'; return; }
+            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items.</p>'; return; }
+            list.innerHTML = '';
             let items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
+
             if (window.currentCommunityFilter !== 'all') items = items.filter(i => i.category === window.currentCommunityFilter || (window.currentCommunityFilter==='item' && i.category==='magic'));
             items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-            list.innerHTML = '';
+
             const likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
+
             items.forEach(item => {
                 const itemString = encodeURIComponent(JSON.stringify(item));
                 const isAdmin = (window.userId === ADMIN_ID);
-                const deleteBtn = isAdmin ? `<button onclick="window.deleteCommunityItem('${item.id}')" class="absolute top-2 right-2 z-50 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold shadow">×</button>` : '';
+                const deleteBtn = isAdmin ? `<button onclick="window.deleteCommunityItem('${item.id}')" class="absolute top-2 right-2 z-50 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold shadow hover:bg-red-500">×</button>` : '';
+                
                 const likes = item.likes || 0;
                 const isLiked = likedItems.includes(item.id);
                 const heartColor = isLiked ? 'text-red-500' : 'text-gray-600 hover:text-red-400';
                 
                 let visualHTML = "";
-                if (item.category === 'monster') visualHTML = `<div class="transform scale-95 origin-top">${generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc)}</div>`;
-                else if (item.category === 'weapon' || item.isParchment) visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
-                else visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""} ${item.type || ""}</div><div class="text-xs text-gray-500 mt-2 italic line-clamp-4">${item.props || ""}</div></div>`;
+                if (item.category === 'monster') {
+                    const rawHTML = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
+                    visualHTML = `<div class="transform scale-95 origin-top">${rawHTML}</div>`;
+                } 
+                else if (item.category === 'weapon' || item.isParchment) {
+                    visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
+                } 
+                else {
+                    visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""} ${item.type || ""}</div><div class="text-xs text-gray-500 mt-2 italic line-clamp-4">${item.props || ""}</div></div>`;
+                }
 
                 const card = document.createElement('div');
                 card.className = "break-inside-avoid mb-4 bg-gray-800 rounded-xl border border-gray-700 shadow-lg overflow-hidden hover:shadow-xl transition relative group";
@@ -2601,7 +2606,7 @@
         });
     };
 
-    // 7. INVENTORY LISTENER (Big Cards for Private too)
+    // 7. INVENTORY LISTENER
     window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(window.doc(getCol('dm_toolkit_homebrew_items'), id)); };
     
     window.setupHomebrewListener = () => {
@@ -2615,11 +2620,16 @@
             list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20";
             items.forEach(item => {
                 let visualHTML = "";
-                if (item.category === 'monster') visualHTML = `<div class="transform scale-90 origin-top-left">${generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc)}</div>`;
-                else if (item.category === 'weapon' || item.isParchment) visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
-                else visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""}</div></div>`;
-                
-                const div = document.createElement('div'); div.className = 'break-inside-avoid mb-4 bg-gray-900 p-1 rounded border border-gray-700 relative shadow-lg';
+                if (item.category === 'monster') {
+                    const rawHTML = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
+                    visualHTML = `<div class="transform scale-90 origin-top-left">${rawHTML}</div>`;
+                } else if (item.category === 'weapon' || item.isParchment) {
+                    visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
+                } else {
+                    visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""}</div></div>`;
+                }
+                const div = document.createElement('div'); 
+                div.className = 'break-inside-avoid mb-4 bg-gray-900 p-1 rounded border border-gray-700 relative shadow-lg';
                 div.innerHTML = `<div class="p-1">${visualHTML}</div><div class="flex justify-end gap-2 mt-2 p-2 border-t border-gray-700 bg-gray-800"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase" title="Share">🌍 Share</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Delete</button></div>`;
                 list.appendChild(div);
             });
