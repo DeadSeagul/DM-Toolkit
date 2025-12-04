@@ -2304,7 +2304,7 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Fixed Likes & Auto-Load) ---
+    // --- 16. HOMEBREW ENGINE (Final Polish) ---
     
     // 1. CONFIGURATION
     const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
@@ -2313,19 +2313,20 @@
 
     // 2. UI SWITCHER
     window.unsubCommunity = null;
-    window.currentCommunityFilter = 'all'; // Ensure default is set
+    window.currentCommunityFilter = 'all';
 
     window.switchBrewMode = (mode, btn) => {
+        // Cleanup old listeners
         if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
-        
-        // Visuals
+
+        // Update Buttons
         document.querySelectorAll('.brew-sub-tab').forEach(b => {
             b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600'); 
             b.classList.add('text-gray-400');
         });
         btn.classList.remove('text-gray-400');
         
-        // Toggle Views
+        // Update Views
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
@@ -2337,7 +2338,7 @@
         if(mode === 'community') {
             btn.classList.add('bg-blue-600', 'text-white');
             if(inv) inv.classList.add('hidden');
-            // FIX: Force the "All" filter to run immediately to populate the list
+            // FORCE LOAD
             window.filterCommunity('all'); 
         } else {
             btn.classList.add('bg-orange-600', 'text-white');
@@ -2413,6 +2414,7 @@
             if (type === 'monster') {
                 const name = document.getElementById('hb-mon-name').value.trim();
                 if (!name) return alert("Name required!");
+                
                 const mData = {
                     name, category: 'monster',
                     hp: document.getElementById('hb-mon-hp').value, ac: document.getElementById('hb-mon-ac').value,
@@ -2424,12 +2426,14 @@
                     wis: document.getElementById('hb-mon-wis').value, cha: document.getElementById('hb-mon-cha').value,
                     desc: document.getElementById('hb-mon-desc').value, timestamp
                 };
-                const fullDmg = `${mData.atk}: ${mData.dmg}`;
-                // Save to Stats
-                await window.addDoc(getCol('dm_toolkit_statblocks'), { name: mData.name, hp: parseInt(mData.hp), ac: parseInt(mData.ac), toHit: parseInt(mData.tohit), initMod: parseInt(mData.init), dmg: fullDmg, timestamp: mData.timestamp });
-                // Save to Inventory
-                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ? • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
 
+                const fullDmg = `${mData.atk}: ${mData.dmg}`;
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: mData.name, hp: parseInt(mData.hp), ac: parseInt(mData.ac), 
+                    toHit: parseInt(mData.tohit), initMod: parseInt(mData.init), dmg: fullDmg, timestamp: mData.timestamp 
+                });
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ? • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
+                
                 window.previewHomebrewMonster();
                 title = name + " (Homebrew)";
                 content = document.getElementById('hb-monster-preview').innerHTML;
@@ -2439,16 +2443,25 @@
             else if (type === 'weapon') {
                 const name = document.getElementById('hb-wep-name').value.trim();
                 if (!name) return alert("Name required!");
+                
                 await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                    name, category: 'weapon', imageData: document.getElementById('hb-wep-image-data').value || "", dmg: document.getElementById('hb-wep-meta1').value, type: document.getElementById('hb-wep-meta2').value, props: document.getElementById('hb-wep-desc').value, isParchment: true, timestamp
+                    name, category: 'weapon',
+                    imageData: document.getElementById('hb-wep-image-data').value || "", 
+                    dmg: document.getElementById('hb-wep-meta1').value, 
+                    type: document.getElementById('hb-wep-meta2').value, 
+                    props: document.getElementById('hb-wep-desc').value,
+                    isParchment: true, timestamp
                 });
+                
                 window.updateWeaponPreview();
                 title = name;
                 content = document.getElementById('hb-weapon-card-preview').outerHTML;
                 tab = 'lootNotes';
                 if(!createNote) { 
                     alert("Saved to Inventory!"); 
-                    document.getElementById('hb-wep-name').value=''; document.getElementById('hb-wep-desc').value=''; document.getElementById('hb-wep-image-input').value=''; document.getElementById('prev-wep-img').classList.add('hidden'); return; 
+                    document.getElementById('hb-wep-name').value=''; document.getElementById('hb-wep-desc').value='';
+                    document.getElementById('hb-wep-image-input').value=''; document.getElementById('prev-wep-img').classList.add('hidden');
+                    return; 
                 }
             } 
             else {
@@ -2456,7 +2469,10 @@
                 if (!name) return alert("Name required!");
                 const fullProps = `${document.getElementById('hb-item-attune').checked ? "(Attunement)" : ""} ${document.getElementById('hb-item-desc').value}`;
                 await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                    name, category: 'item', dmg: document.getElementById('hb-item-rarity').value, type: document.getElementById('hb-item-type').value, props: fullProps, timestamp
+                    name, category: 'item',
+                    dmg: document.getElementById('hb-item-rarity').value, 
+                    type: document.getElementById('hb-item-type').value, 
+                    props: fullProps, timestamp
                 });
                 title = name;
                 content = `${document.getElementById('hb-item-rarity').value}\n${document.getElementById('hb-item-desc').value}`;
@@ -2466,8 +2482,9 @@
 
             structuredNotes[tab].unshift({ id, title, content, timestamp });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
-            if(confirm("Saved to Inventory & Notes! Switch tab?")) { window.switchTab('notes'); window.switchSubTab(tab); }
-        } catch(e) { console.error("Master Save Error:", e); }
+            if(confirm(`Saved to Inventory & Notes! Switch to Notes?`)) { window.switchTab('notes'); window.switchSubTab(tab); }
+
+        } catch (e) { console.error("Save Error:", e); }
     };
 
     // --- 5. COMMUNITY & LIKES ---
@@ -2481,7 +2498,6 @@
 
     // FIX: Precise Like Logic (Checks LocalStorage First)
     window.toggleLike = async (id, currentLikes) => {
-        // Stop bubble
         if(event) event.stopPropagation();
         if(!window.isAuthReady) { alert("Login to like."); return; }
         
@@ -2491,22 +2507,15 @@
         let newLikes = parseInt(currentLikes) || 0;
         
         if (isLiked) {
-            // User already liked it -> UNLIKE (Subtract)
             newLikes = Math.max(0, newLikes - 1);
             likedItems = likedItems.filter(itemId => itemId !== id);
         } else {
-            // User hasn't liked it -> LIKE (Add)
             newLikes = newLikes + 1;
             likedItems.push(id);
         }
 
-        // Save state immediately
         localStorage.setItem('aegis_liked_items', JSON.stringify(likedItems));
-        
-        try { 
-            // Update Database
-            await window.updateDoc(window.doc(window.db, 'aegis_community_items', id), { likes: newLikes }); 
-        } catch(e) { console.error(e); }
+        try { await window.updateDoc(window.doc(window.db, 'aegis_community_items', id), { likes: newLikes }); } catch(e) { console.error(e); }
     };
 
     window.shareHomebrewItem = async (id) => {
@@ -2526,6 +2535,7 @@
         try {
             const item = JSON.parse(decodeURIComponent(dataString));
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), item);
+
             let noteContent = "", tab = "lootNotes";
             if (item.category === 'monster') {
                 tab = "enemyNotes";
@@ -2534,25 +2544,29 @@
             } 
             else if (item.isParchment || item.category === 'weapon') { noteContent = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props); } 
             else { noteContent = `<strong>${item.name}</strong><br>${item.props}`; }
+
             structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: item.name + " (Imported)", content: noteContent, timestamp: new Date().toISOString() });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
             alert(`Imported ${item.name}!`);
         } catch(e) { console.error(e); alert("Import failed."); }
     };
 
-    window.deleteCommunityItem = async (id) => { if(!confirm("ADMIN: Delete?")) return; try { await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id)); alert("Deleted."); } catch(e) { console.error(e); } };
+    window.deleteCommunityItem = async (id) => {
+        if(!confirm("ADMIN: Delete?")) return;
+        try { await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id)); alert("Deleted."); } catch(e) { console.error(e); }
+    };
 
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
-        const q = window.query(getPublicBrewCol(), window.limit(100)); // No sort
+        const q = window.query(getPublicBrewCol(), window.limit(100));
         window.unsubCommunity = window.onSnapshot(q, (snap) => {
             if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs col-span-full pt-10">No items.</p>'; return; }
+            list.innerHTML = '';
             let items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
 
             if (window.currentCommunityFilter !== 'all') items = items.filter(i => i.category === window.currentCommunityFilter || (window.currentCommunityFilter==='item' && i.category==='magic'));
             items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
 
-            list.innerHTML = '';
             const likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
 
             items.forEach(item => {
@@ -2563,8 +2577,7 @@
                 const likes = item.likes || 0;
                 const isLiked = likedItems.includes(item.id);
                 const heartColor = isLiked ? 'text-red-500' : 'text-gray-600 hover:text-red-400';
-                const heartIcon = isLiked ? '♥' : '♡';
-
+                
                 let visualHTML = "";
                 if (item.category === 'monster') {
                     const rawHTML = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
@@ -2577,7 +2590,7 @@
 
                 const card = document.createElement('div');
                 card.className = "break-inside-avoid mb-4 bg-gray-800 rounded-xl border border-gray-700 shadow-lg overflow-hidden hover:shadow-xl transition relative group";
-                card.innerHTML = `${deleteBtn}<div class="p-1">${visualHTML}</div><div class="bg-gray-900/90 p-2 flex justify-between items-center border-t border-gray-700"><button onclick="window.toggleLike('${item.id}', ${likes})" class="flex items-center gap-1 text-sm font-bold ${heartColor} transition"><span>${heartIcon}</span> ${likes}</button><button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow transition">Save</button></div>`;
+                card.innerHTML = `${deleteBtn}<div class="p-1">${visualHTML}</div><div class="bg-gray-900/90 p-2 flex justify-between items-center border-t border-gray-700"><button onclick="window.toggleLike('${item.id}', ${likes})" class="flex items-center gap-1 text-sm font-bold ${heartColor} transition"><span>♥</span> ${likes}</button><button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow transition">Save</button></div>`;
                 list.appendChild(card);
             });
         });
@@ -2585,7 +2598,6 @@
 
     window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
     
-    // 6. INVENTORY LISTENER (Mini-Cards)
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
