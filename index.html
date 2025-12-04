@@ -2357,7 +2357,7 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Complete: Parchment Items & Weapons) ---
+    // --- 16. HOMEBREW ENGINE (Crash-Proof Fix) ---
     
     // 1. CONFIGURATION
     const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
@@ -2366,15 +2366,17 @@
 
     // 2. UI SWITCHER
     window.unsubCommunity = null;
+    window.currentCommunityFilter = 'all';
+
     window.switchBrewMode = (mode, btn) => {
         if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
+        
         document.querySelectorAll('.brew-sub-tab').forEach(b => {
-            b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600'); b.classList.add('text-gray-400');
+            b.classList.remove('bg-orange-600', 'text-white', 'bg-blue-600'); 
+            b.classList.add('text-gray-400');
         });
         btn.classList.remove('text-gray-400');
-        if(mode === 'community') btn.classList.add('bg-blue-600', 'text-white');
-        else btn.classList.add('bg-orange-600', 'text-white');
-
+        
         document.getElementById('brew-monster-area').classList.add('hidden');
         document.getElementById('brew-weapon-area').classList.add('hidden');
         document.getElementById('brew-magic-area').classList.add('hidden');
@@ -2390,169 +2392,196 @@
         }
     };
 
-    // --- 3. PREVIEW LOGIC (Generic Handler) ---
-    function setupImagePreview(inputId, hiddenInputId, imgId) {
-        const input = document.getElementById(inputId);
-        if(!input) return;
-        input.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                if (file.size > 500000) { alert("Image too large! Keep under 500KB."); this.value = ""; return; }
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = document.getElementById(imgId);
-                    if(img) { img.src = e.target.result; img.classList.remove('hidden'); }
-                    document.getElementById(hiddenInputId).value = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
-    
-    // Initialize listeners
-    setupImagePreview('hb-wep-image-input', 'hb-wep-image-data', 'prev-wep-img');
-    setupImagePreview('hb-item-image-input', 'hb-item-image-data', 'prev-item-img');
-
-    window.updateWeaponPreview = () => {
-        document.getElementById('prev-wep-name').textContent = document.getElementById('hb-wep-name').value || "Weapon Name";
-        document.getElementById('prev-wep-meta1').textContent = document.getElementById('hb-wep-meta1').value || "Rarity, Attunement";
-        document.getElementById('prev-wep-meta2').textContent = document.getElementById('hb-wep-meta2').value || "Weapon Type";
-        document.getElementById('prev-wep-desc').innerText = document.getElementById('hb-wep-desc').value || "Description mechanics...";
+    // 3. DATA HELPER (SAFE)
+    // This function safely grabs values even if fields are empty/missing to prevent crashes
+    const getSafeValue = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value : "";
     };
 
-    // NEW: Magic Item Preview Logic
-    window.updateItemPreview = () => {
-        document.getElementById('prev-item-name').textContent = document.getElementById('hb-item-name').value || "Item Name";
-        const rarity = document.getElementById('hb-item-rarity').value;
-        const attune = document.getElementById('hb-item-attune').checked ? "(Requires Attunement)" : "";
-        document.getElementById('prev-item-meta1').textContent = `${rarity} ${attune}`;
-        document.getElementById('prev-item-meta2').textContent = document.getElementById('hb-item-type').value;
-        document.getElementById('prev-item-desc').innerText = document.getElementById('hb-item-desc').value || "Description mechanics...";
+    const getMonsterData = () => {
+        return {
+            name: getSafeValue('hb-mon-name').trim(),
+            type: getSafeValue('hb-mon-type'),
+            ac: getSafeValue('hb-mon-ac'),
+            hp: getSafeValue('hb-mon-hp'),
+            hitDice: getSafeValue('hb-mon-hitdice'),
+            spd: getSafeValue('hb-mon-spd'),
+            str: getSafeValue('hb-mon-str'), dex: getSafeValue('hb-mon-dex'),
+            con: getSafeValue('hb-mon-con'), int: getSafeValue('hb-mon-int'),
+            wis: getSafeValue('hb-mon-wis'), cha: getSafeValue('hb-mon-cha'),
+            saves: getSafeValue('hb-mon-saves'), skills: getSafeValue('hb-mon-skills'),
+            senses: getSafeValue('hb-mon-senses'), langs: getSafeValue('hb-mon-langs'),
+            cr: getSafeValue('hb-mon-cr'), xp: getSafeValue('hb-mon-xp'),
+            traits: getSafeValue('hb-mon-traits'), actions: getSafeValue('hb-mon-actions'),
+            reactions: getSafeValue('hb-mon-reactions'),
+            // Combat Helper Fields
+            init: getSafeValue('hb-mon-init'), tohit: getSafeValue('hb-mon-tohit'),
+            atk: getSafeValue('hb-mon-atkname'), dmg: getSafeValue('hb-mon-dmg'),
+            category: 'monster',
+            timestamp: new Date().toISOString()
+        };
     };
 
-    window.previewHomebrewMonster = () => {
-        const name = document.getElementById('hb-mon-name').value || "Unknown";
-        const type = document.getElementById('hb-mon-type').value || "Monster";
-        const ac = document.getElementById('hb-mon-ac').value || 10;
-        const hp = document.getElementById('hb-mon-hp').value || 10;
-        const spd = document.getElementById('hb-mon-spd').value || "30 ft.";
-        const str = document.getElementById('hb-mon-str').value||10; const dex = document.getElementById('hb-mon-dex').value||10;
-        const con = document.getElementById('hb-mon-con').value||10; const int = document.getElementById('hb-mon-int').value||10;
-        const wis = document.getElementById('hb-mon-wis').value||10; const cha = document.getElementById('hb-mon-cha').value||10;
-        const init = document.getElementById('hb-mon-init').value || 0;
-        const toHit = document.getElementById('hb-mon-tohit').value || 0;
-        const atkName = document.getElementById('hb-mon-atkname').value || "Attack";
-        const dmg = document.getElementById('hb-mon-dmg').value || "1d4";
-        const desc = document.getElementById('hb-mon-desc').value || "";
-
-        const preview = document.getElementById('hb-monster-preview');
-        if(!preview) return;
-        preview.classList.remove('hidden');
-        preview.innerHTML = generateMonsterHTML(name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atkName, dmg, desc);
+    // 4. HTML GENERATORS (SAFE)
+    const generateMonsterHTML = (d) => {
+        // Safe formatter handles undefined/null text
+        const fmt = (t) => t ? t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') : '';
+        
+        return `
+        <div class="dnd-statblock text-left text-sm" style="width:100%; margin-bottom:10px;">
+            <div class="dnd-header">${d.name || "Unknown"}</div>
+            <div class="italic text-black text-xs mb-2">${d.type || "Monster"}</div>
+            <div class="tapered-rule"></div>
+            <div class="text-red-900 font-serif">
+                <p><strong>Armor Class</strong> ${d.ac || 10}</p>
+                <p><strong>Hit Points</strong> ${d.hp || 10} ${d.hitDice ? `<span class="text-black">(${d.hitDice})</span>` : ''}</p>
+                <p><strong>Speed</strong> ${d.spd || "30 ft."}</p>
+            </div>
+            <div class="tapered-rule"></div>
+            <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
+                <div>STR<br>${d.str||10} (${calcMod(d.str)})</div>
+                <div>DEX<br>${d.dex||10} (${calcMod(d.dex)})</div>
+                <div>CON<br>${d.con||10} (${calcMod(d.con)})</div>
+                <div>INT<br>${d.int||10} (${calcMod(d.int)})</div>
+                <div>WIS<br>${d.wis||10} (${calcMod(d.wis)})</div>
+                <div>CHA<br>${d.cha||10} (${calcMod(d.cha)})</div>
+            </div>
+            <div class="tapered-rule"></div>
+            <div class="text-red-900 font-serif leading-snug text-xs mb-2">
+                ${d.saves ? `<p><strong>Saving Throws</strong> <span class="text-black">${d.saves}</span></p>` : ''}
+                ${d.skills ? `<p><strong>Skills</strong> <span class="text-black">${d.skills}</span></p>` : ''}
+                <p><strong>Senses</strong> <span class="text-black">${d.senses || "passive Perception 10"}</span></p>
+                <p><strong>Languages</strong> <span class="text-black">${d.langs || "-"}</span></p>
+                <p><strong>Challenge</strong> <span class="text-black">${d.cr || 0} (${d.xp || "0 XP"})</span></p>
+            </div>
+            <div class="tapered-rule"></div>
+            <div class="text-black mt-2 space-y-3 font-serif">
+                ${d.traits ? `<div>${fmt(d.traits)}</div>` : ''}
+                ${d.actions ? `<div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2 text-lg">Actions</div><div>${fmt(d.actions)}</div>` : ''}
+                ${d.reactions ? `<div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2 text-lg">Reactions</div><div>${fmt(d.reactions)}</div>` : ''}
+            </div>
+        </div>`;
     };
 
-    // HTML GENERATORS
-    const generateMonsterHTML = (name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atk, dmg, desc) => {
-        return `<div class="dnd-statblock text-left text-sm" style="width:100%; margin-bottom:10px;"><div class="dnd-header">${name}</div><div class="italic text-black text-xs mb-2">${type}</div><div class="tapered-rule"></div><div class="text-red-900 font-serif"><p><strong>AC</strong> ${ac}</p><p><strong>HP</strong> ${hp}</p><p><strong>Speed</strong> ${spd}</p></div><div class="tapered-rule"></div><div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold"><div>STR<br>${str} (${calcMod(str)})</div><div>DEX<br>${dex} (${calcMod(dex)})</div><div>CON<br>${con} (${calcMod(con)})</div><div>INT<br>${int} (${calcMod(int)})</div><div>WIS<br>${wis} (${calcMod(wis)})</div><div>CHA<br>${cha} (${calcMod(cha)})</div></div><div class="tapered-rule"></div><div class="text-black mt-2 space-y-2">${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}<div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div><p><strong class="italic font-bold text-black">${atk}.</strong> <span class="text-black"><em>Melee:</em> +${toHit} hit. <em>Hit:</em> ${dmg}.</span></p></div></div>`;
-    };
     const generateWeaponHTML = (name, imgData, meta1, meta2, desc) => {
         return `<div class="parchment-card" style="margin: 10px auto; width: 100%;"><div class="card-title">${name}</div>${imgData ? `<img src="${imgData}" class="card-image">` : ''}<div class="card-meta-1">${meta1}</div><div class="card-meta-2">${meta2}</div><div class="card-body">${desc}</div></div>`;
     };
 
-    // --- 4. SAVING FUNCTIONS (Master Save) ---
-    window.saveHomebrewMonster = async () => { window.saveHomebrewToNotes('monster', false); };
-    window.saveHomebrewWeapon = async () => { window.saveHomebrewToNotes('weapon', false); };
-    window.saveHomebrewMagicItem = async () => { window.saveHomebrewToNotes('item', false); };
+    // 5. PREVIEW FUNCTIONS
+    window.previewHomebrewMonster = () => {
+        const data = getMonsterData();
+        const preview = document.getElementById('hb-monster-preview');
+        if(preview) { 
+            preview.classList.remove('hidden'); 
+            preview.innerHTML = generateMonsterHTML(data); 
+        }
+    };
+
+    // Image Listeners
+    ['hb-wep-image-input', 'hb-item-image-input'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            if(file.size > 500000) { alert("Image too large! Keep under 500KB."); return; }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const type = id.includes('wep') ? 'wep' : 'item';
+                document.getElementById(`prev-${type}-img`).src = ev.target.result;
+                document.getElementById(`prev-${type}-img`).classList.remove('hidden');
+                document.getElementById(`hb-${type}-image-data`).value = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    window.updateWeaponPreview = () => {
+        document.getElementById('prev-wep-name').textContent = getSafeValue('hb-wep-name') || "Weapon Name";
+        document.getElementById('prev-wep-meta1').textContent = getSafeValue('hb-wep-meta1') || "Rarity";
+        document.getElementById('prev-wep-meta2').textContent = getSafeValue('hb-wep-meta2') || "Type";
+        document.getElementById('prev-wep-desc').innerText = getSafeValue('hb-wep-desc') || "Desc...";
+    };
+    window.updateItemPreview = () => {
+        document.getElementById('prev-item-name').textContent = getSafeValue('hb-item-name') || "Item Name";
+        const attune = document.getElementById('hb-item-attune').checked ? "(Attunement)" : "";
+        document.getElementById('prev-item-meta1').textContent = `${getSafeValue('hb-item-rarity')} ${attune}`;
+        document.getElementById('prev-item-meta2').textContent = getSafeValue('hb-item-type');
+        document.getElementById('prev-item-desc').innerText = getSafeValue('hb-item-desc') || "Desc...";
+    };
+
+    // 6. SAVING (MASTER)
+    window.saveHomebrewMonster = () => window.saveHomebrewToNotes('monster', false);
+    window.saveHomebrewWeapon = () => window.saveHomebrewToNotes('weapon', false);
+    window.saveHomebrewMagicItem = () => window.saveHomebrewToNotes('item', false);
 
     window.saveHomebrewToNotes = async (type, createNote = true) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
+        
         try {
-            let title, content, tab;
-            const id = crypto.randomUUID();
-            const timestamp = new Date().toISOString();
-
+            let title, content, tab, id = crypto.randomUUID(), timestamp = new Date().toISOString();
+            
             if (type === 'monster') {
-                const name = document.getElementById('hb-mon-name').value.trim();
-                if (!name) return alert("Name required!");
-                const mData = {
-                    name, category: 'monster',
-                    hp: document.getElementById('hb-mon-hp').value, ac: document.getElementById('hb-mon-ac').value,
-                    init: document.getElementById('hb-mon-init').value, tohit: document.getElementById('hb-mon-tohit').value,
-                    atk: document.getElementById('hb-mon-atkname').value, dmg: document.getElementById('hb-mon-dmg').value,
-                    type: document.getElementById('hb-mon-type').value, spd: document.getElementById('hb-mon-spd').value,
-                    str: document.getElementById('hb-mon-str').value, dex: document.getElementById('hb-mon-dex').value,
-                    con: document.getElementById('hb-mon-con').value, int: document.getElementById('hb-mon-int').value,
-                    wis: document.getElementById('hb-mon-wis').value, cha: document.getElementById('hb-mon-cha').value,
-                    desc: document.getElementById('hb-mon-desc').value, timestamp
-                };
+                const mData = getMonsterData();
+                if(!mData.name) return alert("Name required!");
+                
+                // 1. Save to Stats (Simple Combat Data)
                 const fullDmg = `${mData.atk}: ${mData.dmg}`;
-                await window.addDoc(getCol('dm_toolkit_statblocks'), { name: mData.name, hp: parseInt(mData.hp), ac: parseInt(mData.ac), toHit: parseInt(mData.tohit), initMod: parseInt(mData.init), dmg: fullDmg, timestamp: mData.timestamp });
-                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ? • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
-                window.previewHomebrewMonster();
-                title = name + " (Homebrew)"; content = document.getElementById('hb-monster-preview').innerHTML; tab = 'enemyNotes';
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: mData.name, hp: parseInt(mData.hp)||10, ac: parseInt(mData.ac)||10, 
+                    toHit: parseInt(mData.tohit)||0, initMod: parseInt(mData.init)||0, dmg: fullDmg, timestamp 
+                });
+                
+                // 2. Save to Inventory (Full Data for View)
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ${mData.cr} • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
+                
+                title = mData.name + " (Homebrew)";
+                content = generateMonsterHTML(mData);
+                tab = 'enemyNotes';
+                
                 if(!createNote) { alert("Saved to Stats & Inventory!"); document.getElementById('hb-mon-name').value=''; return; }
             } 
             else if (type === 'weapon') {
-                const name = document.getElementById('hb-wep-name').value.trim();
-                if (!name) return alert("Name required!");
-                await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
+                const name = getSafeValue('hb-wep-name'); if(!name) return alert("Name!");
+                const wData = {
                     name, category: 'weapon',
-                    imageData: document.getElementById('hb-wep-image-data').value || "", 
-                    dmg: document.getElementById('hb-wep-meta1').value, 
-                    type: document.getElementById('hb-wep-meta2').value, 
-                    props: document.getElementById('hb-wep-desc').value,
-                    isParchment: true, timestamp
-                });
-                window.updateWeaponPreview();
-                title = name; content = document.getElementById('hb-weapon-card-preview').outerHTML; tab = 'lootNotes';
-                if(!createNote) { 
-                    alert("Saved to Inventory!"); 
-                    document.getElementById('hb-wep-name').value=''; document.getElementById('hb-wep-desc').value='';
-                    document.getElementById('hb-wep-image-input').value=''; document.getElementById('prev-wep-img').classList.add('hidden');
-                    return; 
-                }
+                    imageData: getSafeValue('hb-wep-image-data'),
+                    dmg: getSafeValue('hb-wep-meta1'), type: getSafeValue('hb-wep-meta2'),
+                    props: getSafeValue('hb-wep-desc'), isParchment: true, timestamp
+                };
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), wData);
+                title = name;
+                content = generateWeaponHTML(wData.name, wData.imageData, wData.dmg, wData.type, wData.props);
+                tab = 'lootNotes';
+                if(!createNote) { alert("Saved to Inventory!"); return; }
             } 
             else {
-                // --- UPDATED MAGIC ITEM SAVE ---
-                const name = document.getElementById('hb-item-name').value.trim();
-                if (!name) return alert("Name required!");
-                
-                const rarity = document.getElementById('hb-item-rarity').value;
-                const attune = document.getElementById('hb-item-attune').checked ? "(Requires Attunement)" : "";
-                const itype = document.getElementById('hb-item-type').value;
-                const desc = document.getElementById('hb-item-desc').value;
-                const imgData = document.getElementById('hb-item-image-data').value || "";
-
-                await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
+                const name = getSafeValue('hb-item-name'); if(!name) return alert("Name!");
+                const iData = {
                     name, category: 'item',
-                    imageData: imgData, // Save Image
-                    dmg: `${rarity} ${attune}`, // Meta 1
-                    type: itype, // Meta 2
-                    props: desc, // Body
-                    isParchment: true, // Flag for Visual Render
-                    timestamp
-                });
+                    imageData: getSafeValue('hb-item-image-data'),
+                    dmg: getSafeValue('hb-item-rarity'),
+                    type: getSafeValue('hb-item-type'),
+                    props: `${document.getElementById('hb-item-attune').checked?"(Attunement)":""} ${getSafeValue('hb-item-desc')}`,
+                    isParchment: true, timestamp
+                };
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), iData);
                 
-                window.updateItemPreview(); // Ensure DOM is fresh
+                window.updateItemPreview(); // Ensure updated visual
                 title = name;
                 content = document.getElementById('hb-item-card-preview').outerHTML;
                 tab = 'lootNotes';
-                
-                if(!createNote) { 
-                    alert("Saved to Inventory!"); 
-                    document.getElementById('hb-item-name').value=''; document.getElementById('hb-item-desc').value='';
-                    document.getElementById('hb-item-image-input').value=''; document.getElementById('prev-item-img').classList.add('hidden');
-                    return; 
-                }
+                if(!createNote) { alert("Saved to Inventory!"); return; }
             }
 
             structuredNotes[tab].unshift({ id, title, content, timestamp });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
-            if(confirm(`Saved to Inventory & Notes! Switch tab?`)) { window.switchTab('notes'); window.switchSubTab(tab); }
-        } catch(e) { console.error("Master Save Error:", e); }
+            if(confirm(`Saved to Inventory & Notes! Go to notes?`)) { window.switchTab('notes'); window.switchSubTab(tab); }
+            
+        } catch(e) { console.error("Save Failed:", e); alert("Error saving: " + e.message); }
     };
 
-    // --- 5. FILTERS ---
+    // 7. COMMUNITY SHARING
     window.filterCommunity = (type) => {
         window.currentCommunityFilter = type;
         document.querySelectorAll('.com-filter-btn').forEach(btn => {
@@ -2565,17 +2594,23 @@
         window.loadCommunityItems(); 
     };
 
-    // --- 6. COMMUNITY ---
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) return;
         try {
-            const docRef = getDocRef('dm_toolkit_homebrew_items', id);
-            const snapshot = await getDoc(docRef); 
+            // Robust fetch using both possible methods
+            const docRef = window.doc(getCol('dm_toolkit_homebrew_items'), id);
+            let snapshot = await getDoc(docRef);
+            if (!snapshot.exists()) {
+                 snapshot = await getDoc(window.doc(window.db, 'artifacts/default/sessions/'+window.userId+'/data/dm_toolkit_homebrew_items/'+id));
+            }
             if (!snapshot.exists()) { alert("Item not found!"); return; }
+            
             const item = snapshot.data();
             if(!confirm(`Publish "${item.name}"?`)) return;
-            await window.addDoc(getPublicBrewCol(), { ...item, sharedBy: "Fellow DM", likes: 0, timestamp: new Date().toISOString() });
+            
+            await window.addDoc(getPublicBrewCol(), { ...item, sharedBy: "Fellow DM", timestamp: new Date().toISOString() });
             alert("Published!");
+            window.filterCommunity('all');
         } catch(e) { console.error(e); alert("Error: " + e.message); }
     };
 
@@ -2583,53 +2618,52 @@
         try {
             const item = JSON.parse(decodeURIComponent(dataString));
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), item);
+            
             let noteContent = "", tab = "lootNotes";
             if (item.category === 'monster') {
                 tab = "enemyNotes";
-                await window.addDoc(getCol('dm_toolkit_statblocks'), { name: item.name, hp: parseInt(item.hp), ac: parseInt(item.ac), toHit: parseInt(item.tohit), initMod: parseInt(item.init), dmg: `${item.atk}: ${item.dmg}`, timestamp: new Date().toISOString() });
-                noteContent = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { name: item.name, hp: parseInt(item.hp)||10, ac: parseInt(item.ac)||10, toHit: parseInt(item.tohit)||0, initMod: parseInt(item.init)||0, dmg: `${item.atk}: ${item.dmg}`, timestamp: new Date().toISOString() });
+                noteContent = generateMonsterHTML(item);
             } 
-            // Render Parchment for Items too now
             else if (item.isParchment || item.category === 'weapon' || item.category === 'item') { 
                 noteContent = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props); 
             } 
             else { noteContent = `<strong>${item.name}</strong><br>${item.props}`; }
-
+            
             structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: item.name + " (Imported)", content: noteContent, timestamp: new Date().toISOString() });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
             alert(`Imported ${item.name}!`);
         } catch(e) { console.error(e); alert("Import failed."); }
     };
 
-    window.deleteCommunityItem = async (id) => {
-        if(!confirm("ADMIN: Delete?")) return;
-        try { await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id)); alert("Deleted."); } catch(e) { console.error(e); }
-    };
+    window.deleteCommunityItem = async (id) => { if(!confirm("ADMIN: Delete?")) return; try { await window.deleteDoc(window.doc(window.db, 'aegis_community_items', id)); alert("Deleted."); } catch(e) { console.error(e); } };
+    window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(window.doc(getCol('dm_toolkit_homebrew_items'), id)); };
 
-    // --- 7. LOADERS ---
     window.loadCommunityItems = () => {
         const list = document.getElementById('community-list');
-        const q = window.query(getPublicBrewCol(), window.limit(100));
+        const q = window.query(getPublicBrewCol(), window.limit(50));
         window.unsubCommunity = window.onSnapshot(q, (snap) => {
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs col-span-full pt-10">No items.</p>'; return; }
+            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs col-span-full pt-10">No items found.</p>'; return; }
             let items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
+
             if (window.currentCommunityFilter !== 'all') items = items.filter(i => i.category === window.currentCommunityFilter || (window.currentCommunityFilter==='item' && i.category==='magic'));
             items.sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
             list.innerHTML = '';
+
             items.forEach(item => {
                 const itemString = encodeURIComponent(JSON.stringify(item));
                 const isAdmin = (window.userId === ADMIN_ID);
                 const deleteBtn = isAdmin ? `<button onclick="window.deleteCommunityItem('${item.id}')" class="absolute top-2 right-2 z-50 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold shadow hover:bg-red-500">×</button>` : '';
+                
                 let visualHTML = "";
                 if (item.category === 'monster') {
-                    const rawHTML = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
-                    visualHTML = `<div class="transform scale-95 origin-top">${rawHTML}</div>`;
+                    visualHTML = `<div class="transform scale-95 origin-top">${generateMonsterHTML(item)}</div>`;
                 } else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
-                    // Use parchment style for Items too
                     visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
                 } else {
                     visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""} ${item.type || ""}</div><div class="text-xs text-gray-500 mt-2 italic line-clamp-4">${item.props || ""}</div></div>`;
                 }
+
                 const card = document.createElement('div');
                 card.className = "break-inside-avoid mb-4 bg-gray-800 rounded-xl border border-gray-700 shadow-lg overflow-hidden hover:shadow-xl transition relative group";
                 card.innerHTML = `${deleteBtn}<div class="p-1">${visualHTML}</div><div class="bg-gray-900/90 p-2 flex justify-center border-t border-gray-700"><button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-6 py-1.5 rounded-full shadow transition">Save to Collection</button></div>`;
@@ -2637,8 +2671,6 @@
             });
         });
     };
-
-    window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', id)); };
     
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
@@ -2652,8 +2684,7 @@
             items.forEach(item => {
                 let visualHTML = "";
                 if (item.category === 'monster') {
-                    const rawHTML = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
-                    visualHTML = `<div class="transform scale-90 origin-top-left">${rawHTML}</div>`;
+                    visualHTML = `<div class="transform scale-90 origin-top-left">${generateMonsterHTML(item)}</div>`;
                 } else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
                     visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
                 } else {
