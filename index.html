@@ -887,10 +887,11 @@
 
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    
-    // FIX: Added 'limit' and 'orderBy' to this list
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
+    // 🟢 1. ANALYTICS IMPORT (Must be here)
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
     // --- 1. FIREBASE SETUP ---
     const manualFirebaseConfig = {
@@ -900,9 +901,15 @@
         storageBucket: "aegisdmtoolkit.firebasestorage.app",
         messagingSenderId: "654767294266",
         appId: "1:654767294266:web:fbee20be7d458fb7d6f203",
+        
+        // 🟢 2. MEASUREMENT ID (Must be here)
         measurementId: "G-S0Y2NKNG7R"
     };
     const app = initializeApp(manualFirebaseConfig);
+    
+    // 🟢 3. START ANALYTICS (Must be here)
+    const analytics = getAnalytics(app);
+
     window.db = getFirestore(app);
     window.auth = getAuth(app);
     window.userId = null; 
