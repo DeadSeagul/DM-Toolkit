@@ -577,6 +577,7 @@
                 </div>
             </div>
 
+           <!-- Homebrew Tab (Items Updated to Parchment Style) -->
             <div id="homebrew" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl border border-orange-500/30">
                     <div class="flex justify-between items-center mb-4">
@@ -590,19 +591,18 @@
                         </div>
                     </div>
 
+                    <!-- 1. MONSTER BUILDER -->
                     <div id="brew-monster-area" class="animate-fade-in">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div class="space-y-2">
                                 <label class="block text-xs text-gray-500 uppercase">Name & Type</label>
                                 <input type="text" id="hb-mon-name" placeholder="Name (e.g. Void Stalker)" class="w-full p-2 rounded input-style text-sm font-bold mb-1">
                                 <input type="text" id="hb-mon-type" placeholder="Type (e.g. Medium Undead)" class="w-full p-2 rounded input-style text-xs">
-
                                 <div class="grid grid-cols-3 gap-2">
                                     <div><label class="block text-[10px] text-gray-500 uppercase">AC</label><input type="number" id="hb-mon-ac" placeholder="15" class="w-full p-2 rounded input-style text-sm text-center"></div>
                                     <div><label class="block text-[10px] text-gray-500 uppercase">HP</label><input type="number" id="hb-mon-hp" placeholder="45" class="w-full p-2 rounded input-style text-sm text-center"></div>
                                     <div><label class="block text-[10px] text-gray-500 uppercase">Spd</label><input type="text" id="hb-mon-spd" placeholder="30 ft." class="w-full p-2 rounded input-style text-sm text-center"></div>
                                 </div>
-
                                 <label class="block text-xs text-gray-500 uppercase mt-2">Ability Scores</label>
                                 <div class="grid grid-cols-6 gap-1">
                                     <input type="number" id="hb-mon-str" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="STR">
@@ -613,59 +613,47 @@
                                     <input type="number" id="hb-mon-cha" placeholder="10" class="p-1 rounded input-style text-xs text-center" title="CHA">
                                 </div>
                             </div>
-
                             <div class="space-y-2">
                                 <label class="block text-xs text-gray-500 uppercase">Combat Stats</label>
                                 <div class="grid grid-cols-2 gap-2">
                                     <input type="number" id="hb-mon-init" placeholder="Init Mod (+2)" class="w-full p-2 rounded input-style text-sm">
                                     <input type="number" id="hb-mon-tohit" placeholder="Hit Bonus (+5)" class="w-full p-2 rounded input-style text-sm">
                                 </div>
-                                
                                 <label class="block text-xs text-gray-500 uppercase">Main Attack</label>
                                 <input type="text" id="hb-mon-atkname" placeholder="Attack Name (e.g. Claw)" class="w-full p-2 rounded input-style text-sm">
                                 <input type="text" id="hb-mon-dmg" placeholder="Damage (e.g. 1d6 + 3 slashing)" class="w-full p-2 rounded input-style text-sm">
-                                
                                 <label class="block text-xs text-gray-500 uppercase">Abilities / Actions (Text)</label>
                                 <textarea id="hb-mon-desc" rows="2" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="Multiattack. The monster makes two attacks..."></textarea>
                             </div>
                         </div>
-
                         <button onclick="window.previewHomebrewMonster()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg mb-4 transition">👁️ Generate Statblock Preview</button>
-
-                        <div id="hb-monster-preview" class="hidden mb-4 border border-yellow-700/50 rounded-lg overflow-hidden shadow-inner">
-                            </div>
-
+                        <div id="hb-monster-preview" class="hidden mb-4 border border-yellow-700/50 rounded-lg overflow-hidden shadow-inner"></div>
                         <div class="flex gap-2">
                             <button onclick="window.saveHomebrewMonster()" class="flex-1 bg-orange-700 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow-lg transition">💾 Save to Stats</button>
                             <button onclick="window.saveHomebrewToNotes('monster')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-lg transition">📜 Save Note</button>
                         </div>
                     </div>
 
+                    <!-- 2. WEAPON BUILDER (Parchment Style) -->
                     <div id="brew-weapon-area" class="hidden space-y-6 animate-fade-in">
-                        
                         <div class="bg-gray-900/80 p-4 rounded-xl border border-orange-500/30 space-y-4">
                             <h3 class="text-orange-300 text-xl font-bold mb-4 text-center">Forge New Weapon</h3>
-                            
                             <div>
                                 <label class="block text-orange-200 text-xs uppercase mb-1">Weapon Image</label>
                                 <input type="file" id="hb-wep-image-input" accept="image/*" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-600 file:text-white hover:file:bg-orange-700"/>
                                 <input type="hidden" id="hb-wep-image-data">
                             </div>
-
                             <input type="text" id="hb-wep-name" placeholder="Weapon Name (e.g., The Shadow's Edge)" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-3 focus:border-orange-500 outline-none" oninput="window.updateWeaponPreview()">
-                            
                             <div class="grid grid-cols-2 gap-4">
                                  <input type="text" id="hb-wep-meta1" placeholder="Rarity (e.g., Rare, Attunement)" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-2 text-sm focus:border-orange-500 outline-none" oninput="window.updateWeaponPreview()">
                                  <input type="text" id="hb-wep-meta2" placeholder="Type (e.g., +1 Sword)" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-2 text-sm focus:border-orange-500 outline-none" oninput="window.updateWeaponPreview()">
                             </div>
-
                             <textarea id="hb-wep-desc" rows="6" placeholder="Description & Mechanics..." class="w-full bg-gray-800 text-white border border-gray-700 rounded p-3 focus:border-orange-500 outline-none resize-none font-mono text-sm" oninput="window.updateWeaponPreview()"></textarea>
-
-                            <button onclick="window.saveHomebrewWeapon()" class="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 rounded-lg shadow-lg transition transform hover:scale-[1.02] active:scale-95 tracking-wider">
-                                FORGE WEAPON
-                            </button>
+                            <div class="flex gap-2">
+                                <button onclick="window.saveHomebrewWeapon()" class="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 rounded-lg shadow-lg transition tracking-wider">FORGE WEAPON</button>
+                                <button onclick="window.saveHomebrewToNotes('weapon')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-lg transition">📜 Save Note</button>
+                            </div>
                         </div>
-
                         <div>
                             <h3 class="text-orange-300 text-sm text-center mb-2">- Live Preview -</h3>
                             <div id="hb-weapon-card-preview" class="parchment-card">
@@ -677,62 +665,80 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
-                    <div id="brew-magic-area" class="hidden animate-fade-in">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div class="space-y-2">
-                                <label class="block text-xs text-gray-500 uppercase">Item Name</label>
-                                <input type="text" id="hb-item-name" placeholder="e.g. Ring of Jumping" class="w-full p-2 rounded input-style text-sm font-bold">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs text-gray-500 uppercase">Rarity</label>
-                                        <select id="hb-item-rarity" class="w-full p-2 rounded input-style text-sm">
-                                            <option value="Common">Common</option><option value="Uncommon">Uncommon</option>
-                                            <option value="Rare">Rare</option><option value="Very Rare">Very Rare</option>
-                                            <option value="Legendary">Legendary</option><option value="Artifact">Artifact</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-gray-500 uppercase">Type</label>
-                                        <select id="hb-item-type" class="w-full p-2 rounded input-style text-sm">
-                                            <option value="Wondrous Item">Wondrous</option><option value="Ring">Ring</option>
-                                            <option value="Wand">Wand</option><option value="Potion">Potion</option>
-                                            <option value="Scroll">Scroll</option><option value="Staff">Staff</option>
-                                            <option value="Armor">Armor</option>
-                                        </select>
-                                    </div>
+                    <!-- 3. MAGIC ITEM BUILDER (Parchment Style) -->
+                    <div id="brew-magic-area" class="hidden space-y-6 animate-fade-in">
+                        <div class="bg-gray-900/80 p-4 rounded-xl border border-pink-500/30 space-y-4">
+                            <h3 class="text-pink-300 text-xl font-bold mb-4 text-center">Craft Magic Item</h3>
+                            
+                            <!-- Image -->
+                            <div>
+                                <label class="block text-pink-200 text-xs uppercase mb-1">Item Image</label>
+                                <input type="file" id="hb-item-image-input" accept="image/*" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-700 file:text-white hover:file:bg-pink-600"/>
+                                <input type="hidden" id="hb-item-image-data">
+                            </div>
+
+                            <input type="text" id="hb-item-name" placeholder="Item Name (e.g., Ring of Jumping)" class="w-full bg-gray-800 text-white border border-gray-700 rounded p-3 focus:border-pink-500 outline-none" oninput="window.updateItemPreview()">
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-gray-500 uppercase">Rarity</label>
+                                    <select id="hb-item-rarity" class="w-full p-2 rounded input-style text-sm" onchange="window.updateItemPreview()">
+                                        <option value="Common">Common</option><option value="Uncommon">Uncommon</option>
+                                        <option value="Rare">Rare</option><option value="Very Rare">Very Rare</option>
+                                        <option value="Legendary">Legendary</option><option value="Artifact">Artifact</option>
+                                    </select>
                                 </div>
-                                <div class="flex items-center gap-2 pt-2">
-                                    <input type="checkbox" id="hb-item-attune" class="w-4 h-4 accent-indigo-500">
-                                    <label for="hb-item-attune" class="text-sm text-gray-300">Requires Attunement</label>
+                                <div>
+                                    <label class="block text-xs text-gray-500 uppercase">Type</label>
+                                    <select id="hb-item-type" class="w-full p-2 rounded input-style text-sm" onchange="window.updateItemPreview()">
+                                        <option value="Wondrous Item">Wondrous</option><option value="Ring">Ring</option>
+                                        <option value="Wand">Wand</option><option value="Potion">Potion</option>
+                                        <option value="Scroll">Scroll</option><option value="Staff">Staff</option>
+                                        <option value="Armor">Armor</option>
+                                    </select>
                                 </div>
                             </div>
-                            <div class="space-y-2">
-                                <label class="block text-xs text-gray-500 uppercase">Description / Effect</label>
-                                <textarea id="hb-item-desc" rows="3" class="w-full p-2 rounded input-style text-sm resize-none" placeholder="While wearing this ring..."></textarea>
-                                <div class="flex gap-2">
-                                    <button onclick="window.saveHomebrewMagicItem()" class="flex-1 bg-pink-700 hover:bg-pink-600 text-white font-bold py-2 rounded-lg shadow-lg transition">Save Item</button>
-                                    <button onclick="window.saveHomebrewToNotes('item')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 rounded-lg shadow-lg transition">📜 Save Note</button>
-                                </div>
+                            <div class="flex items-center gap-2 pt-2">
+                                <input type="checkbox" id="hb-item-attune" class="w-4 h-4 accent-pink-500" onchange="window.updateItemPreview()">
+                                <label for="hb-item-attune" class="text-sm text-gray-300">Requires Attunement</label>
+                            </div>
+
+                            <textarea id="hb-item-desc" rows="6" placeholder="Description & Effect..." class="w-full bg-gray-800 text-white border border-gray-700 rounded p-3 focus:border-pink-500 outline-none resize-none font-mono text-sm" oninput="window.updateItemPreview()"></textarea>
+
+                            <div class="flex gap-2">
+                                <button onclick="window.saveHomebrewMagicItem()" class="flex-1 bg-gradient-to-r from-pink-700 to-purple-700 hover:from-pink-600 hover:to-purple-600 text-white font-bold py-3 rounded-lg shadow-lg transition tracking-wider">CRAFT ITEM</button>
+                                <button onclick="window.saveHomebrewToNotes('item')" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-lg transition">📜 Save Note</button>
+                            </div>
+                        </div>
+
+                        <!-- Item Preview -->
+                        <div>
+                            <h3 class="text-pink-300 text-sm text-center mb-2">- Live Preview -</h3>
+                            <div id="hb-item-card-preview" class="parchment-card">
+                                <div class="card-title" id="prev-item-name">Item Name</div>
+                                <img id="prev-item-img" src="" class="card-image hidden">
+                                <div class="card-meta-1" id="prev-item-meta1">Rarity, Attunement</div>
+                                <div class="card-meta-2" id="prev-item-meta2">Item Type</div>
+                                <div class="card-body" id="prev-item-desc">Description...</div>
                             </div>
                         </div>
                     </div>
                     
-                   <div id="brew-community-area" class="hidden animate-fade-in">
-                        
+                    <!-- 4. COMMUNITY TAB -->
+                    <div id="brew-community-area" class="hidden animate-fade-in">
                         <div class="flex justify-center gap-2 mb-4 sticky top-0 z-20 bg-gray-900/90 backdrop-blur p-2 rounded-lg border border-gray-700 shadow-lg">
                             <button onclick="window.filterCommunity('all')" class="com-filter-btn active text-xs font-bold px-3 py-1 rounded-full bg-indigo-600 text-white transition">All</button>
                             <button onclick="window.filterCommunity('monster')" class="com-filter-btn text-xs font-bold px-3 py-1 rounded-full text-gray-400 hover:text-white transition">🐲 Monsters</button>
                             <button onclick="window.filterCommunity('weapon')" class="com-filter-btn text-xs font-bold px-3 py-1 rounded-full text-gray-400 hover:text-white transition">⚔️ Weapons</button>
                             <button onclick="window.filterCommunity('item')" class="com-filter-btn text-xs font-bold px-3 py-1 rounded-full text-gray-400 hover:text-white transition">💍 Items</button>
                         </div>
-
                         <div id="community-list" class="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4 pb-20">
                             <p class="text-center text-gray-500 text-xs pt-10 col-span-full">Loading the gallery...</p>
                         </div>
                     </div>
                     
+                    <!-- Shared Inventory List -->
                     <div id="my-inventory-container">
                         <hr class="border-gray-700 my-4">
                         <h3 class="text-sm font-bold text-indigo-300 mb-2">My Inventory</h3>
@@ -2304,17 +2310,14 @@
         output.innerHTML = html;
     };
 
-    // --- 16. HOMEBREW ENGINE (Direct Delete Fix) ---
+    // --- 16. HOMEBREW ENGINE (Complete: Items, Weapons, Monsters) ---
     
-    // 1. CONFIGURATION
     const getPublicBrewCol = () => window.collection(window.db, 'aegis_community_items');
     const ADMIN_ID = "DBFLOO3aeeZ4ySvDi2lSzUdTNzY2"; 
     const calcMod = (score) => { const m = Math.floor(((parseInt(score)||10) - 10) / 2); return m >= 0 ? `+${m}` : m; };
 
     // 2. UI SWITCHER
     window.unsubCommunity = null;
-    window.currentCommunityFilter = 'all';
-
     window.switchBrewMode = (mode, btn) => {
         if (window.unsubCommunity) { window.unsubCommunity(); window.unsubCommunity = null; }
         document.querySelectorAll('.brew-sub-tab').forEach(b => {
@@ -2339,35 +2342,32 @@
         }
     };
 
-    // --- 3. FILTERS ---
-    window.filterCommunity = (type) => {
-        window.currentCommunityFilter = type;
-        document.querySelectorAll('.com-filter-btn').forEach(btn => {
-            if (btn.textContent.toLowerCase().includes(type) || (type==='all' && btn.textContent==='All')) {
-                btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('text-gray-400');
-            } else {
-                btn.classList.remove('bg-indigo-600', 'text-white'); btn.classList.add('text-gray-400');
-            }
-        });
-        window.loadCommunityItems(); 
-    };
+    // --- 3. PREVIEW LOGIC ---
 
-    // --- 4. PREVIEW LOGIC ---
+    // A. WEAPON IMAGE
     const wepImgInput = document.getElementById('hb-wep-image-input');
     if(wepImgInput) {
-        wepImgInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                if (file.size > 500000) { alert("Image too large! Keep under 500KB."); this.value = ""; return; }
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = document.getElementById('prev-wep-img');
-                    if(img) { img.src = e.target.result; img.classList.remove('hidden'); }
-                    document.getElementById('hb-wep-image-data').value = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        wepImgInput.addEventListener('change', function(event) { handleImageUpload(event, 'hb-wep-image-data', 'prev-wep-img'); });
+    }
+    // B. ITEM IMAGE
+    const itemImgInput = document.getElementById('hb-item-image-input');
+    if(itemImgInput) {
+        itemImgInput.addEventListener('change', function(event) { handleImageUpload(event, 'hb-item-image-data', 'prev-item-img'); });
+    }
+
+    // Generic Image Handler
+    function handleImageUpload(event, hiddenInputId, previewImgId) {
+        const file = event.target.files[0];
+        if (file) {
+            if (file.size > 500000) { alert("Image too large! Keep under 500KB."); event.target.value = ""; return; }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById(previewImgId);
+                if(img) { img.src = e.target.result; img.classList.remove('hidden'); }
+                document.getElementById(hiddenInputId).value = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
     }
 
     window.updateWeaponPreview = () => {
@@ -2375,6 +2375,15 @@
         document.getElementById('prev-wep-meta1').textContent = document.getElementById('hb-wep-meta1').value || "Rarity, Attunement";
         document.getElementById('prev-wep-meta2').textContent = document.getElementById('hb-wep-meta2').value || "Weapon Type";
         document.getElementById('prev-wep-desc').innerText = document.getElementById('hb-wep-desc').value || "Description mechanics...";
+    };
+
+    window.updateItemPreview = () => {
+        document.getElementById('prev-item-name').textContent = document.getElementById('hb-item-name').value || "Item Name";
+        const rarity = document.getElementById('hb-item-rarity').value;
+        const attune = document.getElementById('hb-item-attune').checked ? "(Requires Attunement)" : "";
+        document.getElementById('prev-item-meta1').textContent = `${rarity} ${attune}`;
+        document.getElementById('prev-item-meta2').textContent = document.getElementById('hb-item-type').value;
+        document.getElementById('prev-item-desc').innerText = document.getElementById('hb-item-desc').value || "Description...";
     };
 
     window.previewHomebrewMonster = () => {
@@ -2391,13 +2400,13 @@
         const atkName = document.getElementById('hb-mon-atkname').value || "Attack";
         const dmg = document.getElementById('hb-mon-dmg').value || "1d4";
         const desc = document.getElementById('hb-mon-desc').value || "";
-
         const preview = document.getElementById('hb-monster-preview');
         if(!preview) return;
         preview.classList.remove('hidden');
         preview.innerHTML = generateMonsterHTML(name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atkName, dmg, desc);
     };
 
+    // --- HTML GENERATORS ---
     const generateMonsterHTML = (name, type, ac, hp, spd, str, dex, con, int, wis, cha, init, toHit, atk, dmg, desc) => {
         return `<div class="dnd-statblock text-left text-sm" style="width:100%; margin-bottom:10px;"><div class="dnd-header">${name}</div><div class="italic text-black text-xs mb-2">${type}</div><div class="tapered-rule"></div><div class="text-red-900 font-serif"><p><strong>AC</strong> ${ac}</p><p><strong>HP</strong> ${hp}</p><p><strong>Speed</strong> ${spd}</p></div><div class="tapered-rule"></div><div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold"><div>STR<br>${str} (${calcMod(str)})</div><div>DEX<br>${dex} (${calcMod(dex)})</div><div>CON<br>${con} (${calcMod(con)})</div><div>INT<br>${int} (${calcMod(int)})</div><div>WIS<br>${wis} (${calcMod(wis)})</div><div>CHA<br>${cha} (${calcMod(cha)})</div></div><div class="tapered-rule"></div><div class="text-black mt-2 space-y-2">${desc ? `<p>${desc.replace(/\n/g, '<br>')}</p>` : ''}<div class="dnd-section-title border-b border-red-900 text-red-900 font-bold mt-2">Actions</div><p><strong class="italic font-bold text-black">${atk}.</strong> <span class="text-black"><em>Melee:</em> +${toHit} hit. <em>Hit:</em> ${dmg}.</span></p></div></div>`;
     };
@@ -2405,7 +2414,7 @@
         return `<div class="parchment-card" style="margin: 10px auto; width: 100%;"><div class="card-title">${name}</div>${imgData ? `<img src="${imgData}" class="card-image">` : ''}<div class="card-meta-1">${meta1}</div><div class="card-meta-2">${meta2}</div><div class="card-body">${desc}</div></div>`;
     };
 
-    // --- 5. SAVING FUNCTIONS (Master Save) ---
+    // --- 4. MASTER SAVE & DATABASE ---
     window.saveHomebrewMonster = async () => { window.saveHomebrewToNotes('monster', false); };
     window.saveHomebrewWeapon = async () => { window.saveHomebrewToNotes('weapon', false); };
     window.saveHomebrewMagicItem = async () => { window.saveHomebrewToNotes('item', false); };
@@ -2413,14 +2422,14 @@
     window.saveHomebrewToNotes = async (type, createNote = true) => {
         if (!window.isAuthReady) { alert("Login required."); return; }
         try {
-            let title, content, tab;
+            let title, content, tab, mData;
             const id = crypto.randomUUID();
             const timestamp = new Date().toISOString();
 
             if (type === 'monster') {
                 const name = document.getElementById('hb-mon-name').value.trim();
                 if (!name) return alert("Name required!");
-                const mData = {
+                mData = {
                     name, category: 'monster',
                     hp: document.getElementById('hb-mon-hp').value, ac: document.getElementById('hb-mon-ac').value,
                     init: document.getElementById('hb-mon-init').value, tohit: document.getElementById('hb-mon-tohit').value,
@@ -2434,7 +2443,7 @@
                 const fullDmg = `${mData.atk}: ${mData.dmg}`;
                 await window.addDoc(getCol('dm_toolkit_statblocks'), { name: mData.name, hp: parseInt(mData.hp), ac: parseInt(mData.ac), toHit: parseInt(mData.tohit), initMod: parseInt(mData.init), dmg: fullDmg, timestamp: mData.timestamp });
                 await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ? • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
-
+                
                 window.previewHomebrewMonster();
                 title = name + " (Homebrew)"; content = document.getElementById('hb-monster-preview').innerHTML; tab = 'enemyNotes';
                 if(!createNote) { alert("Saved to Stats & Inventory!"); document.getElementById('hb-mon-name').value=''; return; }
@@ -2460,39 +2469,82 @@
                 }
             } 
             else {
+                // MAGIC ITEM
                 const name = document.getElementById('hb-item-name').value.trim();
                 if (!name) return alert("Name required!");
-                const fullProps = `${document.getElementById('hb-item-attune').checked ? "(Attunement)" : ""} ${document.getElementById('hb-item-desc').value}`;
+                const rarity = document.getElementById('hb-item-rarity').value;
+                const attune = document.getElementById('hb-item-attune').checked ? "(Attunement)" : "";
+                const itype = document.getElementById('hb-item-type').value;
+                const desc = document.getElementById('hb-item-desc').value;
+                const imgData = document.getElementById('hb-item-image-data').value || "";
+
                 await window.addDoc(getCol('dm_toolkit_homebrew_items'), {
-                    name, category: 'item', dmg: document.getElementById('hb-item-rarity').value, type: document.getElementById('hb-item-type').value, props: fullProps, timestamp
+                    name, category: 'item', imageData: imgData,
+                    dmg: `${rarity} ${attune}`, 
+                    type: itype, 
+                    props: desc, 
+                    isParchment: true, // Makes it show big in community
+                    timestamp
                 });
-                title = name; content = `${document.getElementById('hb-item-rarity').value}\n${document.getElementById('hb-item-desc').value}`; tab = 'lootNotes';
-                if(!createNote) { alert("Saved to Inventory!"); document.getElementById('hb-item-name').value=''; return; }
+                
+                // Generate HTML for Note
+                window.updateItemPreview();
+                title = name; 
+                content = document.getElementById('hb-item-card-preview').outerHTML;
+                tab = 'lootNotes';
+                
+                if(!createNote) { 
+                    alert("Saved to Inventory!"); 
+                    document.getElementById('hb-item-name').value=''; document.getElementById('hb-item-desc').value='';
+                    document.getElementById('hb-item-image-input').value=''; document.getElementById('prev-item-img').classList.add('hidden');
+                    return; 
+                }
             }
+
             structuredNotes[tab].unshift({ id, title, content, timestamp });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
             if(confirm(`Saved to Inventory & Notes! Switch to Notes?`)) { window.switchTab('notes'); window.switchSubTab(tab); }
         } catch(e) { console.error("Master Save Error:", e); }
     };
 
-    // --- 6. COMMUNITY SHARING ---
+    // --- 5. COMMUNITY & LIKES ---
+    window.filterCommunity = (type) => {
+        window.currentCommunityFilter = type;
+        document.querySelectorAll('.com-filter-btn').forEach(btn => {
+            if (btn.textContent.toLowerCase().includes(type) || (type==='all' && btn.textContent==='All')) {
+                btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('text-gray-400');
+            } else {
+                btn.classList.remove('bg-indigo-600', 'text-white'); btn.classList.add('text-gray-400');
+            }
+        });
+        window.loadCommunityItems(); 
+    };
+
+    window.toggleLike = async (id, currentLikes) => {
+        if(event) event.stopPropagation();
+        if(!window.isAuthReady) { alert("Login to like."); return; }
+        let likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
+        const isLiked = likedItems.includes(id);
+        let newLikes = parseInt(currentLikes) || 0;
+        if (isLiked) {
+            newLikes = Math.max(0, newLikes - 1);
+            likedItems = likedItems.filter(itemId => itemId !== id);
+        } else {
+            newLikes = newLikes + 1;
+            likedItems.push(id);
+        }
+        localStorage.setItem('aegis_liked_items', JSON.stringify(likedItems));
+        try { await window.updateDoc(window.doc(window.db, 'aegis_community_items', id), { likes: newLikes }); } catch(e) { console.error(e); }
+    };
+
     window.shareHomebrewItem = async (id) => {
         if(!window.isAuthReady) return;
         try {
-            // USE DIRECT PATH IF POSSIBLE
-            const docRef = window.doc(window.db, id); // Attempt using passed path first
-            let snapshot = await getDoc(docRef);
-            
-            // If not found, try building path manually (Fallback)
-            if (!snapshot.exists()) {
-                const fallbackRef = getDocRef('dm_toolkit_homebrew_items', id);
-                snapshot = await getDoc(fallbackRef);
-            }
-
+            const docRef = window.doc(getCol('dm_toolkit_homebrew_items'), id);
+            const snapshot = await getDoc(docRef); 
             if (!snapshot.exists()) { alert("Item not found!"); return; }
             const item = snapshot.data();
             if(!confirm(`Publish "${item.name}"?`)) return;
-
             await window.addDoc(getPublicBrewCol(), { ...item, sharedBy: "Fellow DM", likes: 0, timestamp: new Date().toISOString() });
             alert("Published! Check Community tab.");
             window.filterCommunity('all');
@@ -2503,19 +2555,21 @@
         try {
             const item = JSON.parse(decodeURIComponent(dataString));
             await window.addDoc(getCol('dm_toolkit_homebrew_items'), item);
-
             let noteContent = "", tab = "lootNotes";
             if (item.category === 'monster') {
                 tab = "enemyNotes";
                 await window.addDoc(getCol('dm_toolkit_statblocks'), { name: item.name, hp: parseInt(item.hp), ac: parseInt(item.ac), toHit: parseInt(item.tohit), initMod: parseInt(item.init), dmg: `${item.atk}: ${item.dmg}`, timestamp: new Date().toISOString() });
                 noteContent = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
             } 
-            else if (item.isParchment || item.category === 'weapon') { noteContent = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props); } 
-            else { noteContent = `<strong>${item.name}</strong><br>${item.props}`; }
-
+            else if (item.isParchment || item.category === 'weapon' || item.category === 'item') { 
+                // Magic Item / Weapon Parchment
+                noteContent = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props); 
+            } else { 
+                noteContent = `<strong>${item.name}</strong><br>${item.props}`; 
+            }
             structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: item.name + " (Imported)", content: noteContent, timestamp: new Date().toISOString() });
             await window.saveStructuredNotes(tab, structuredNotes[tab]);
-            alert(`Imported ${item.name}!`);
+            alert(`Imported ${item.name} to Inventory & Notes!`);
         } catch(e) { console.error(e); alert("Import failed."); }
     };
 
@@ -2532,20 +2586,24 @@
             let items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
 
             if (window.currentCommunityFilter !== 'all') items = items.filter(i => i.category === window.currentCommunityFilter || (window.currentCommunityFilter==='item' && i.category==='magic'));
-            // Newest First
-            items.sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
-
+            items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+            const likedItems = JSON.parse(localStorage.getItem('aegis_liked_items') || '[]');
+            
             list.innerHTML = '';
             items.forEach(item => {
                 const itemString = encodeURIComponent(JSON.stringify(item));
                 const isAdmin = (window.userId === ADMIN_ID);
                 const deleteBtn = isAdmin ? `<button onclick="window.deleteCommunityItem('${item.id}')" class="absolute top-2 right-2 z-50 bg-red-600 text-white w-6 h-6 rounded-full text-xs font-bold shadow hover:bg-red-500">×</button>` : '';
-                
+                const likes = item.likes || 0;
+                const isLiked = likedItems.includes(item.id);
+                const heartColor = isLiked ? 'text-red-500' : 'text-gray-600 hover:text-red-400';
+                const heartIcon = isLiked ? '♥' : '♡';
+
                 let visualHTML = "";
                 if (item.category === 'monster') {
                     const rawHTML = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
                     visualHTML = `<div class="transform scale-95 origin-top">${rawHTML}</div>`;
-                } else if (item.category === 'weapon' || item.isParchment) {
+                } else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
                     visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
                 } else {
                     visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""} ${item.type || ""}</div><div class="text-xs text-gray-500 mt-2 italic line-clamp-4">${item.props || ""}</div></div>`;
@@ -2553,29 +2611,21 @@
 
                 const card = document.createElement('div');
                 card.className = "break-inside-avoid mb-4 bg-gray-800 rounded-xl border border-gray-700 shadow-lg overflow-hidden hover:shadow-xl transition relative group";
-                card.innerHTML = `${deleteBtn}<div class="p-1">${visualHTML}</div><div class="bg-gray-900/90 p-2 flex justify-center border-t border-gray-700"><button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-6 py-1.5 rounded-full shadow transition">Save to Collection</button></div>`;
+                card.innerHTML = `${deleteBtn}<div class="p-1">${visualHTML}</div><div class="bg-gray-900/90 p-2 flex justify-between items-center border-t border-gray-700"><button onclick="window.toggleLike('${item.id}', ${likes})" class="flex items-center gap-1 text-sm font-bold ${heartColor} transition"><span>${heartIcon}</span> ${likes}</button><button onclick="window.importCommunityItem('${itemString}')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow transition">Save to Collection</button></div>`;
                 list.appendChild(card);
             });
         });
     };
 
-    // FIX: DELETE using Direct Address Logic
-    window.deleteHomebrewWeapon = async (docPath) => { 
-        if(!confirm("Delete?")) return; 
-        try { await window.deleteDoc(window.doc(window.db, docPath)); } 
-        catch(e) { console.error(e); alert("Delete failed."); }
-    };
+    // 7. INVENTORY LISTENER
+    window.deleteHomebrewWeapon = async (id) => { if(!confirm("Delete?")) return; await window.deleteDoc(window.doc(getCol('dm_toolkit_homebrew_items'), id)); };
     
-    // 7. INVENTORY LISTENER (Capture Exact Path)
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
             const list = document.getElementById('homebrew-weapon-list'); if(!list) return;
             if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; return; }
-            
-            // Capture Full Ref Path to handle old/new folder structures
-            const items = []; snap.forEach(d => items.push({id: d.id, refPath: d.ref.path, ...d.data()}));
-            
+            const items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
             items.sort((a,b) => a.name.localeCompare(b.name)); 
             list.innerHTML = '';
             list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20";
@@ -2584,16 +2634,14 @@
                 if (item.category === 'monster') {
                     const rawHTML = generateMonsterHTML(item.name, item.type, item.ac, item.hp, item.spd, item.str, item.dex, item.con, item.int, item.wis, item.cha, item.init, item.tohit, item.atk, item.dmg, item.desc);
                     visualHTML = `<div class="transform scale-90 origin-top-left">${rawHTML}</div>`;
-                } else if (item.category === 'weapon' || item.isParchment) {
+                } else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
                     visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
                 } else {
                     visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""}</div></div>`;
                 }
                 const div = document.createElement('div'); 
                 div.className = 'break-inside-avoid mb-4 bg-gray-900 p-1 rounded border border-gray-700 relative shadow-lg';
-                
-                // Use item.refPath for robust deleting and sharing
-                div.innerHTML = `<div class="p-1">${visualHTML}</div><div class="flex justify-end gap-2 mt-2 p-2 border-t border-gray-700 bg-gray-800"><button onclick="window.shareHomebrewItem('${item.refPath}')" class="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase" title="Share">🌍 Share</button><button onclick="window.deleteHomebrewWeapon('${item.refPath}')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Delete</button></div>`;
+                div.innerHTML = `<div class="p-1">${visualHTML}</div><div class="flex justify-end gap-2 mt-2 p-2 border-t border-gray-700 bg-gray-800"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase" title="Share">🌍 Share</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Delete</button></div>`;
                 list.appendChild(div);
             });
         });
