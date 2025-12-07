@@ -2970,17 +2970,19 @@
         window.renderStructuredNotes(tab);
     };  
 
-    // 🟢 SAVE SRD MONSTER (Paste at bottom of script)
-    window.saveSrdToNotes = function(index) {
+    // 🟢 FINAL: Save SRD Monster (Asks for Campaign)
+    window.saveSrdToNotes = async function(index) {
         // 1. Get data
         const m = window.currentSrdResults ? window.currentSrdResults[index] : null;
         if (!m) { alert("Error: Could not find monster data."); return; }
 
-        // 2. XP Backup Table
+        // 🟢 2. ASK USER FOR CAMPAIGN (This opens the modal)
+        const targetCampaign = await window.promptForCampaign();
+        if (!targetCampaign) return; // User clicked Cancel
+
+        // 3. Format Content
         const xpTable = { "0": 10, "1/8": 25, "1/4": 50, "1/2": 100, "1": 200, "2": 450, "3": 700, "4": 1100, "5": 1800, "6": 2300, "7": 2900, "8": 3900, "9": 5000, "10": 5900, "11": 7200, "12": 8400, "13": 10000, "14": 11500, "15": 13000, "16": 15000, "17": 18000, "18": 20000, "19": 22000, "20": 25000, "21": 33000, "22": 41000, "23": 50000, "24": 62000, "30": 155000 };
         const finalXP = m.xp || xpTable[m.challenge_rating] || 0;
-
-        // 3. Format Helpers
         const speedStr = m.speed ? JSON.stringify(m.speed).replace(/[{"}]/g, '').replace(/,/g, ', ') : 'N/A';
         const fmtList = (val) => Array.isArray(val) ? val.join(', ') : (val || '-');
         
@@ -3000,32 +3002,27 @@
         if(m.charisma_save) saves.push(`Cha +${m.charisma_save}`);
         const savesStr = saves.length > 0 ? saves.join(', ') : '-';
 
-        // 4. Build HTML Content
         let content = `
             <div class="dnd-statblock">
             <div class="dnd-header">${m.name}</div>
             <div class="italic text-xs mb-2">${m.size} ${m.type}, ${m.alignment}</div>
             <div class="tapered-rule"></div>
-            
             <div class="text-sm text-red-900 leading-relaxed">
                 <p><strong>AC:</strong> ${m.armor_class} | <strong>HP:</strong> ${m.hit_points} (${m.hit_dice})</p>
                 <p><strong>Speed:</strong> ${speedStr}</p>
             </div>
-            
             <div class="tapered-rule"></div>
             <div class="grid grid-cols-6 text-center text-xs font-bold my-2 text-red-900">
                 <div>STR<br>${m.strength}</div><div>DEX<br>${m.dexterity}</div><div>CON<br>${m.constitution}</div>
                 <div>INT<br>${m.intelligence}</div><div>WIS<br>${m.wisdom}</div><div>CHA<br>${m.charisma}</div>
             </div>
             <div class="tapered-rule"></div>
-
             <div class="text-xs leading-relaxed text-red-900 space-y-1 mt-2">
                 <p><strong>Saves:</strong> <span class="text-black">${savesStr}</span></p>
                 <p><strong>Skills:</strong> <span class="text-black">${skillsStr}</span></p>
                 <p><strong>Senses:</strong> <span class="text-black">${m.senses || '-'}</span></p>
                 <p><strong>Languages:</strong> <span class="text-black">${m.languages || '-'}</span></p>
                 <p><strong>Challenge:</strong> <span class="text-black">${m.challenge_rating} (${finalXP.toLocaleString()} XP)</span></p>
-                
                 ${m.damage_vulnerabilities ? `<p><strong>Vulnerabilities:</strong> <span class="text-black">${fmtList(m.damage_vulnerabilities)}</span></p>` : ''}
                 ${m.damage_resistances ? `<p><strong>Resistances:</strong> <span class="text-black">${fmtList(m.damage_resistances)}</span></p>` : ''}
                 ${m.damage_immunities ? `<p><strong>Immunities:</strong> <span class="text-black">${fmtList(m.damage_immunities)}</span></p>` : ''}
@@ -3034,56 +3031,72 @@
             <div class="tapered-rule"></div>
         `;
 
-        if (m.special_abilities && m.special_abilities.length > 0) {
-             content += `<div class="dnd-section-title mt-2">Traits</div>`;
-             m.special_abilities.forEach(a => {
-                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
-            });
-        }
-
-        if (m.actions && m.actions.length > 0) {
-            content += `<div class="dnd-section-title mt-2">Actions</div>`;
-            m.actions.forEach(a => {
-                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
-            });
-        }
-
-        if (m.reactions && m.reactions.length > 0) {
-            content += `<div class="dnd-section-title mt-2">Reactions</div>`;
-            m.reactions.forEach(a => {
-                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
-            });
-        }
-
-        if (m.legendary_actions && m.legendary_actions.length > 0) {
-            content += `<div class="dnd-section-title mt-2">Legendary Actions</div>`;
-            content += `<p class="text-xs mb-2 text-black">The ${m.name} can take 3 legendary actions.</p>`;
-            m.legendary_actions.forEach(a => {
-                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
-            });
-        }
-
+        if (m.special_abilities) { content += `<div class="dnd-section-title mt-2">Traits</div>`; m.special_abilities.forEach(a => { content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`; }); }
+        if (m.actions) { content += `<div class="dnd-section-title mt-2">Actions</div>`; m.actions.forEach(a => { content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`; }); }
+        if (m.reactions) { content += `<div class="dnd-section-title mt-2">Reactions</div>`; m.reactions.forEach(a => { content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`; }); }
+        if (m.legendary_actions) { content += `<div class="dnd-section-title mt-2">Legendary Actions</div><p class="text-xs mb-2 text-black">The ${m.name} can take 3 legendary actions.</p>`; m.legendary_actions.forEach(a => { content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`; }); }
         content += `</div>`;
 
-        // 5. Save Logic
+        // 4. Save Logic
         if (!structuredNotes.enemyNotes) structuredNotes.enemyNotes = [];
         
         const newNote = {
             id: crypto.randomUUID(),
             title: `${m.name} (CR ${m.challenge_rating})`,
             content: content,
-            campaign: window.currentCampaign || 'Default Campaign', // 🟢 Tags note with active campaign
+            campaign: targetCampaign, // 🟢 Uses the chosen campaign!
             timestamp: new Date().toISOString()
         };
 
         structuredNotes.enemyNotes.unshift(newNote);
         window.saveStructuredNotes('enemyNotes', structuredNotes.enemyNotes);
         
-        if(window.currentSubTab === 'enemyNotes' && typeof window.renderStructuredNotes === 'function') {
-            window.renderStructuredNotes('enemyNotes');
+        // 5. Smart Redirect
+        if (targetCampaign !== window.currentCampaign) {
+            if(confirm(`Saved to "${targetCampaign}". Switch to that campaign to view it?`)) {
+                window.switchCampaign(targetCampaign);
+                window.switchTab('notes');
+                window.switchSubTab('enemyNotes');
+            }
+        } else {
+            // Already there, just refresh
+            if(window.currentTab === 'notes' && window.currentSubTab === 'enemyNotes') {
+                window.renderStructuredNotes('enemyNotes');
+            }
+            alert(`✅ Saved to ${targetCampaign}!`);
         }
-        
-        alert(`✅ Saved ${m.name} to Enemy Notes!`);
+    };
+
+        // 🟢 CAMPAIGN PICKER LOGIC
+    let saveResolve = null;
+
+    window.promptForCampaign = () => {
+        return new Promise((resolve) => {
+            saveResolve = resolve;
+            
+            const modal = document.getElementById('save-campaign-modal');
+            const select = document.getElementById('save-campaign-select');
+            
+            // Populate list
+            select.innerHTML = window.campaignList.map(c => 
+                `<option value="${c}" ${c === window.currentCampaign ? 'selected' : ''}>${c}</option>`
+            ).join('');
+            
+            modal.classList.remove('hidden');
+        });
+    };
+
+    window.confirmSaveCampaign = () => {
+        const select = document.getElementById('save-campaign-select');
+        const modal = document.getElementById('save-campaign-modal');
+        modal.classList.add('hidden');
+        if (saveResolve) saveResolve(select.value);
+    };
+
+    window.resolveSavePromise = (val) => {
+        const modal = document.getElementById('save-campaign-modal');
+        modal.classList.add('hidden');
+        if (saveResolve) saveResolve(val);
     };
     
 </script>
@@ -3137,7 +3150,25 @@
     </div>
 </div>
 
-
+<div id="save-campaign-modal" class="hidden fixed inset-0 z-[150] bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="card w-full max-w-sm p-6 rounded-xl shadow-2xl border border-indigo-500/50 bg-gray-900">
+        <h3 class="text-xl font-bold text-indigo-300 mb-2">Save to Campaign</h3>
+        <p class="text-gray-400 text-xs mb-4">Choose where to store this note.</p>
+        
+        <div class="space-y-3">
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Select Campaign</label>
+                <select id="save-campaign-select" class="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 text-sm focus:border-indigo-500 outline-none">
+                    </select>
+            </div>
+            
+            <div class="flex gap-2 pt-2">
+                <button onclick="window.resolveSavePromise(null)" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded transition">Cancel</button>
+                <button onclick="window.confirmSaveCampaign()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 rounded transition shadow-lg">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
         
 </body>
 </html>
