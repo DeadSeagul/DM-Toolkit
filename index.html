@@ -2790,70 +2790,121 @@
         document.getElementById('timer-sec').value = "00";
     };
 
-// 🟢 UPDATED FUNCTION: Save SRD Monster (Now with CR!)
+// 🟢 FINAL VERSION: Save SRD Monster (All Data Included)
     window.saveSrdToNotes = function(index) {
         // 1. Get data
         const m = window.currentSrdResults ? window.currentSrdResults[index] : null;
-        
         if (!m) { alert("Error: Could not find monster data."); return; }
 
-        // 2. Format HTML Content
+        // 2. Format Helpers
         const speedStr = m.speed ? JSON.stringify(m.speed).replace(/[{"}]/g, '').replace(/,/g, ', ') : 'N/A';
+        const fmtList = (val) => Array.isArray(val) ? val.join(', ') : (val || '-');
+        
+        // Handle Skills (API sometimes returns object, sometimes string)
+        let skillsStr = '-';
+        if (m.skills) {
+            if (typeof m.skills === 'object' && !Array.isArray(m.skills)) {
+                skillsStr = Object.entries(m.skills).map(([k,v]) => `${k.charAt(0).toUpperCase() + k.slice(1)} +${v}`).join(', ');
+            } else { skillsStr = m.skills; }
+        }
 
+        // Handle Saves
+        let saves = [];
+        if(m.strength_save) saves.push(`Str +${m.strength_save}`);
+        if(m.dexterity_save) saves.push(`Dex +${m.dexterity_save}`);
+        if(m.constitution_save) saves.push(`Con +${m.constitution_save}`);
+        if(m.intelligence_save) saves.push(`Int +${m.intelligence_save}`);
+        if(m.wisdom_save) saves.push(`Wis +${m.wisdom_save}`);
+        if(m.charisma_save) saves.push(`Cha +${m.charisma_save}`);
+        const savesStr = saves.length > 0 ? saves.join(', ') : '-';
+
+        // 3. Build HTML Content
         let content = `
             <div class="dnd-statblock">
             <div class="dnd-header">${m.name}</div>
             <div class="italic text-xs mb-2">${m.size} ${m.type}, ${m.alignment}</div>
             <div class="tapered-rule"></div>
-            <p><strong>AC:</strong> ${m.armor_class} | <strong>HP:</strong> ${m.hit_points} (${m.hit_dice})</p>
-            <p><strong>Speed:</strong> ${speedStr}</p>
-            <p><strong>Challenge:</strong> ${m.challenge_rating} <span class="text-gray-500 text-[10px]">(${m.xp || 0} XP)</span></p>
+            
+            <div class="text-sm text-red-900 leading-relaxed">
+                <p><strong>AC:</strong> ${m.armor_class} | <strong>HP:</strong> ${m.hit_points} (${m.hit_dice})</p>
+                <p><strong>Speed:</strong> ${speedStr}</p>
+            </div>
+            
             <div class="tapered-rule"></div>
-            <div class="grid grid-cols-6 text-center text-xs font-bold my-2">
+            <div class="grid grid-cols-6 text-center text-xs font-bold my-2 text-red-900">
                 <div>STR<br>${m.strength}</div><div>DEX<br>${m.dexterity}</div><div>CON<br>${m.constitution}</div>
                 <div>INT<br>${m.intelligence}</div><div>WIS<br>${m.wisdom}</div><div>CHA<br>${m.charisma}</div>
             </div>
             <div class="tapered-rule"></div>
+
+            <div class="text-xs leading-relaxed text-red-900 space-y-1 mt-2">
+                <p><strong>Saves:</strong> <span class="text-black">${savesStr}</span></p>
+                <p><strong>Skills:</strong> <span class="text-black">${skillsStr}</span></p>
+                <p><strong>Senses:</strong> <span class="text-black">${m.senses || '-'}</span></p>
+                <p><strong>Languages:</strong> <span class="text-black">${m.languages || '-'}</span></p>
+                <p><strong>Challenge:</strong> <span class="text-black">${m.challenge_rating} (${m.xp || 0} XP)</span></p>
+                
+                ${m.damage_vulnerabilities ? `<p><strong>Vulnerabilities:</strong> <span class="text-black">${fmtList(m.damage_vulnerabilities)}</span></p>` : ''}
+                ${m.damage_resistances ? `<p><strong>Resistances:</strong> <span class="text-black">${fmtList(m.damage_resistances)}</span></p>` : ''}
+                ${m.damage_immunities ? `<p><strong>Immunities:</strong> <span class="text-black">${fmtList(m.damage_immunities)}</span></p>` : ''}
+                ${m.condition_immunities ? `<p><strong>Condition Immunities:</strong> <span class="text-black">${fmtList(m.condition_immunities)}</span></p>` : ''}
+            </div>
+            <div class="tapered-rule"></div>
         `;
 
-        if (m.actions) {
-            content += `<div class="dnd-section-title">Actions</div>`;
-            m.actions.forEach(a => {
-                content += `<div class="mb-1"><strong>${a.name}.</strong> ${a.desc}</div>`;
-            });
-        }
-        
-        // Add Traits if they exist (Optional but nice)
-        if (m.special_abilities) {
+        // Traits
+        if (m.special_abilities && m.special_abilities.length > 0) {
              content += `<div class="dnd-section-title mt-2">Traits</div>`;
              m.special_abilities.forEach(a => {
-                content += `<div class="mb-1"><strong>${a.name}.</strong> ${a.desc}</div>`;
+                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
+            });
+        }
+
+        // Actions
+        if (m.actions && m.actions.length > 0) {
+            content += `<div class="dnd-section-title mt-2">Actions</div>`;
+            m.actions.forEach(a => {
+                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
+            });
+        }
+
+        // Reactions
+        if (m.reactions && m.reactions.length > 0) {
+            content += `<div class="dnd-section-title mt-2">Reactions</div>`;
+            m.reactions.forEach(a => {
+                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
+            });
+        }
+
+        // Legendary Actions
+        if (m.legendary_actions && m.legendary_actions.length > 0) {
+            content += `<div class="dnd-section-title mt-2">Legendary Actions</div>`;
+            content += `<p class="text-xs mb-2 text-black">The ${m.name} can take 3 legendary actions, choosing from the options below. Only one legendary action option can be used at a time and only at the end of another creature's turn. The ${m.name} regains spent legendary actions at the start of its turn.</p>`;
+            m.legendary_actions.forEach(a => {
+                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
             });
         }
 
         content += `</div>`;
 
-        // 3. Save to Enemy Notes
+        // 4. Save Logic
         if (!structuredNotes.enemyNotes) structuredNotes.enemyNotes = [];
         
         const newNote = {
             id: crypto.randomUUID(),
-            title: `${m.name} (CR ${m.challenge_rating})`, // Added CR to the Title too!
+            title: `${m.name} (CR ${m.challenge_rating})`,
             content: content,
             timestamp: new Date().toISOString()
         };
 
         structuredNotes.enemyNotes.unshift(newNote);
-
-        // 4. Save to Firebase
         window.saveStructuredNotes('enemyNotes', structuredNotes.enemyNotes);
         
-        // 5. Refresh UI
         if(window.currentSubTab === 'enemyNotes' && typeof window.renderStructuredNotes === 'function') {
             window.renderStructuredNotes('enemyNotes');
         }
         
-        alert(`✅ Saved ${m.name} to Enemy Notes!`);
+        alert(`✅ Saved ${m.name} (Full Data) to Enemy Notes!`);
     };
     
 </script>
