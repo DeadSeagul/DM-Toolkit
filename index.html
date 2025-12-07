@@ -3098,6 +3098,171 @@
         modal.classList.add('hidden');
         if (saveResolve) saveResolve(val);
     };
+
+        // ==========================================
+    // 🟢 UNIFIED CAMPAIGN SAVE SYSTEM (ALL TOOLS)
+    // ==========================================
+
+    // Helper: Smart Save & Redirect Logic
+    // This reduces repetitive code for all the functions below
+    window.finalizeSave = async (tab, noteObj, targetCampaign) => {
+        // 1. Add Campaign Tag
+        noteObj.campaign = targetCampaign;
+        
+        // 2. Add to Local List
+        if (!structuredNotes[tab]) structuredNotes[tab] = [];
+        structuredNotes[tab].unshift(noteObj);
+        
+        // 3. Save to Firebase
+        await window.saveStructuredNotes(tab, structuredNotes[tab]);
+
+        // 4. Smart Redirect (Ask if switching campaigns)
+        if (targetCampaign !== window.currentCampaign) {
+            if(confirm(`✅ Saved to "${targetCampaign}".\n\nSwitch to that campaign to view it?`)) {
+                window.switchCampaign(targetCampaign);
+                window.switchTab('notes');
+                window.switchSubTab(tab);
+            }
+        } else {
+            // If already on the right campaign, just refresh
+            if(window.currentTab === 'notes' && window.currentSubTab === tab) {
+                window.renderStructuredNotes(tab);
+            }
+            alert(`✅ Saved to ${targetCampaign}!`);
+        }
+    };
+
+    // 1. GENERIC AI CONTENT (Lore, Settlements, Loot)
+    window.saveGeneratedContent = async function(destinationTab) {
+        if (!window.isAuthReady) { alert("Please log in first."); return; }
+
+        // Ask for Campaign
+        const targetCampaign = await window.promptForCampaign();
+        if (!targetCampaign) return;
+
+        // Get Content
+        let content = document.getElementById('ai-output').innerHTML;
+        if (window.currentTab === 'loot') content = document.getElementById('loot-output').innerText;
+        
+        // Generate Note
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: generateTitleFromContent(content), 
+            content: content, 
+            timestamp: new Date().toISOString() 
+        };
+
+        await window.finalizeSave(destinationTab, newNote, targetCampaign);
+    };
+
+    // 2. COMBAT NPC GENERATOR
+    window.saveCombatNpcToNotes = async function(tab) {
+        if (!window.isAuthReady || !lastGeneratedNpc) return;
+
+        // Ask for Campaign
+        const targetCampaign = await window.promptForCampaign();
+        if (!targetCampaign) return;
+
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: `${lastGeneratedNpc.name} (CR ${lastGeneratedNpc.level_or_cr})`, 
+            content: document.getElementById('ai-output').innerHTML, 
+            timestamp: new Date().toISOString() 
+        };
+
+        await window.finalizeSave(tab, newNote, targetCampaign);
+    };
+
+    // 3. MONSTER GENERATOR
+    window.saveMonsterToNotes = async function() {
+        if (!window.isAuthReady || !lastGeneratedMonster) return;
+
+        // Ask for Campaign
+        const targetCampaign = await window.promptForCampaign();
+        if (!targetCampaign) return;
+
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: lastGeneratedMonster.name, 
+            content: document.getElementById('monster-output').innerHTML, 
+            timestamp: new Date().toISOString() 
+        };
+
+        await window.finalizeSave('enemyNotes', newNote, targetCampaign);
+    };
+
+    // 4. HOMEBREW (Weapons, Items, Monsters)
+    window.saveHomebrewToNotes = async (type, createNote = true) => {
+        if (!window.isAuthReady) { alert("Login required."); return; }
+        
+        try {
+            let title, content, tab, id = crypto.randomUUID(), timestamp = new Date().toISOString();
+            
+            // --- DATA GATHERING ---
+            if (type === 'monster') {
+                const mData = getMonsterData();
+                if(!mData.name) return alert("Name required!");
+                
+                // Save to Stats DB (Global)
+                const fullDmg = `${mData.atk}: ${mData.dmg}`;
+                await window.addDoc(getCol('dm_toolkit_statblocks'), { 
+                    name: mData.name, hp: parseInt(mData.hp)||10, ac: parseInt(mData.ac)||10, 
+                    toHit: parseInt(mData.tohit)||0, initMod: parseInt(mData.init)||0, dmg: fullDmg, timestamp 
+                });
+                
+                // Save to Inventory DB (Global)
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), { ...mData, props: `CR ${mData.cr} • ${mData.type}`, dmg: `HP ${mData.hp}`, type: `AC ${mData.ac}` });
+                
+                title = mData.name + " (Homebrew)";
+                content = generateMonsterHTML(mData);
+                tab = 'enemyNotes';
+                
+                if(!createNote) { alert("Saved to Stats & Inventory!"); document.getElementById('hb-mon-name').value=''; return; }
+            } 
+            else if (type === 'weapon') {
+                const name = getSafeValue('hb-wep-name'); if(!name) return alert("Name required!");
+                const wData = {
+                    name, category: 'weapon',
+                    imageData: getSafeValue('hb-wep-image-data'),
+                    dmg: getSafeValue('hb-wep-meta1'), type: getSafeValue('hb-wep-meta2'),
+                    props: getSafeValue('hb-wep-desc'), isParchment: true, timestamp
+                };
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), wData);
+                title = name;
+                content = generateWeaponHTML(wData.name, wData.imageData, wData.dmg, wData.type, wData.props);
+                tab = 'lootNotes';
+                if(!createNote) { alert("Saved to Inventory!"); return; }
+            } 
+            else {
+                const name = getSafeValue('hb-item-name'); if(!name) return alert("Name required!");
+                const iData = {
+                    name, category: 'item',
+                    imageData: getSafeValue('hb-item-image-data'),
+                    dmg: getSafeValue('hb-item-rarity'), type: getSafeValue('hb-item-type'),
+                    props: `${document.getElementById('hb-item-attune').checked?"(Attunement)":""} ${getSafeValue('hb-item-desc')}`,
+                    isParchment: true, timestamp
+                };
+                await window.addDoc(getCol('dm_toolkit_homebrew_items'), iData);
+                window.updateItemPreview(); 
+                title = name;
+                content = document.getElementById('hb-item-card-preview').outerHTML;
+                tab = 'lootNotes';
+                if(!createNote) { alert("Saved to Inventory!"); return; }
+            }
+
+            // --- NOTE SAVING (With Campaign Picker) ---
+            
+            // Ask for Campaign
+            const targetCampaign = await window.promptForCampaign();
+            if (!targetCampaign) return;
+
+            const newNote = { id, title, content, timestamp };
+            
+            // Use our helper to save and redirect
+            await window.finalizeSave(tab, newNote, targetCampaign);
+            
+        } catch(e) { console.error("Save Failed:", e); alert("Error saving: " + e.message); }
+    };
     
 </script>
 
