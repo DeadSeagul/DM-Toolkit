@@ -562,7 +562,21 @@
 
             <div id="notes" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Notes</h2>
+                    <div class="flex justify-between items-center mb-4 bg-gray-900 p-3 rounded-lg border border-indigo-900/50 shadow-inner">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <div class="bg-indigo-600 p-1.5 rounded-lg text-white">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                            </div>
+                            <div class="flex flex-col flex-1">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Active Campaign</label>
+                                <select id="campaign-selector" onchange="window.switchCampaign(this.value)" class="bg-transparent text-white font-bold text-sm outline-none cursor-pointer hover:text-indigo-300 transition w-full border-none p-0 focus:ring-0">
+                                    </select>
+                            </div>
+                        </div>
+                        <button onclick="window.createNewCampaign()" class="ml-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm whitespace-nowrap">
+                            + New
+                        </button>
+                    </div>
                     
                     <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4 overflow-x-auto">
                         <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="switchSubTab('prepNotes')">📜 General</button>
@@ -1944,8 +1958,6 @@
         list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
         
         try {
-            // 1. Build API URL
-            // We ask for 100 results to ensure we get a good pool of monsters to filter through
             let url = `https://api.open5e.com/monsters/?limit=100`; 
             if (rawQuery) url += `&search=${rawQuery}`;
             if (cr) url += `&challenge_rating=${cr}`; 
@@ -1953,20 +1965,18 @@
             const res = await fetch(url);
             const data = await res.json();
             
-            // 2. STRICT FILTERING (The Fix)
-            // Even if the API returns a "close match", we delete it if the CR is wrong.
+            // 🟢 IMPORTANT: Save results globally so the Save function can read them
             let results = data.results;
-            
-            if (cr) {
-                results = results.filter(m => m.challenge_rating == cr);
-            }
+            window.currentSrdResults = results; 
+
+            if (cr) { results = results.filter(m => m.challenge_rating == cr); }
 
             if (results.length === 0) {
                 list.innerHTML = '<p class="text-center text-gray-500 text-xs">No monsters found.</p>';
                 return;
             }
 
-            // 3. SORTING (Alphabetical or Relevance)
+            // Sorting
             if (rawQuery) {
                 const query = rawQuery.toLowerCase();
                 results.sort((a, b) => {
@@ -1974,22 +1984,17 @@
                     const nameB = b.name.toLowerCase();
                     if (nameA === query && nameB !== query) return -1;
                     if (nameB === query && nameA !== query) return 1;
-                    const startA = nameA.startsWith(query);
-                    const startB = nameB.startsWith(query);
-                    if (startA && !startB) return -1;
-                    if (!startA && startB) return 1;
                     return nameA.length - nameB.length;
                 });
             } else {
-                // If looking up by CR only, just sort A-Z
                 results.sort((a, b) => a.name.localeCompare(b.name));
             }
 
             list.innerHTML = '';
 
-            // 4. RENDER
+            // Render
             results.forEach((m, index) => {
-                const initMod = getMod(m.dexterity || 10);
+                const initMod = Math.floor((m.dexterity - 10) / 2);
                 const hp = m.hit_points || 10;
                 const ac = m.armor_class || 10;
                 const safeName = m.name.replace(/'/g, "\\'");
@@ -2006,30 +2011,27 @@
                                 <span class="text-[10px] text-gray-500">▼</span>
                             </div>
                             <div class="text-[10px] text-gray-400">
-                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp} • Init ${initMod >= 0 ? '+'+initMod : initMod}
+                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp}
                             </div>
                         </div>
-                        <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow-lg border border-green-500">
-                            + Add
-                        </button>
+                        <div class="flex gap-2">
+                            <button onclick="event.stopPropagation(); window.saveSrdToNotes(${index})" class="bg-yellow-700 hover:bg-yellow-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow border border-yellow-600" title="Save to Enemy Notes">
+                                📜 Note
+                            </button>
+                            <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow border border-green-500">
+                                + Add
+                            </button>
+                        </div>
                     </div>
 
                     <div id="${uniqueId}" class="hidden border-t border-gray-600">
                         <div class="dnd-statblock text-left text-xs sm:text-sm">
-                            <div class="dnd-property-line"><strong>Speed</strong> ${fmtSpeed(m.speed)}</div>
-                            <div class="dnd-property-line"><strong>Senses</strong> ${m.senses || '-'}</div>
-                            <div class="dnd-property-line"><strong>Languages</strong> ${m.languages || '-'}</div>
+                            <div class="dnd-property-line"><strong>Speed</strong> ${m.speed ? JSON.stringify(m.speed).replace(/[{"}]/g, '').replace(/,/g, ', ') : '30 ft.'}</div>
                             <div class="dnd-property-line"><strong>Stats</strong> 
-                                STR ${m.strength} (${fmtMod(m.strength)}), 
-                                DEX ${m.dexterity} (${fmtMod(m.dexterity)}), 
-                                CON ${m.constitution} (${fmtMod(m.constitution)}), 
-                                INT ${m.intelligence} (${fmtMod(m.intelligence)}), 
-                                WIS ${m.wisdom} (${fmtMod(m.wisdom)}), 
-                                CHA ${m.charisma} (${fmtMod(m.charisma)})
+                                STR ${m.strength}, DEX ${m.dexterity}, CON ${m.constitution}, 
+                                INT ${m.intelligence}, WIS ${m.wisdom}, CHA ${m.charisma}
                             </div>
-                            ${m.special_abilities ? m.special_abilities.map(a => `<div class="mt-2 leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('') : ''}
                             ${m.actions ? `<div class="dnd-section-title mt-2">Actions</div>${m.actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
-                            ${m.legendary_actions ? `<div class="dnd-section-title mt-2">Legendary Actions</div>${m.legendary_actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
                         </div>
                     </div>
                 `;
@@ -2800,7 +2802,289 @@
         document.getElementById('timer-sec').value = "00";
     };
 
+     // ==========================================
+    // 🟢 CAMPAIGN MANAGER (With Legacy Support)
+    // ==========================================
+
+    // 1. Initialize Global Variables
+    // We default to 'Default Campaign' so old notes have a home.
+    window.campaignList = ['Default Campaign'];
+    window.currentCampaign = localStorage.getItem('aegis_last_campaign') || 'Default Campaign';
+
+    // 2. Create New Campaign
+    window.createNewCampaign = async () => {
+        // Safety check to ensure list exists
+        if (!window.campaignList) window.campaignList = ['Default Campaign'];
+
+        const name = prompt("Enter new Campaign Name:");
+        if (!name) return; 
+
+        if (window.campaignList.includes(name)) { 
+            alert("That campaign already exists!"); 
+            window.switchCampaign(name);
+            return; 
+        }
+
+        // A. Update Local List & UI Immediately (No waiting)
+        window.campaignList.push(name);
+        window.switchCampaign(name); 
+        alert(`Created: ${name}`);
+
+        // B. Save List to Database
+        if (window.isAuthReady) {
+            try {
+                await window.setDoc(getSharedDoc('shared_notes'), { campaignList: window.campaignList }, { merge: true });
+            } catch(e) { console.error("DB Error:", e); }
+        }
+    };
+
+    // 3. Switch Campaign
+    window.switchCampaign = (val) => {
+        if (!val) return;
+        window.currentCampaign = val;
+        localStorage.setItem('aegis_last_campaign', val);
         
+        window.renderCampaignSelector();
+        // Refresh the notes list to apply the filter
+        if (typeof window.renderStructuredNotes === 'function') {
+            window.renderStructuredNotes(window.currentSubTab);
+        }
+    };
+
+    // 4. Render the Dropdown Menu
+    window.renderCampaignSelector = () => {
+        const sel = document.getElementById('campaign-selector');
+        if (!sel) return;
+
+        // Fallback: If current campaign isn't in list, select the first one
+        if (!window.campaignList.includes(window.currentCampaign)) {
+             window.currentCampaign = window.campaignList[0] || 'Default Campaign';
+        }
+
+        sel.innerHTML = window.campaignList.map(c => 
+            `<option value="${c}" ${c === window.currentCampaign ? 'selected' : ''}>${c}</option>`
+        ).join('');
+    };
+
+    // 5. UPDATE: Setup Listener (Loads Campaigns & Notes)
+    window.setupNotesListener = () => {
+        if(!window.isAuthReady) return;
+        
+        window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
+            if(doc.exists()) {
+                const d = doc.data();
+                
+                // Load Notes
+                structuredNotes = { 
+                    prepNotes: d.structuredPrepNotes||[], 
+                    pcNotes: d.structuredPcNotes||[], 
+                    enemyNotes: d.structuredEnemyNotes||[], 
+                    npcNotes: d.structuredNpcNotes||[], 
+                    lootNotes: d.structuredLootNotes||[] 
+                };
+                
+                // Load Campaign List (or create default if missing)
+                if (d.campaignList && Array.isArray(d.campaignList)) {
+                    window.campaignList = d.campaignList;
+                } else {
+                    window.campaignList = ['Default Campaign'];
+                }
+            } else {
+                // New User / Empty DB
+                structuredNotes = { prepNotes: [], pcNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+                window.campaignList = ['Default Campaign'];
+            }
+            
+            // Render UI
+            window.renderCampaignSelector();
+            if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
+        });
+    };
+
+    // 6. UPDATE: Render Notes (The Filter Logic)
+    window.renderStructuredNotes = function(tab) {
+        const list = document.getElementById(`${tab}-list`);
+        if(!list) return;
+
+        const searchInput = document.getElementById('notes-search');
+        const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+        const allNotes = structuredNotes[tab] || [];
+        
+        // 🟢 FILTER BY CAMPAIGN (With Legacy Protection)
+        const campaignNotes = allNotes.filter(n => {
+            // IF the note has a campaign tag, match it.
+            // IF the note has NO tag (it's old), assume it belongs to 'Default Campaign'.
+            const noteCampaign = n.campaign || 'Default Campaign';
+            
+            return noteCampaign === window.currentCampaign;
+        });
+
+        // Filter by Search Query
+        const filteredNotes = campaignNotes.filter(n => 
+            n.title.toLowerCase().includes(query) || 
+            n.content.toLowerCase().includes(query)
+        );
+
+        list.innerHTML = filteredNotes.length ? '' : `<p class="text-center text-gray-500 pt-8 text-xs">No notes in <strong>${window.currentCampaign}</strong>.</p>`;
+        
+        filteredNotes.forEach(n => {
+            const div = document.createElement('div'); 
+            div.className = 'note-item card p-0 rounded-lg shadow-md mb-2 bg-gray-800 border border-gray-700 overflow-hidden'; 
+            div.id = `note-${n.id}`;
+            
+            // Format Date
+            const dateStr = n.timestamp ? new Date(n.timestamp).toLocaleDateString() : "";
+
+            div.innerHTML = `
+            <div class="collapsible-header hover:bg-gray-700/50 transition p-3 cursor-pointer flex justify-between items-center" onclick="toggleCollapse('${n.id}')">
+                <span class="font-bold text-indigo-200 truncate text-sm">${n.title}</span>
+                <span class="text-gray-500 text-[10px]">▼</span>
+            </div>
+            <div class="collapsible-content bg-gray-900/50" id="content-${n.id}">
+                <div class="flex justify-between items-center p-2 border-b border-gray-700 bg-gray-800/30">
+                    <span class="text-[10px] text-gray-500">${dateStr}</span>
+                    <div class="flex gap-2">
+                        <button onclick="editNote('${n.id}', '${tab}')" class="text-xs text-blue-400 hover:text-white font-semibold">Edit</button>
+                        <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs text-red-400 hover:text-white font-semibold">Delete</button>
+                    </div>
+                </div>
+                <div class="p-3 whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">${n.content}</div>
+            </div>`;
+            
+            list.appendChild(div);
+        });
+    };
+
+    // 7. UPDATE: Add New Note (Tags it!)
+    window.addNewNote = (tab) => { 
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: 'New Note', 
+            content: 'Details...', 
+            campaign: window.currentCampaign, // <--- TAGS THE NOTE
+            timestamp: new Date().toISOString() 
+        };
+        
+        structuredNotes[tab].unshift(newNote); 
+        window.saveStructuredNotes(tab, structuredNotes[tab]);
+        window.renderStructuredNotes(tab);
+    };  
+
+    // 🟢 SAVE SRD MONSTER (Paste at bottom of script)
+    window.saveSrdToNotes = function(index) {
+        // 1. Get data
+        const m = window.currentSrdResults ? window.currentSrdResults[index] : null;
+        if (!m) { alert("Error: Could not find monster data."); return; }
+
+        // 2. XP Backup Table
+        const xpTable = { "0": 10, "1/8": 25, "1/4": 50, "1/2": 100, "1": 200, "2": 450, "3": 700, "4": 1100, "5": 1800, "6": 2300, "7": 2900, "8": 3900, "9": 5000, "10": 5900, "11": 7200, "12": 8400, "13": 10000, "14": 11500, "15": 13000, "16": 15000, "17": 18000, "18": 20000, "19": 22000, "20": 25000, "21": 33000, "22": 41000, "23": 50000, "24": 62000, "30": 155000 };
+        const finalXP = m.xp || xpTable[m.challenge_rating] || 0;
+
+        // 3. Format Helpers
+        const speedStr = m.speed ? JSON.stringify(m.speed).replace(/[{"}]/g, '').replace(/,/g, ', ') : 'N/A';
+        const fmtList = (val) => Array.isArray(val) ? val.join(', ') : (val || '-');
+        
+        let skillsStr = '-';
+        if (m.skills) {
+            if (typeof m.skills === 'object' && !Array.isArray(m.skills)) {
+                skillsStr = Object.entries(m.skills).map(([k,v]) => `${k.charAt(0).toUpperCase() + k.slice(1)} +${v}`).join(', ');
+            } else { skillsStr = m.skills; }
+        }
+
+        let saves = [];
+        if(m.strength_save) saves.push(`Str +${m.strength_save}`);
+        if(m.dexterity_save) saves.push(`Dex +${m.dexterity_save}`);
+        if(m.constitution_save) saves.push(`Con +${m.constitution_save}`);
+        if(m.intelligence_save) saves.push(`Int +${m.intelligence_save}`);
+        if(m.wisdom_save) saves.push(`Wis +${m.wisdom_save}`);
+        if(m.charisma_save) saves.push(`Cha +${m.charisma_save}`);
+        const savesStr = saves.length > 0 ? saves.join(', ') : '-';
+
+        // 4. Build HTML Content
+        let content = `
+            <div class="dnd-statblock">
+            <div class="dnd-header">${m.name}</div>
+            <div class="italic text-xs mb-2">${m.size} ${m.type}, ${m.alignment}</div>
+            <div class="tapered-rule"></div>
+            
+            <div class="text-sm text-red-900 leading-relaxed">
+                <p><strong>AC:</strong> ${m.armor_class} | <strong>HP:</strong> ${m.hit_points} (${m.hit_dice})</p>
+                <p><strong>Speed:</strong> ${speedStr}</p>
+            </div>
+            
+            <div class="tapered-rule"></div>
+            <div class="grid grid-cols-6 text-center text-xs font-bold my-2 text-red-900">
+                <div>STR<br>${m.strength}</div><div>DEX<br>${m.dexterity}</div><div>CON<br>${m.constitution}</div>
+                <div>INT<br>${m.intelligence}</div><div>WIS<br>${m.wisdom}</div><div>CHA<br>${m.charisma}</div>
+            </div>
+            <div class="tapered-rule"></div>
+
+            <div class="text-xs leading-relaxed text-red-900 space-y-1 mt-2">
+                <p><strong>Saves:</strong> <span class="text-black">${savesStr}</span></p>
+                <p><strong>Skills:</strong> <span class="text-black">${skillsStr}</span></p>
+                <p><strong>Senses:</strong> <span class="text-black">${m.senses || '-'}</span></p>
+                <p><strong>Languages:</strong> <span class="text-black">${m.languages || '-'}</span></p>
+                <p><strong>Challenge:</strong> <span class="text-black">${m.challenge_rating} (${finalXP.toLocaleString()} XP)</span></p>
+                
+                ${m.damage_vulnerabilities ? `<p><strong>Vulnerabilities:</strong> <span class="text-black">${fmtList(m.damage_vulnerabilities)}</span></p>` : ''}
+                ${m.damage_resistances ? `<p><strong>Resistances:</strong> <span class="text-black">${fmtList(m.damage_resistances)}</span></p>` : ''}
+                ${m.damage_immunities ? `<p><strong>Immunities:</strong> <span class="text-black">${fmtList(m.damage_immunities)}</span></p>` : ''}
+                ${m.condition_immunities ? `<p><strong>Condition Immunities:</strong> <span class="text-black">${fmtList(m.condition_immunities)}</span></p>` : ''}
+            </div>
+            <div class="tapered-rule"></div>
+        `;
+
+        if (m.special_abilities && m.special_abilities.length > 0) {
+             content += `<div class="dnd-section-title mt-2">Traits</div>`;
+             m.special_abilities.forEach(a => {
+                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
+            });
+        }
+
+        if (m.actions && m.actions.length > 0) {
+            content += `<div class="dnd-section-title mt-2">Actions</div>`;
+            m.actions.forEach(a => {
+                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
+            });
+        }
+
+        if (m.reactions && m.reactions.length > 0) {
+            content += `<div class="dnd-section-title mt-2">Reactions</div>`;
+            m.reactions.forEach(a => {
+                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
+            });
+        }
+
+        if (m.legendary_actions && m.legendary_actions.length > 0) {
+            content += `<div class="dnd-section-title mt-2">Legendary Actions</div>`;
+            content += `<p class="text-xs mb-2 text-black">The ${m.name} can take 3 legendary actions.</p>`;
+            m.legendary_actions.forEach(a => {
+                content += `<div class="mb-2 text-sm leading-snug"><strong class="italic text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
+            });
+        }
+
+        content += `</div>`;
+
+        // 5. Save Logic
+        if (!structuredNotes.enemyNotes) structuredNotes.enemyNotes = [];
+        
+        const newNote = {
+            id: crypto.randomUUID(),
+            title: `${m.name} (CR ${m.challenge_rating})`,
+            content: content,
+            campaign: window.currentCampaign || 'Default Campaign', // 🟢 Tags note with active campaign
+            timestamp: new Date().toISOString()
+        };
+
+        structuredNotes.enemyNotes.unshift(newNote);
+        window.saveStructuredNotes('enemyNotes', structuredNotes.enemyNotes);
+        
+        if(window.currentSubTab === 'enemyNotes' && typeof window.renderStructuredNotes === 'function') {
+            window.renderStructuredNotes('enemyNotes');
+        }
+        
+        alert(`✅ Saved ${m.name} to Enemy Notes!`);
+    };
     
 </script>
 
