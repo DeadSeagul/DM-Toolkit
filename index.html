@@ -2790,15 +2790,14 @@
         document.getElementById('timer-sec').value = "00";
     };
 
-// 🟢 CORRECTED FUNCTION: Save SRD Monster to Enemy Notes
+// 🟢 UPDATED FUNCTION: Save SRD Monster (Now with CR!)
     window.saveSrdToNotes = function(index) {
-        // 1. Get data from the global results we set in searchCompendium
+        // 1. Get data
         const m = window.currentSrdResults ? window.currentSrdResults[index] : null;
         
         if (!m) { alert("Error: Could not find monster data."); return; }
 
         // 2. Format HTML Content
-        // We handle the Speed object carefully so it doesn't print [object Object]
         const speedStr = m.speed ? JSON.stringify(m.speed).replace(/[{"}]/g, '').replace(/,/g, ', ') : 'N/A';
 
         let content = `
@@ -2808,6 +2807,7 @@
             <div class="tapered-rule"></div>
             <p><strong>AC:</strong> ${m.armor_class} | <strong>HP:</strong> ${m.hit_points} (${m.hit_dice})</p>
             <p><strong>Speed:</strong> ${speedStr}</p>
+            <p><strong>Challenge:</strong> ${m.challenge_rating} <span class="text-gray-500 text-[10px]">(${m.xp || 0} XP)</span></p>
             <div class="tapered-rule"></div>
             <div class="grid grid-cols-6 text-center text-xs font-bold my-2">
                 <div>STR<br>${m.strength}</div><div>DEX<br>${m.dexterity}</div><div>CON<br>${m.constitution}</div>
@@ -2822,14 +2822,23 @@
                 content += `<div class="mb-1"><strong>${a.name}.</strong> ${a.desc}</div>`;
             });
         }
+        
+        // Add Traits if they exist (Optional but nice)
+        if (m.special_abilities) {
+             content += `<div class="dnd-section-title mt-2">Traits</div>`;
+             m.special_abilities.forEach(a => {
+                content += `<div class="mb-1"><strong>${a.name}.</strong> ${a.desc}</div>`;
+            });
+        }
+
         content += `</div>`;
 
-        // 3. Save to Enemy Notes (Using correct variable 'structuredNotes')
+        // 3. Save to Enemy Notes
         if (!structuredNotes.enemyNotes) structuredNotes.enemyNotes = [];
         
         const newNote = {
             id: crypto.randomUUID(),
-            title: m.name,
+            title: `${m.name} (CR ${m.challenge_rating})`, // Added CR to the Title too!
             content: content,
             timestamp: new Date().toISOString()
         };
@@ -2839,13 +2848,13 @@
         // 4. Save to Firebase
         window.saveStructuredNotes('enemyNotes', structuredNotes.enemyNotes);
         
-        // 5. Refresh UI if we are looking at that tab
+        // 5. Refresh UI
         if(window.currentSubTab === 'enemyNotes' && typeof window.renderStructuredNotes === 'function') {
             window.renderStructuredNotes('enemyNotes');
         }
         
         alert(`✅ Saved ${m.name} to Enemy Notes!`);
-    };        
+    };
     
 </script>
 
