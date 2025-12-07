@@ -563,7 +563,21 @@
 
             <div id="notes" class="tab-content hidden">
                 <div class="card p-4 rounded-lg shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Notes</h2>
+                    <div class="flex justify-between items-center mb-4 bg-gray-900 p-3 rounded-lg border border-indigo-900/50 shadow-inner">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <div class="bg-indigo-600 p-1.5 rounded-lg text-white">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                            </div>
+                            <div class="flex flex-col flex-1">
+                                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Current Campaign</label>
+                                <select id="campaign-selector" onchange="window.switchCampaign(this.value)" class="bg-transparent text-white font-bold text-sm outline-none cursor-pointer hover:text-indigo-300 transition w-full border-none p-0 focus:ring-0">
+                                    </select>
+                            </div>
+                        </div>
+                        <button onclick="window.createNewCampaign()" class="ml-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm whitespace-nowrap">
+                            + New
+                        </button>
+                    </div>
                     
                     <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4 overflow-x-auto">
                         <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="switchSubTab('prepNotes')">📜 General</button>
@@ -1129,20 +1143,33 @@
 
     window.setupNotesListener = () => {
         if(!window.isAuthReady) return;
+        
         window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
             if(doc.exists()) {
                 const d = doc.data();
+                // Load Notes
                 structuredNotes = { 
                     prepNotes: d.structuredPrepNotes||[], 
-                    pcNotes: d.structuredPcNotes||[], // <--- NEW
+                    pcNotes: d.structuredPcNotes||[], 
                     enemyNotes: d.structuredEnemyNotes||[], 
                     npcNotes: d.structuredNpcNotes||[], 
                     lootNotes: d.structuredLootNotes||[] 
                 };
+                
+                // 🟢 Load Campaigns
+                if (d.campaignList && Array.isArray(d.campaignList)) {
+                    campaignList = d.campaignList;
+                } else {
+                    campaignList = ['Default Campaign']; // Fallback
+                }
             } else {
                 structuredNotes = { prepNotes: [], pcNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
+                campaignList = ['Default Campaign'];
             }
-            if(window.currentTab==='notes') window.renderStructuredNotes(window.currentSubTab);
+            
+            // Render UI
+            window.renderCampaignSelector();
+            if(window.currentTab === 'notes') window.renderStructuredNotes(window.currentSubTab);
         });
     };
 
@@ -1229,41 +1256,44 @@
         const list = document.getElementById(`${tab}-list`);
         if(!list) return;
 
-        // 1. GET SEARCH QUERY
         const searchInput = document.getElementById('notes-search');
         const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
-        
-        // 2. GET NOTES
-        // We use the global structuredNotes variable
         const allNotes = structuredNotes[tab] || [];
         
-        // 3. FILTER NOTES
-        // If query is empty, filter returns true (shows all). 
-        // If not, it checks Title OR Content.
-        const filteredNotes = allNotes.filter(n => 
+        // 🟢 FILTER BY CAMPAIGN
+        const campaignNotes = allNotes.filter(n => {
+            // If note has no campaign tag, assume it belongs to "Default Campaign"
+            const noteCampaign = n.campaign || 'Default Campaign';
+            return noteCampaign === currentCampaign;
+        });
+
+        // Filter by Search Query
+        const filteredNotes = campaignNotes.filter(n => 
             n.title.toLowerCase().includes(query) || 
             n.content.toLowerCase().includes(query)
         );
 
-        // 4. RENDER RESULTS
-        list.innerHTML = filteredNotes.length ? '' : '<p class="text-center text-gray-500 pt-8">No matching notes found.</p>';
+        list.innerHTML = filteredNotes.length ? '' : `<p class="text-center text-gray-500 pt-8 text-xs">No notes for <strong>${currentCampaign}</strong>.</p>`;
         
         filteredNotes.forEach(n => {
             const div = document.createElement('div'); 
-            div.className = 'note-item card p-0 rounded-lg shadow-md'; 
+            div.className = 'note-item card p-0 rounded-lg shadow-md mb-2 bg-gray-800 border border-gray-700 overflow-hidden'; 
             div.id = `note-${n.id}`;
             
             div.innerHTML = `
-            <div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')">
-                <span class="font-bold text-indigo-300 truncate">${n.title}</span>
-                <span class="text-gray-400">▼</span>
+            <div class="collapsible-header hover:bg-gray-700/50 transition p-3 cursor-pointer flex justify-between items-center" onclick="toggleCollapse('${n.id}')">
+                <span class="font-bold text-indigo-200 truncate text-sm">${n.title}</span>
+                <span class="text-gray-500 text-[10px]">▼</span>
             </div>
-            <div class="collapsible-content" id="content-${n.id}">
-                <div class="flex justify-end p-2 gap-2 border-b border-gray-700 mb-2">
-                    <button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold">Edit</button>
-                    <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold">Delete</button>
+            <div class="collapsible-content bg-gray-900/50" id="content-${n.id}">
+                <div class="flex justify-between items-center p-2 border-b border-gray-700 bg-gray-800/30">
+                    <span class="text-[10px] text-gray-500">${new Date(n.timestamp).toLocaleDateString()}</span>
+                    <div class="flex gap-2">
+                        <button onclick="editNote('${n.id}', '${tab}')" class="text-xs text-blue-400 hover:text-white font-semibold">Edit</button>
+                        <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs text-red-400 hover:text-white font-semibold">Delete</button>
+                    </div>
                 </div>
-                <div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div>
+                <div class="p-3 whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">${n.content}</div>
             </div>`;
             
             list.appendChild(div);
@@ -1271,7 +1301,19 @@
     };
 
     window.toggleCollapse = (id) => { const el = document.getElementById(`content-${id}`); if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; } };
-    window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+   window.addNewNote = (tab) => { 
+        // 🟢 ADD CAMPAIGN TAG
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: 'New Note', 
+            content: 'Details...', 
+            campaign: currentCampaign, // <--- Add this
+            timestamp: new Date().toISOString() 
+        };
+        
+        structuredNotes[tab].unshift(newNote); 
+        window.saveStructuredNotes(tab, structuredNotes[tab]); 
+    };
     window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
     window.editNote = (id, tab) => {
         const n = structuredNotes[tab].find(x => x.id === id); if(!n) return;
@@ -2903,6 +2945,7 @@
             id: crypto.randomUUID(),
             title: `${m.name} (CR ${m.challenge_rating})`,
             content: content,
+            campaign: currentCampaign, // <--- Add this line
             timestamp: new Date().toISOString()
         };
 
@@ -2914,6 +2957,44 @@
         }
         
         alert(`✅ Saved ${m.name} (Full Data) to Enemy Notes!`);
+    };
+
+        // 🟢 CAMPAIGN MANAGEMENT LOGIC
+    window.renderCampaignSelector = () => {
+        const sel = document.getElementById('campaign-selector');
+        if (!sel) return;
+        
+        // Save current selection if it exists in the new list, otherwise default
+        if (!campaignList.includes(currentCampaign)) currentCampaign = campaignList[0];
+
+        sel.innerHTML = campaignList.map(c => `<option value="${c}" ${c === currentCampaign ? 'selected' : ''}>${c}</option>`).join('');
+    };
+
+    window.switchCampaign = (val) => {
+        currentCampaign = val;
+        localStorage.setItem('aegis_last_campaign', val); // Remember choice
+        window.renderStructuredNotes(window.currentSubTab); // Refresh notes
+    };
+
+    window.createNewCampaign = async () => {
+        const name = prompt("Enter new Campaign Name:");
+        if (!name) return;
+        if (campaignList.includes(name)) { alert("Campaign already exists!"); return; }
+        
+        // Add to local list and save to Firebase
+        campaignList.push(name);
+        
+        try {
+            await window.setDoc(getSharedDoc('shared_notes'), { campaignList: campaignList }, { merge: true });
+            
+            // Automatically switch to the new campaign
+            window.switchCampaign(name);
+            window.renderCampaignSelector();
+            alert(`Created campaign: ${name}`);
+        } catch(e) {
+            console.error(e);
+            alert("Error creating campaign.");
+        }
     };
     
 </script>
