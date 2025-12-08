@@ -733,7 +733,6 @@
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-orange-300">🍺 Homebrew Workshop</h2>
                         <div class="flex bg-gray-800 rounded-lg p-1 gap-1">
-                            <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('tables', this)">🎲 Tables</button>
                             <button class="brew-sub-tab active px-3 py-1 text-xs font-bold rounded bg-orange-600 text-white transition" onclick="switchBrewMode('monster', this)">Monster</button>
                             <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('weapon', this)">Weapon</button>
                             <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('magic', this)">Item</button>
@@ -742,61 +741,6 @@
                         </div>
                     </div>
 
-                    <!-- 1. Roll Table -->
-                    <div id="brew-tables-area" class="hidden animate-fade-in space-y-6">
-                        
-                        <div class="bg-gray-900/80 p-4 rounded-xl border border-indigo-500/30">
-                            <h3 class="text-indigo-300 text-lg font-bold mb-3 flex items-center gap-2">
-                                <span>🎲 Roll Tables</span>
-                            </h3>
-                            <div class="flex gap-2 mb-4">
-                                <select id="roll-table-select" class="flex-1 p-2 rounded bg-gray-800 text-white border border-gray-700 text-sm" onchange="window.previewTable()">
-                                    <option value="" disabled selected>Select a table...</option>
-                                    </select>
-                                <button onclick="window.rollOnTable()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 rounded-lg shadow-lg transition">Roll</button>
-                            </div>
-                            
-                            <div id="table-roll-result" class="hidden p-4 bg-gray-800 rounded border border-indigo-500/50 text-center">
-                                <div class="text-xs text-gray-400 uppercase tracking-widest mb-1">Result</div>
-                                <div id="table-roll-value" class="text-xl font-bold text-white"></div>
-                            </div>
-                            
-                            <details id="table-preview-container" class="mt-4 hidden">
-                                <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-300">View Table Content</summary>
-                                <div id="table-preview-list" class="mt-2 text-xs text-gray-400 space-y-1 max-h-40 overflow-y-auto bg-gray-900 p-2 rounded"></div>
-                                <button onclick="window.deleteTable()" class="mt-2 text-xs text-red-500 hover:text-red-400 underline w-full text-right">Delete Table</button>
-                            </details>
-                        </div>
-
-                        <div class="bg-gray-900/80 p-4 rounded-xl border border-green-500/30 shadow-lg">
-                            <h3 class="text-green-300 text-lg font-bold mb-3 flex items-center justify-between">
-                                <span>📝 Quick NPC Builder</span>
-                                <button onclick="window.clearQuickNPC()" class="text-[10px] text-gray-500 hover:text-white uppercase tracking-wider">Clear</button>
-                            </h3>
-                            
-                            <div class="space-y-3">
-                                <input type="text" id="quick-npc-name" placeholder="Name" class="w-full p-2 rounded input-style text-sm font-bold border border-gray-700 focus:border-green-500 outline-none">
-                                
-                                <div class="grid grid-cols-2 gap-2">
-                                    <input type="text" id="quick-npc-race" placeholder="Race / Class" class="w-full p-2 rounded input-style text-xs border border-gray-700 focus:border-green-500 outline-none">
-                                    <input type="text" id="quick-npc-role" placeholder="Occupation / Role" class="w-full p-2 rounded input-style text-xs border border-gray-700 focus:border-green-500 outline-none">
-                                </div>
-                                
-                                <div class="relative">
-                                    <textarea id="quick-npc-notes" rows="4" class="w-full p-2 rounded input-style text-xs resize-none border border-gray-700 focus:border-green-500 outline-none font-mono" placeholder="Roll on tables above and click 'Add Roll', or type traits here..."></textarea>
-                                </div>
-                                
-                                <div class="flex gap-2">
-                                    <button onclick="window.appendRollToNPC()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded transition border border-gray-600">
-                                        ⬇️ Add Roll Result
-                                    </button>
-                                    
-                                    <button onclick="window.saveQuickNPC()" class="flex-[2] bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-2 rounded shadow-lg transition border border-green-600">
-                                        💾 Save to Campaign
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
 
                         <div class="bg-gray-900/80 p-4 rounded-xl border border-gray-700">
                             <h3 class="text-gray-300 text-lg font-bold mb-4 border-b border-gray-700 pb-2">Create New Table</h3>
@@ -3037,7 +2981,7 @@
         });
     };
     
-    // 🟢 UPDATED LISTENER: Handles Homebrew Items AND Tables
+    // 🟢 STANDARD LISTENER (Monsters, Weapons, Items only)
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
         
@@ -3046,13 +2990,8 @@
             const list = document.getElementById('homebrew-weapon-list'); 
             if(!list) return;
             
-            // 1. Reset Data
-            window.brewTables = []; // Clear the table list so we don't get duplicates
-            
             if(snap.empty) { 
                 list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; 
-                // Even if empty, we refresh the dropdown (to show System tables)
-                if (window.refreshTableDropdown) window.refreshTableDropdown();
                 return; 
             }
 
@@ -3061,24 +3000,21 @@
             items.sort((a,b) => a.name.localeCompare(b.name)); 
             
             list.innerHTML = '';
-            list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20"; // Layout styles
+            list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20";
 
-            // 2. Sort Items: Tables go to Dropdown, Others go to Cards
             items.forEach(item => {
-                
-                // 🟢 CATCH TABLES (Don't draw them as cards)
-                if (item.category === 'table') {
-                    window.brewTables.push(item);
-                    return; // Skip the rest of the loop for this item
-                }
-
-                // 🟢 DRAW CARDS (Monsters, Weapons, Items)
                 let visualHTML = "";
+                
+                // 1. Check for Monster
                 if (item.category === 'monster') {
                     visualHTML = `<div class="transform scale-90 origin-top-left">${generateMonsterHTML(item)}</div>`;
-                } else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
+                } 
+                // 2. Check for Parchment Items (Weapons/Magic Items)
+                else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
                     visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
-                } else {
+                } 
+                // 3. Fallback / Generic
+                else {
                     visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""}</div></div>`;
                 }
                 
@@ -3087,9 +3023,6 @@
                 div.innerHTML = `<div class="p-1">${visualHTML}</div><div class="flex justify-end gap-2 mt-2 p-2 border-t border-gray-700 bg-gray-800"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase" title="Share">🌍 Share</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Delete</button></div>`;
                 list.appendChild(div);
             });
-
-            // 3. Refresh the Table Dropdown (Now that we have the data)
-            if (window.refreshTableDropdown) window.refreshTableDropdown(); 
         });
     };
         // --- 17. DUAL COMBAT TIMER (Stopwatch & Countdown) ---
@@ -3837,363 +3770,8 @@
         await window.finalizeSave('prepNotes', newNote, targetCampaign);
     }; 
 
-       // ==========================================
-    // 🎲 RANDOM TABLE ENGINE
-    // ==========================================
+      
 
-    // 1. Generate Input Rows based on Die Selection
-    window.generateTableRows = () => {
-        const die = document.getElementById('hb-table-die').value;
-        const container = document.getElementById('hb-table-rows');
-        const textArea = document.getElementById('hb-table-d100');
-        
-        container.innerHTML = '';
-        
-        if (die === '100') {
-            container.classList.add('hidden');
-            textArea.classList.remove('hidden');
-            return;
-        }
-        
-        container.classList.remove('hidden');
-        textArea.classList.add('hidden');
-
-        for (let i = 1; i <= parseInt(die); i++) {
-            const div = document.createElement('div');
-            div.className = "flex items-center gap-2";
-            div.innerHTML = `
-                <span class="text-gray-500 text-xs font-mono w-6 text-right">${i}.</span>
-                <input type="text" class="hb-table-row-input flex-1 p-1 rounded bg-gray-800 border border-gray-700 text-xs text-white" placeholder="Result for ${i}...">
-            `;
-            container.appendChild(div);
-        }
-    };
-
-    // 2. Save Table to Database
-    window.saveHomebrewTable = async () => {
-        if (!window.isAuthReady) { alert("Login required."); return; }
-        
-        const name = document.getElementById('hb-table-name').value.trim();
-        const die = document.getElementById('hb-table-die').value;
-        if (!name) return alert("Please name your table.");
-
-        let options = [];
-
-        if (die === '100') {
-            // Parse Text Area (One line per item)
-            const text = document.getElementById('hb-table-d100').value;
-            options = text.split('\n').map(l => l.trim()).filter(l => l);
-        } else {
-            // Parse Inputs
-            const inputs = document.querySelectorAll('.hb-table-row-input');
-            inputs.forEach(input => options.push(input.value.trim()));
-        }
-
-        const tableData = {
-            name,
-            die: `d${die}`,
-            options,
-            category: 'table',
-            timestamp: new Date().toISOString()
-        };
-
-        try {
-            await window.addDoc(getCol('dm_toolkit_homebrew_items'), tableData);
-            alert(`Saved table: ${name}`);
-            window.loadBrewTables(); // Refresh dropdown
-            
-            // Clear Form
-            document.getElementById('hb-table-name').value = '';
-            window.generateTableRows();
-        } catch(e) {
-            console.error(e);
-            alert("Error saving table.");
-        }
-    };
-
- // ==========================================
-    // 🎲 ENHANCED RANDOM TABLE ENGINE (System + User)
-    // ==========================================
-
-    // 1. SYSTEM PRESET TABLES (Always Available)
-    const systemTables = [
-        {
-            name: "Wild Magic Surge",
-            die: "d10", // Simplified example
-            options: [
-                "Roll on this table at the start of each of your turns for the next minute.",
-                "You cast Fireball as a 3rd-level spell centered on yourself.",
-                "You cast Magic Missile as a 5th-level spell.",
-                "You cast Confusion centered on yourself.",
-                "For the next minute, you regain 5 hit points at the start of each of your turns.",
-                "You grow a long beard made of feathers that remains until you sneeze.",
-                "You cast Grease centered on yourself.",
-                "Creatures have disadvantage on saving throws against the next spell you cast.",
-                "Your skin turns a vibrant shade of blue.",
-                "An eye appears on your forehead for the next minute."
-            ]
-        },
-        {
-            name: "Trinkets (Gothic)",
-            die: "d10",
-            options: [
-                "A picture you drew as a child of your imaginary friend.",
-                "A lock that opens when blood is dripped in the keyhole.",
-                "Clothes of a beggar that fit you perfectly.",
-                "A face of a woman who looks like you, carved into a pendant.",
-                "A invitation to a party where a murder happened.",
-                "A distinct set of silverware used by a king.",
-                "A porcelain doll head that always seems to be looking at you.",
-                "A book that tells the story of a hero with your name.",
-                "A heavy iron key with no teeth.",
-                "A mummified goblin hand."
-            ]
-        },
-        {
-            name: "NPC Personality",
-            die: "d8",
-            options: [
-                "Arrogant and condescending.",
-                "Nervous and twitchy.",
-                "Friendly but clearly hiding something.",
-                "Stoic and speaks in short sentences.",
-                "Overly enthusiastic about everything.",
-                "Suspicious of magic users.",
-                "Constantly complains about the weather.",
-                "Speaks in third person."
-            ]
-        },
-        {
-            name: "Short-Term Madness",
-            die: "d10",
-            options: [
-                "The character retreats into their mind and becomes paralyzed.",
-                "The character becomes incapacitated and spends the duration screaming, laughing, or weeping.",
-                "The character becomes frightened and must use their action to flee.",
-                "The character begins babbling and is incapable of normal speech or spellcasting.",
-                "The character must use their action to attack the nearest creature.",
-                "The character experiences vivid hallucinations and has disadvantage on ability checks.",
-                "The character does whatever anyone tells them to do that isn't obviously harmful.",
-                "The character experiences an overpowering urge to eat something strange such as dirt, slime, or offal.",
-                "The character is stunned.",
-                "The character falls unconscious."
-            ]
-        }
-    ];
-
-    // 2. Load Tables (Merges System + User)
-    window.brewTables = []; // Stores everything
-
-    // Hook this into your existing Homebrew Listener!
-    window.refreshTableDropdown = () => {
-        const select = document.getElementById('roll-table-select');
-        if (!select) return;
-
-        select.innerHTML = '<option value="" disabled selected>Select a table...</option>';
-        
-        // A. Add System Tables Group
-        const sysGroup = document.createElement('optgroup');
-        sysGroup.label = "📚 Official / System";
-        systemTables.forEach((t, i) => {
-            const opt = document.createElement('option');
-            opt.value = `sys-${i}`;
-            opt.textContent = `${t.name} (${t.die})`;
-            sysGroup.appendChild(opt);
-        });
-        select.appendChild(sysGroup);
-
-        // B. Add User Tables Group
-        const usrGroup = document.createElement('optgroup');
-        usrGroup.label = "🍺 My Homebrew";
-        
-        // Filter out tables from the mixed homebrew list
-        // (Assuming you populated window.brewTables in your main listener as discussed before)
-        window.brewTables.forEach((t, i) => {
-            const opt = document.createElement('option');
-            opt.value = `usr-${i}`; // Unique ID logic
-            opt.textContent = `${t.name} (${t.die})`;
-            usrGroup.appendChild(opt);
-        });
-        select.appendChild(usrGroup);
-    };
-
-    // 3. Roll Logic (Handles both types)
-    window.rollOnTable = () => {
-        const select = document.getElementById('roll-table-select');
-        const val = select.value;
-        if (!val) return;
-
-        let table = null;
-        if (val.startsWith('sys-')) {
-            const idx = parseInt(val.split('-')[1]);
-            table = systemTables[idx];
-        } else {
-            const idx = parseInt(val.split('-')[1]);
-            table = window.brewTables[idx];
-        }
-
-        const resultDiv = document.getElementById('table-roll-result');
-        const resultVal = document.getElementById('table-roll-value');
-        
-        // Animation
-        resultDiv.classList.remove('hidden');
-        let count = 0;
-        const max = 10;
-        const interval = setInterval(() => {
-            const rand = Math.floor(Math.random() * table.options.length);
-            resultVal.innerText = table.options[rand] || "-";
-            count++;
-            if(count > max) {
-                clearInterval(interval);
-                // Final Roll
-                const roll = Math.floor(Math.random() * table.options.length);
-                const final = table.options[roll];
-                resultVal.innerHTML = `<span class="text-indigo-400 text-xs block mb-1">Rolled ${roll+1} on ${table.die}</span>${final}`;
-                
-                if(window.playTone) window.playTone('success');
-            }
-        }, 50);
-    };
-
-    // 4. Preview Logic (Handles both types)
-    window.previewTable = () => {
-        const select = document.getElementById('roll-table-select');
-        const val = select.value;
-        if (!val) return;
-
-        let table = null;
-        let isSystem = false;
-
-        if (val.startsWith('sys-')) {
-            const idx = parseInt(val.split('-')[1]);
-            table = systemTables[idx];
-            isSystem = true;
-        } else {
-            const idx = parseInt(val.split('-')[1]);
-            table = window.brewTables[idx];
-        }
-
-        const list = document.getElementById('table-preview-list');
-        const container = document.getElementById('table-preview-container');
-        const delBtn = document.getElementById('btn-delete-table'); // ID added below
-
-        list.innerHTML = table.options.map((opt, i) => `<div class="border-b border-gray-800 pb-1"><strong class="text-indigo-400">${i+1}.</strong> ${opt}</div>`).join('');
-        container.classList.remove('hidden');
-        container.open = false; 
-        
-        // Hide delete button for System tables
-        if(delBtn) delBtn.style.display = isSystem ? 'none' : 'block';
-    };
-
-    window.deleteTable = async () => {
-        const select = document.getElementById('roll-table-select');
-        const index = select.value;
-        if (index === "") return;
-        const table = window.brewTables[index];
-        
-        if(confirm(`Delete table "${table.name}"?`)) {
-            await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', table.id));
-            document.getElementById('table-roll-result').classList.add('hidden');
-            document.getElementById('table-preview-container').classList.add('hidden');
-        }
-    };
-
-    // 5. Presets
-    window.fillTablePreset = (type) => {
-        const d = document.getElementById('hb-table-die');
-        const n = document.getElementById('hb-table-name');
-        
-        if (type === 'class') {
-            d.value = "12";
-            n.value = "Random Class";
-            window.generateTableRows();
-            const classes = ["Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard"];
-            setTimeout(() => {
-                document.querySelectorAll('.hb-table-row-input').forEach((el, i) => { if(classes[i]) el.value = classes[i]; });
-            }, 100);
-        } 
-        else if (type === 'race') {
-            d.value = "10"; // Simplified
-            n.value = "Common Race";
-            window.generateTableRows();
-            const races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Tiefling", "Dragonborn", "Half-Orc", "Half-Elf", "Tabaxi"];
-            setTimeout(() => {
-                document.querySelectorAll('.hb-table-row-input').forEach((el, i) => { if(races[i]) el.value = races[i]; });
-            }, 100);
-        }
-        else if (type === 'quirk') {
-            d.value = "8"; 
-            n.value = "NPC Quirks";
-            window.generateTableRows();
-            const quirks = ["Always flipping a coin", "Speaks in third person", "Terrible allergies", "Collects teeth", "Afraid of fire", "Laughs at wrong times", "Smells like pickles", "Compulsive liar"];
-            setTimeout(() => {
-                document.querySelectorAll('.hb-table-row-input').forEach((el, i) => { if(quirks[i]) el.value = quirks[i]; });
-            }, 100);
-        }
-    };
-
-    // Initialize inputs on load
-    window.generateTableRows();
-
-        // ==========================================
-    // 📝 QUICK NPC BUILDER LOGIC
-    // ==========================================
-
-    window.appendRollToNPC = () => {
-        const rollResult = document.getElementById('table-roll-value').innerText;
-        const textArea = document.getElementById('quick-npc-notes');
-        const rollContainer = document.getElementById('table-roll-result');
-
-        if (rollContainer.classList.contains('hidden') || !rollResult) {
-            alert("Roll on a table first!");
-            return;
-        }
-
-        // Remove the "Rolled X on dY" prefix if it exists, keep just the text
-        const cleanText = rollResult.replace(/Rolled \d+ on d\d+/i, '').trim();
-        
-        // Append to textarea on a new line
-        textArea.value += (textArea.value ? '\n- ' : '- ') + cleanText;
-    };
-
-    window.saveQuickNPC = async () => {
-        if (!window.isAuthReady) { alert("Please log in first."); return; }
-
-        const name = document.getElementById('quick-npc-name').value.trim() || "Unnamed NPC";
-        const race = document.getElementById('quick-npc-race').value.trim();
-        const role = document.getElementById('quick-npc-role').value.trim();
-        const rawNotes = document.getElementById('quick-npc-notes').value.trim();
-
-        // 1. Build Pretty HTML Content
-        let content = `
-            <div class="font-bold text-lg text-green-300 mb-1">${name}</div>
-            ${(race || role) ? `<div class="text-xs text-gray-400 italic mb-2 border-b border-gray-700 pb-1">${race} ${race && role ? '•' : ''} ${role}</div>` : ''}
-            <div class="text-sm text-gray-300 whitespace-pre-wrap">${rawNotes}</div>
-        `;
-
-        // 2. Ask for Campaign
-        const targetCampaign = await window.promptForCampaign();
-        if (!targetCampaign) return;
-
-        // 3. Create Note Object
-        const newNote = {
-            id: crypto.randomUUID(),
-            title: name,
-            content: content,
-            timestamp: new Date().toISOString()
-        };
-
-        // 4. Save to NPC Notes
-        await window.finalizeSave('npcNotes', newNote, targetCampaign);
-    };
-
-    window.clearQuickNPC = () => {
-        if(!confirm("Clear current NPC fields?")) return;
-        document.getElementById('quick-npc-name').value = "";
-        document.getElementById('quick-npc-race').value = "";
-        document.getElementById('quick-npc-role').value = "";
-        document.getElementById('quick-npc-notes').value = "";
-    };
     
 </script>
 
