@@ -768,6 +768,36 @@
                             </details>
                         </div>
 
+                        <div class="bg-gray-900/80 p-4 rounded-xl border border-green-500/30 shadow-lg">
+                            <h3 class="text-green-300 text-lg font-bold mb-3 flex items-center justify-between">
+                                <span>📝 Quick NPC Builder</span>
+                                <button onclick="window.clearQuickNPC()" class="text-[10px] text-gray-500 hover:text-white uppercase tracking-wider">Clear</button>
+                            </h3>
+                            
+                            <div class="space-y-3">
+                                <input type="text" id="quick-npc-name" placeholder="Name" class="w-full p-2 rounded input-style text-sm font-bold border border-gray-700 focus:border-green-500 outline-none">
+                                
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="text" id="quick-npc-race" placeholder="Race / Class" class="w-full p-2 rounded input-style text-xs border border-gray-700 focus:border-green-500 outline-none">
+                                    <input type="text" id="quick-npc-role" placeholder="Occupation / Role" class="w-full p-2 rounded input-style text-xs border border-gray-700 focus:border-green-500 outline-none">
+                                </div>
+                                
+                                <div class="relative">
+                                    <textarea id="quick-npc-notes" rows="4" class="w-full p-2 rounded input-style text-xs resize-none border border-gray-700 focus:border-green-500 outline-none font-mono" placeholder="Roll on tables above and click 'Add Roll', or type traits here..."></textarea>
+                                </div>
+                                
+                                <div class="flex gap-2">
+                                    <button onclick="window.appendRollToNPC()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded transition border border-gray-600">
+                                        ⬇️ Add Roll Result
+                                    </button>
+                                    
+                                    <button onclick="window.saveQuickNPC()" class="flex-[2] bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-2 rounded shadow-lg transition border border-green-600">
+                                        💾 Save to Campaign
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="bg-gray-900/80 p-4 rounded-xl border border-gray-700">
                             <h3 class="text-gray-300 text-lg font-bold mb-4 border-b border-gray-700 pb-2">Create New Table</h3>
                             
@@ -4103,7 +4133,67 @@
     };
 
     // Initialize inputs on load
-    window.generateTableRows(); 
+    window.generateTableRows();
+
+        // ==========================================
+    // 📝 QUICK NPC BUILDER LOGIC
+    // ==========================================
+
+    window.appendRollToNPC = () => {
+        const rollResult = document.getElementById('table-roll-value').innerText;
+        const textArea = document.getElementById('quick-npc-notes');
+        const rollContainer = document.getElementById('table-roll-result');
+
+        if (rollContainer.classList.contains('hidden') || !rollResult) {
+            alert("Roll on a table first!");
+            return;
+        }
+
+        // Remove the "Rolled X on dY" prefix if it exists, keep just the text
+        const cleanText = rollResult.replace(/Rolled \d+ on d\d+/i, '').trim();
+        
+        // Append to textarea on a new line
+        textArea.value += (textArea.value ? '\n- ' : '- ') + cleanText;
+    };
+
+    window.saveQuickNPC = async () => {
+        if (!window.isAuthReady) { alert("Please log in first."); return; }
+
+        const name = document.getElementById('quick-npc-name').value.trim() || "Unnamed NPC";
+        const race = document.getElementById('quick-npc-race').value.trim();
+        const role = document.getElementById('quick-npc-role').value.trim();
+        const rawNotes = document.getElementById('quick-npc-notes').value.trim();
+
+        // 1. Build Pretty HTML Content
+        let content = `
+            <div class="font-bold text-lg text-green-300 mb-1">${name}</div>
+            ${(race || role) ? `<div class="text-xs text-gray-400 italic mb-2 border-b border-gray-700 pb-1">${race} ${race && role ? '•' : ''} ${role}</div>` : ''}
+            <div class="text-sm text-gray-300 whitespace-pre-wrap">${rawNotes}</div>
+        `;
+
+        // 2. Ask for Campaign
+        const targetCampaign = await window.promptForCampaign();
+        if (!targetCampaign) return;
+
+        // 3. Create Note Object
+        const newNote = {
+            id: crypto.randomUUID(),
+            title: name,
+            content: content,
+            timestamp: new Date().toISOString()
+        };
+
+        // 4. Save to NPC Notes
+        await window.finalizeSave('npcNotes', newNote, targetCampaign);
+    };
+
+    window.clearQuickNPC = () => {
+        if(!confirm("Clear current NPC fields?")) return;
+        document.getElementById('quick-npc-name').value = "";
+        document.getElementById('quick-npc-race').value = "";
+        document.getElementById('quick-npc-role').value = "";
+        document.getElementById('quick-npc-notes').value = "";
+    };
     
 </script>
 
