@@ -741,46 +741,6 @@
                         </div>
                     </div>
 
-
-                        <div class="bg-gray-900/80 p-4 rounded-xl border border-gray-700">
-                            <h3 class="text-gray-300 text-lg font-bold mb-4 border-b border-gray-700 pb-2">Create New Table</h3>
-                            
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label class="block text-xs text-gray-500 uppercase mb-1">Table Name</label>
-                                    <input type="text" id="hb-table-name" placeholder="e.g. NPC Quirks" class="w-full p-2 rounded input-style text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-gray-500 uppercase mb-1">Die Size</label>
-                                    <select id="hb-table-die" class="w-full p-2 rounded input-style text-sm" onchange="window.generateTableRows()">
-                                        <option value="4">d4 (4 Options)</option>
-                                        <option value="6">d6 (6 Options)</option>
-                                        <option value="8">d8 (8 Options)</option>
-                                        <option value="10">d10 (10 Options)</option>
-                                        <option value="12">d12 (12 Options)</option>
-                                        <option value="20" selected>d20 (20 Options)</option>
-                                        <option value="100">d100 (Text Area)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-2 mb-4 text-xs">
-                                <span class="text-gray-500 py-1">Presets:</span>
-                                <button onclick="window.fillTablePreset('class')" class="text-indigo-400 hover:text-indigo-300 underline">Class</button>
-                                <button onclick="window.fillTablePreset('race')" class="text-indigo-400 hover:text-indigo-300 underline">Race</button>
-                                <button onclick="window.fillTablePreset('quirk')" class="text-indigo-400 hover:text-indigo-300 underline">Quirks</button>
-                            </div>
-
-                            <div id="hb-table-rows" class="space-y-2 mb-4 max-h-60 overflow-y-auto pr-2">
-                                </div>
-
-                            <textarea id="hb-table-d100" class="hidden w-full h-40 p-2 rounded input-style text-xs font-mono mb-4" placeholder="Paste list here (one item per line)..."></textarea>
-
-                            <button onclick="window.saveHomebrewTable()" class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-2 rounded-lg shadow-lg transition">💾 Save Table</button>
-                        </div>
-                    </div>
-                    
-                    <!-- 1. MONSTER BUILDER -->
                     <div id="brew-monster-area" class="animate-fade-in">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             
@@ -869,7 +829,6 @@
                         </div>
                     </div>
 
-                    <!-- 2. WEAPON BUILDER (Parchment Style) -->
                     <div id="brew-weapon-area" class="hidden space-y-6 animate-fade-in">
                         <div class="bg-gray-900/80 p-4 rounded-xl border border-orange-500/30 space-y-4">
                             <h3 class="text-orange-300 text-xl font-bold mb-4 text-center">Forge New Weapon</h3>
@@ -901,7 +860,6 @@
                         </div>
                     </div>
 
-                    <!-- 3. MAGIC ITEM BUILDER (Parchment Style) -->
                     <div id="brew-magic-area" class="hidden space-y-6 animate-fade-in">
                         
                         <div class="bg-gray-900/80 p-4 rounded-xl border border-pink-500/30 space-y-4">
@@ -961,7 +919,6 @@
                         </div>
                     </div>
                     
-                    <!-- 4. COMMUNITY TAB -->
                     <div id="brew-community-area" class="hidden animate-fade-in">
                         <div class="flex justify-center gap-2 mb-4 sticky top-0 z-20 bg-gray-900/90 backdrop-blur p-2 rounded-lg border border-gray-700 shadow-lg">
                             <button onclick="window.filterCommunity('all')" class="com-filter-btn active text-xs font-bold px-3 py-1 rounded-full bg-indigo-600 text-white transition">All</button>
@@ -974,7 +931,6 @@
                         </div>
                     </div>
                     
-                    <!-- Shared Inventory List -->
                     <div id="my-inventory-container">
                         <hr class="border-gray-700 my-4">
                         <h3 class="text-sm font-bold text-indigo-300 mb-2">My Inventory</h3>
