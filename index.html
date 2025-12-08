@@ -2430,6 +2430,7 @@
         window.searchLibrary();
     };
 
+    // 🟢 UPDATED SEARCH: Sorts Armor by Weight (Light -> Heavy)
     window.searchLibrary = async () => {
         const rawQuery = document.getElementById('library-search').value.trim();
         const list = document.getElementById('library-results');
@@ -2449,7 +2450,6 @@
             if (rawQuery) {
                 url += `&search=${rawQuery}`;
             } else if (currentRuleMode !== 'spells') {
-                // If empty search for weapons/armor/rules, get everything sorted A-Z
                 url += `&ordering=name`; 
             }
 
@@ -2464,6 +2464,7 @@
 
             // 2. Client-Side Sorting (Smart Sort)
             if (rawQuery) {
+                // Search Relevance Sorting
                 const query = rawQuery.toLowerCase();
                 results.sort((a, b) => {
                     const nameA = a.name.toLowerCase();
@@ -2477,11 +2478,26 @@
                     return nameA.length - nameB.length;
                 });
             } else {
-                // Default Sort (AC for Armor, Name for others)
+                // Default Sort
                 if (currentRuleMode === 'armor') {
-                    // Sort by AC (rough parse) or Category
-                    results.sort((a,b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+                    // 🟢 CUSTOM ARMOR SORT: Light -> Medium -> Heavy -> Shield
+                    const weightOrder = { 'Light Armor': 1, 'Medium Armor': 2, 'Heavy Armor': 3, 'Shield': 4 };
+                    const getOrder = (c) => weightOrder[c] || 5; // 5 = items like Ring Mail if category is weird
+
+                    results.sort((a, b) => {
+                        const orderA = getOrder(a.category);
+                        const orderB = getOrder(b.category);
+                        
+                        // Sort by Category First
+                        if (orderA !== orderB) return orderA - orderB;
+                        
+                        // Then by AC (Low to High)
+                        const acA = parseInt(a.ac_string) || 0;
+                        const acB = parseInt(b.ac_string) || 0;
+                        return acA - acB;
+                    });
                 } else {
+                    // Default A-Z for everything else
                     results.sort((a, b) => a.name.localeCompare(b.name));
                 }
             }
@@ -2525,24 +2541,30 @@
                         </div>`;
                 } 
                 else if (currentRuleMode === 'armor') {
-                    // --- 🛡️ ARMOR CARD ---
+                    // --- 🛡️ ARMOR CARD (With Category Badge) ---
                     const stealth = item.stealth_disadvantage ? '<span class="text-red-400">Disadvantage</span>' : '<span class="text-green-400">Normal</span>';
                     const strReq = item.strength_requirement ? item.strength_requirement : '-';
+                    
+                    // Color code the category badge
+                    let catColor = "text-gray-400 border-gray-600";
+                    if(item.category.includes('Light')) catColor = "text-blue-300 border-blue-500";
+                    if(item.category.includes('Medium')) catColor = "text-green-300 border-green-500";
+                    if(item.category.includes('Heavy')) catColor = "text-orange-300 border-orange-500";
                     
                     div.innerHTML = `
                         <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition select-none" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
                             <div class="flex items-center gap-3">
                                 <div class="font-bold text-gray-200 text-sm">${item.name}</div>
-                                <div class="text-xs font-bold text-yellow-500 bg-gray-900 px-2 py-0.5 rounded border border-gray-600">AC ${item.ac_string}</div>
+                                <div class="text-[10px] font-bold ${catColor} bg-gray-900 px-2 py-0.5 rounded border">${item.category}</div>
                             </div>
                             <span class="text-[10px] text-gray-500">▼</span>
                         </div>
                         <div id="${uniqueId}" class="hidden bg-gray-900/50 p-3 border-t border-gray-600 text-xs text-gray-300 leading-relaxed">
                             <div class="grid grid-cols-2 gap-2 mb-2">
-                                <div><strong class="text-gray-500">Category:</strong> ${item.category}</div>
+                                <div><strong class="text-yellow-500">AC:</strong> ${item.ac_string}</div>
                                 <div><strong class="text-gray-500">Cost:</strong> ${item.cost}</div>
                                 <div><strong class="text-gray-500">Stealth:</strong> ${stealth}</div>
-                                <div><strong class="text-gray-500">Strength Req:</strong> ${strReq}</div>
+                                <div><strong class="text-gray-500">Min Str:</strong> ${strReq}</div>
                                 <div><strong class="text-gray-500">Weight:</strong> ${item.weight}</div>
                                 <div><strong class="text-gray-500">Don/Doff:</strong> ${item.category.includes('Heavy') ? '10 min / 5 min' : '1 min / 1 min'}</div>
                             </div>
