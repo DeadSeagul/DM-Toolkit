@@ -573,9 +573,14 @@
                                     </select>
                             </div>
                         </div>
-                        <button onclick="window.createNewCampaign()" class="ml-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm whitespace-nowrap">
-                            + New
-                        </button>
+                        <div class="flex gap-1 ml-2">
+                            <button onclick="window.createNewCampaign()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm whitespace-nowrap">
+                                + New
+                            </button>
+                            <button onclick="window.deleteCurrentCampaign()" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs font-bold px-3 py-2 rounded-lg transition border border-red-800 shadow-sm" title="Delete Current Campaign">
+                                🗑️
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4 overflow-x-auto">
@@ -3369,6 +3374,55 @@
             
         } catch(e) { console.error("Save Failed:", e); alert("Error saving: " + e.message); }
     };
+
+     // 🟢 DELETE CAMPAIGN FUNCTION
+    window.deleteCurrentCampaign = async () => {
+        const target = window.currentCampaign;
+
+        // 1. Safety Checks
+        if (target === 'Default Campaign') { 
+            alert("❌ You cannot delete the Default Campaign."); 
+            return; 
+        }
+        
+        // 2. Confirmation
+        const confirmed = confirm(`⚠️ DANGER ZONE ⚠️\n\nAre you sure you want to delete "${target}"?\n\nThis will permanently delete ALL notes associated with this campaign.`);
+        if (!confirmed) return;
+
+        // 3. Update Local List (Remove the name)
+        window.campaignList = window.campaignList.filter(c => c !== target);
+
+        // 4. Update Notes (Filter out notes belonging to this campaign)
+        // We loop through every tab (prep, pc, enemy, etc.) and remove matching notes
+        const tabs = ['prepNotes', 'pcNotes', 'enemyNotes', 'npcNotes', 'lootNotes'];
+        tabs.forEach(tab => {
+            if (structuredNotes[tab]) {
+                structuredNotes[tab] = structuredNotes[tab].filter(n => n.campaign !== target);
+            }
+        });
+
+        // 5. Save EVERYTHING to Database
+        if (window.isAuthReady) {
+            try {
+                // We must update the list AND all note arrays to reflect the deletion
+                await window.setDoc(getSharedDoc('shared_notes'), { 
+                    campaignList: window.campaignList,
+                    structuredPrepNotes: structuredNotes.prepNotes,
+                    structuredPcNotes: structuredNotes.pcNotes,
+                    structuredEnemyNotes: structuredNotes.enemyNotes,
+                    structuredNpcNotes: structuredNotes.npcNotes,
+                    structuredLootNotes: structuredNotes.lootNotes
+                }, { merge: true });
+            } catch(e) { 
+                console.error(e); 
+                alert("Error deleting from database (check console).");
+            }
+        }
+
+        // 6. Switch back to safety
+        alert(`🗑️ Deleted "${target}".`);
+        window.switchCampaign('Default Campaign');
+    };   
     
 </script>
 
