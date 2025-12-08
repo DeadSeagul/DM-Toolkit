@@ -950,6 +950,7 @@
                     <div class="flex border-b border-gray-700 mb-4 justify-center gap-2 overflow-x-auto">
                         <button class="rule-sub-tab active border-b-2 border-purple-400 pb-2 font-bold text-purple-300 transition px-2 text-sm" onclick="switchRuleMode('spells', this)">✨ Spells</button>
                         <button class="rule-sub-tab text-gray-400 pb-2 font-semibold transition hover:text-gray-200 px-2 text-sm" onclick="switchRuleMode('weapons', this)">⚔️ Weapons</button>
+                        <button class="rule-sub-tab text-gray-400 pb-2 font-semibold transition hover:text-gray-200 px-2 text-sm" onclick="switchRuleMode('armor', this)">🛡️ Armor</button>
                         <button class="rule-sub-tab text-gray-400 pb-2 font-semibold transition hover:text-gray-200 px-2 text-sm" onclick="switchRuleMode('sections', this)">📜 Rules</button>
                     </div>
 
@@ -2402,11 +2403,12 @@
         xpDetail.textContent = `Adjusted XP: ${adjustedXP} (Daily Budget: ${Math.round((adjustedXP / (partyDeadly*3))*100)}%)`;
     };
     
-    // --- 14. RULES, SPELLS & WEAPONS ENGINE ---
-    let currentRuleMode = 'spells'; // 'spells', 'weapons', or 'sections'
+    // --- 14. RULES ENGINE (Updated with Armor) ---
+    let currentRuleMode = 'spells'; 
 
     window.switchRuleMode = (mode, btn) => {
         currentRuleMode = mode;
+        
         // 1. Update UI Styles
         document.querySelectorAll('.rule-sub-tab').forEach(b => {
             b.classList.remove('active', 'border-b-2', 'border-purple-400', 'text-purple-300');
@@ -2415,14 +2417,16 @@
         btn.classList.add('active', 'border-b-2', 'border-purple-400', 'text-purple-300');
         btn.classList.remove('text-gray-400');
         
-        // 2. Clear & Update Placeholder
+        // 2. Update Placeholder
         const input = document.getElementById('library-search');
         input.value = "";
+        
         if(mode === 'spells') input.placeholder = "Search spells (e.g. Fireball)...";
         else if(mode === 'weapons') input.placeholder = "Search weapons (e.g. Dagger)...";
+        else if(mode === 'armor') input.placeholder = "Search armor (e.g. Plate)...";
         else input.placeholder = "Search rules (e.g. Cover)...";
 
-        // 3. Trigger Search Logic (Auto-load if Rules or Weapons)
+        // 3. Auto-load everything except Spells (list is small enough)
         window.searchLibrary();
     };
 
@@ -2430,8 +2434,7 @@
         const rawQuery = document.getElementById('library-search').value.trim();
         const list = document.getElementById('library-results');
         
-        // Auto-load logic: Only require typing for Spells (to save data)
-        // Weapons and Rules are small lists, so we can auto-load them if search is empty.
+        // Only enforce typing for Spells (to save data/speed)
         if (!rawQuery && currentRuleMode === 'spells') {
              list.innerHTML = '<p class="text-center text-gray-500 text-xs">Type a spell name to search...</p>';
              return;
@@ -2446,7 +2449,7 @@
             if (rawQuery) {
                 url += `&search=${rawQuery}`;
             } else if (currentRuleMode !== 'spells') {
-                // If empty search for weapons/rules, get everything sorted A-Z
+                // If empty search for weapons/armor/rules, get everything sorted A-Z
                 url += `&ordering=name`; 
             }
 
@@ -2459,7 +2462,7 @@
                 return;
             }
 
-            // 2. SMART SORTING
+            // 2. Client-Side Sorting (Smart Sort)
             if (rawQuery) {
                 const query = rawQuery.toLowerCase();
                 results.sort((a, b) => {
@@ -2474,19 +2477,25 @@
                     return nameA.length - nameB.length;
                 });
             } else {
-                results.sort((a, b) => a.name.localeCompare(b.name));
+                // Default Sort (AC for Armor, Name for others)
+                if (currentRuleMode === 'armor') {
+                    // Sort by AC (rough parse) or Category
+                    results.sort((a,b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+                } else {
+                    results.sort((a, b) => a.name.localeCompare(b.name));
+                }
             }
 
             list.innerHTML = '';
 
-            // 3. RENDER
+            // 3. RENDER CARDS
             results.forEach((item, index) => {
                 const uniqueId = `lib-${index}`;
                 const div = document.createElement('div');
                 div.className = 'bg-gray-800 rounded border border-gray-700 overflow-hidden mb-2';
 
                 if (currentRuleMode === 'spells') {
-                    // --- SPELL ---
+                    // --- SPELL CARD ---
                     div.innerHTML = `
                         <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition select-none" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
                             <div><div class="font-bold text-purple-300 text-sm">${item.name}</div><div class="text-[10px] text-gray-400">${item.level} • ${item.school}</div></div>
@@ -2498,8 +2507,7 @@
                         </div>`;
                 } 
                 else if (currentRuleMode === 'weapons') {
-                    // --- WEAPON ---
-                    // Format properties array if it exists
+                    // --- WEAPON CARD ---
                     const props = item.properties ? item.properties.map(p => p.name || p).join(', ') : '-';
                     div.innerHTML = `
                         <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition select-none" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
@@ -2516,8 +2524,32 @@
                             <div class="col-span-2"><strong class="text-red-400">Properties:</strong> ${props}</div>
                         </div>`;
                 } 
+                else if (currentRuleMode === 'armor') {
+                    // --- 🛡️ ARMOR CARD ---
+                    const stealth = item.stealth_disadvantage ? '<span class="text-red-400">Disadvantage</span>' : '<span class="text-green-400">Normal</span>';
+                    const strReq = item.strength_requirement ? item.strength_requirement : '-';
+                    
+                    div.innerHTML = `
+                        <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition select-none" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
+                            <div class="flex items-center gap-3">
+                                <div class="font-bold text-gray-200 text-sm">${item.name}</div>
+                                <div class="text-xs font-bold text-yellow-500 bg-gray-900 px-2 py-0.5 rounded border border-gray-600">AC ${item.ac_string}</div>
+                            </div>
+                            <span class="text-[10px] text-gray-500">▼</span>
+                        </div>
+                        <div id="${uniqueId}" class="hidden bg-gray-900/50 p-3 border-t border-gray-600 text-xs text-gray-300 leading-relaxed">
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <div><strong class="text-gray-500">Category:</strong> ${item.category}</div>
+                                <div><strong class="text-gray-500">Cost:</strong> ${item.cost}</div>
+                                <div><strong class="text-gray-500">Stealth:</strong> ${stealth}</div>
+                                <div><strong class="text-gray-500">Strength Req:</strong> ${strReq}</div>
+                                <div><strong class="text-gray-500">Weight:</strong> ${item.weight}</div>
+                                <div><strong class="text-gray-500">Don/Doff:</strong> ${item.category.includes('Heavy') ? '10 min / 5 min' : '1 min / 1 min'}</div>
+                            </div>
+                        </div>`;
+                }
                 else {
-                    // --- RULE (SRD) ---
+                    // --- RULES CARD ---
                     div.innerHTML = `
                         <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition select-none" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
                             <div class="font-bold text-yellow-200 text-sm">${item.name}</div>
