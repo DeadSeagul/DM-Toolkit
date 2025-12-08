@@ -733,6 +733,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-orange-300">🍺 Homebrew Workshop</h2>
                         <div class="flex bg-gray-800 rounded-lg p-1 gap-1">
+                            <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('tables', this)">🎲 Tables</button>
                             <button class="brew-sub-tab active px-3 py-1 text-xs font-bold rounded bg-orange-600 text-white transition" onclick="switchBrewMode('monster', this)">Monster</button>
                             <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('weapon', this)">Weapon</button>
                             <button class="brew-sub-tab px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition" onclick="switchBrewMode('magic', this)">Item</button>
@@ -741,6 +742,70 @@
                         </div>
                     </div>
 
+                    <!-- 1. Roll Table -->
+                    <div id="brew-tables-area" class="hidden animate-fade-in space-y-6">
+                        
+                        <div class="bg-gray-900/80 p-4 rounded-xl border border-indigo-500/30">
+                            <h3 class="text-indigo-300 text-lg font-bold mb-3 flex items-center gap-2">
+                                <span>🎲 Roll Tables</span>
+                            </h3>
+                            <div class="flex gap-2 mb-4">
+                                <select id="roll-table-select" class="flex-1 p-2 rounded bg-gray-800 text-white border border-gray-700 text-sm" onchange="window.previewTable()">
+                                    <option value="" disabled selected>Select a table...</option>
+                                    </select>
+                                <button onclick="window.rollOnTable()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 rounded-lg shadow-lg transition">Roll</button>
+                            </div>
+                            
+                            <div id="table-roll-result" class="hidden p-4 bg-gray-800 rounded border border-indigo-500/50 text-center">
+                                <div class="text-xs text-gray-400 uppercase tracking-widest mb-1">Result</div>
+                                <div id="table-roll-value" class="text-xl font-bold text-white"></div>
+                            </div>
+                            
+                            <details id="table-preview-container" class="mt-4 hidden">
+                                <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-300">View Table Content</summary>
+                                <div id="table-preview-list" class="mt-2 text-xs text-gray-400 space-y-1 max-h-40 overflow-y-auto bg-gray-900 p-2 rounded"></div>
+                                <button onclick="window.deleteTable()" class="mt-2 text-xs text-red-500 hover:text-red-400 underline w-full text-right">Delete Table</button>
+                            </details>
+                        </div>
+
+                        <div class="bg-gray-900/80 p-4 rounded-xl border border-gray-700">
+                            <h3 class="text-gray-300 text-lg font-bold mb-4 border-b border-gray-700 pb-2">Create New Table</h3>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-xs text-gray-500 uppercase mb-1">Table Name</label>
+                                    <input type="text" id="hb-table-name" placeholder="e.g. NPC Quirks" class="w-full p-2 rounded input-style text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 uppercase mb-1">Die Size</label>
+                                    <select id="hb-table-die" class="w-full p-2 rounded input-style text-sm" onchange="window.generateTableRows()">
+                                        <option value="4">d4 (4 Options)</option>
+                                        <option value="6">d6 (6 Options)</option>
+                                        <option value="8">d8 (8 Options)</option>
+                                        <option value="10">d10 (10 Options)</option>
+                                        <option value="12">d12 (12 Options)</option>
+                                        <option value="20" selected>d20 (20 Options)</option>
+                                        <option value="100">d100 (Text Area)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2 mb-4 text-xs">
+                                <span class="text-gray-500 py-1">Presets:</span>
+                                <button onclick="window.fillTablePreset('class')" class="text-indigo-400 hover:text-indigo-300 underline">Class</button>
+                                <button onclick="window.fillTablePreset('race')" class="text-indigo-400 hover:text-indigo-300 underline">Race</button>
+                                <button onclick="window.fillTablePreset('quirk')" class="text-indigo-400 hover:text-indigo-300 underline">Quirks</button>
+                            </div>
+
+                            <div id="hb-table-rows" class="space-y-2 mb-4 max-h-60 overflow-y-auto pr-2">
+                                </div>
+
+                            <textarea id="hb-table-d100" class="hidden w-full h-40 p-2 rounded input-style text-xs font-mono mb-4" placeholder="Paste list here (one item per line)..."></textarea>
+
+                            <button onclick="window.saveHomebrewTable()" class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-2 rounded-lg shadow-lg transition">💾 Save Table</button>
+                        </div>
+                    </div>
+                    
                     <!-- 1. MONSTER BUILDER -->
                     <div id="brew-monster-area" class="animate-fade-in">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -2952,6 +3017,31 @@
             list.innerHTML = '';
             list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20";
             items.forEach(item => {
+                items.forEach(item => {
+                // ... existing checks for monster, weapon, item ...
+
+                // 🟢 ADD THIS BLOCK for TABLES
+                if (item.category === 'table') {
+                    // Save to local cache
+                    window.brewTables.push(item);
+                    return; // Don't render as a card in the list
+                }
+                
+                // ... rest of your code rendering cards ...
+            });
+
+            // 🟢 UPDATE DROPDOWN AFTER LOOP
+            const tableSelect = document.getElementById('roll-table-select');
+            if (tableSelect) {
+                // Clear and rebuild options
+                tableSelect.innerHTML = '<option value="" disabled selected>Select a table...</option>';
+                window.brewTables.forEach((t, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i; // Use index as value
+                    opt.textContent = `${t.name} (${t.die})`;
+                    tableSelect.appendChild(opt);
+                });
+            }
                 let visualHTML = "";
                 if (item.category === 'monster') {
                     visualHTML = `<div class="transform scale-90 origin-top-left">${generateMonsterHTML(item)}</div>`;
@@ -3710,7 +3800,195 @@
 
         // 4. Save using your Unified System
         await window.finalizeSave('prepNotes', newNote, targetCampaign);
-    };  
+    }; 
+
+       // ==========================================
+    // 🎲 RANDOM TABLE ENGINE
+    // ==========================================
+
+    // 1. Generate Input Rows based on Die Selection
+    window.generateTableRows = () => {
+        const die = document.getElementById('hb-table-die').value;
+        const container = document.getElementById('hb-table-rows');
+        const textArea = document.getElementById('hb-table-d100');
+        
+        container.innerHTML = '';
+        
+        if (die === '100') {
+            container.classList.add('hidden');
+            textArea.classList.remove('hidden');
+            return;
+        }
+        
+        container.classList.remove('hidden');
+        textArea.classList.add('hidden');
+
+        for (let i = 1; i <= parseInt(die); i++) {
+            const div = document.createElement('div');
+            div.className = "flex items-center gap-2";
+            div.innerHTML = `
+                <span class="text-gray-500 text-xs font-mono w-6 text-right">${i}.</span>
+                <input type="text" class="hb-table-row-input flex-1 p-1 rounded bg-gray-800 border border-gray-700 text-xs text-white" placeholder="Result for ${i}...">
+            `;
+            container.appendChild(div);
+        }
+    };
+
+    // 2. Save Table to Database
+    window.saveHomebrewTable = async () => {
+        if (!window.isAuthReady) { alert("Login required."); return; }
+        
+        const name = document.getElementById('hb-table-name').value.trim();
+        const die = document.getElementById('hb-table-die').value;
+        if (!name) return alert("Please name your table.");
+
+        let options = [];
+
+        if (die === '100') {
+            // Parse Text Area (One line per item)
+            const text = document.getElementById('hb-table-d100').value;
+            options = text.split('\n').map(l => l.trim()).filter(l => l);
+        } else {
+            // Parse Inputs
+            const inputs = document.querySelectorAll('.hb-table-row-input');
+            inputs.forEach(input => options.push(input.value.trim()));
+        }
+
+        const tableData = {
+            name,
+            die: `d${die}`,
+            options,
+            category: 'table',
+            timestamp: new Date().toISOString()
+        };
+
+        try {
+            await window.addDoc(getCol('dm_toolkit_homebrew_items'), tableData);
+            alert(`Saved table: ${name}`);
+            window.loadBrewTables(); // Refresh dropdown
+            
+            // Clear Form
+            document.getElementById('hb-table-name').value = '';
+            window.generateTableRows();
+        } catch(e) {
+            console.error(e);
+            alert("Error saving table.");
+        }
+    };
+
+    // 3. Load Tables into Dropdown
+    window.brewTables = []; // Local Cache
+    
+    window.loadBrewTables = async () => {
+        if (!window.isAuthReady) return;
+        
+        const q = window.query(getCol('dm_toolkit_homebrew_items'));
+        const snap = await window.getDocs(q); // We need getDocs exposed or use onSnapshot
+        // Since we already have a homebrew listener, let's hook into that instead.
+    };
+
+    // *HOOK* this into your existing Homebrew Listener
+    // Find 'window.setupHomebrewListener' and add this logic inside the snapshot loop:
+    /*
+        if (item.category === 'table') {
+            // Add to dropdown logic (see step 4 below)
+        }
+    */
+
+    // 4. Roll Logic
+    window.rollOnTable = () => {
+        const select = document.getElementById('roll-table-select');
+        const index = select.value;
+        if (index === "") return;
+
+        const table = window.brewTables[index];
+        const resultDiv = document.getElementById('table-roll-result');
+        const resultVal = document.getElementById('table-roll-value');
+        
+        // Visual Roll Effect
+        resultDiv.classList.remove('hidden');
+        let count = 0;
+        const max = 10;
+        const interval = setInterval(() => {
+            const rand = Math.floor(Math.random() * table.options.length);
+            resultVal.innerText = table.options[rand] || "-";
+            count++;
+            if(count > max) {
+                clearInterval(interval);
+                // Final Result
+                const roll = Math.floor(Math.random() * table.options.length);
+                const final = table.options[roll];
+                resultVal.innerText = final || "Empty Result";
+                
+                // Play Sound
+                if(window.playTone) window.playTone('success');
+            }
+        }, 50);
+    };
+
+    window.previewTable = () => {
+        const select = document.getElementById('roll-table-select');
+        const index = select.value;
+        if (index === "") return;
+        
+        const table = window.brewTables[index];
+        const list = document.getElementById('table-preview-list');
+        const container = document.getElementById('table-preview-container');
+        
+        list.innerHTML = table.options.map((opt, i) => `<div class="border-b border-gray-800 pb-1"><strong class="text-indigo-400">${i+1}.</strong> ${opt}</div>`).join('');
+        container.classList.remove('hidden');
+        container.open = false; 
+    };
+
+    window.deleteTable = async () => {
+        const select = document.getElementById('roll-table-select');
+        const index = select.value;
+        if (index === "") return;
+        const table = window.brewTables[index];
+        
+        if(confirm(`Delete table "${table.name}"?`)) {
+            await window.deleteDoc(getDocRef('dm_toolkit_homebrew_items', table.id));
+            document.getElementById('table-roll-result').classList.add('hidden');
+            document.getElementById('table-preview-container').classList.add('hidden');
+        }
+    };
+
+    // 5. Presets
+    window.fillTablePreset = (type) => {
+        const d = document.getElementById('hb-table-die');
+        const n = document.getElementById('hb-table-name');
+        
+        if (type === 'class') {
+            d.value = "12";
+            n.value = "Random Class";
+            window.generateTableRows();
+            const classes = ["Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard"];
+            setTimeout(() => {
+                document.querySelectorAll('.hb-table-row-input').forEach((el, i) => { if(classes[i]) el.value = classes[i]; });
+            }, 100);
+        } 
+        else if (type === 'race') {
+            d.value = "10"; // Simplified
+            n.value = "Common Race";
+            window.generateTableRows();
+            const races = ["Human", "Elf", "Dwarf", "Halfling", "Gnome", "Tiefling", "Dragonborn", "Half-Orc", "Half-Elf", "Tabaxi"];
+            setTimeout(() => {
+                document.querySelectorAll('.hb-table-row-input').forEach((el, i) => { if(races[i]) el.value = races[i]; });
+            }, 100);
+        }
+        else if (type === 'quirk') {
+            d.value = "8"; 
+            n.value = "NPC Quirks";
+            window.generateTableRows();
+            const quirks = ["Always flipping a coin", "Speaks in third person", "Terrible allergies", "Collects teeth", "Afraid of fire", "Laughs at wrong times", "Smells like pickles", "Compulsive liar"];
+            setTimeout(() => {
+                document.querySelectorAll('.hb-table-row-input').forEach((el, i) => { if(quirks[i]) el.value = quirks[i]; });
+            }, 100);
+        }
+    };
+
+    // Initialize inputs on load
+    window.generateTableRows(); 
     
 </script>
 
