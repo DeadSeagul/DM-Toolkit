@@ -1614,15 +1614,56 @@
         window.switchTab('notes'); window.switchSubTab('enemyNotes');
     }
 
+   // 🟢 FIXED: Loot Generator (Shows Errors & Formatting)
     window.generateLoot = async () => {
-        const btn = document.getElementById('generate-loot-button'); btn.disabled = true;
-        const output = document.getElementById('loot-output'); output.textContent = "Generating...";
+        const btn = document.getElementById('generate-loot-button'); 
+        const spinner = document.getElementById('loot-loading-spinner');
+        const output = document.getElementById('loot-output');
+        
+        // 1. UI Prep
+        btn.disabled = true;
+        spinner.classList.remove('hidden');
+        output.innerHTML = '<span class="text-gray-400 animate-pulse">Rolling on loot tables...</span>';
+        
         try {
-            const prompt = `Generate D&D 5e loot for Level ${document.getElementById('loot-level').value} ${document.getElementById('loot-type').value}.`;
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
-            output.innerText = data.candidates[0].content.parts[0].text;
-        } catch(e) { output.textContent = "Error"; }
-        finally { document.getElementById('loot-loading-spinner').classList.add('hidden'); btn.disabled = false; }
+            // 2. Build Prompt
+            const level = document.getElementById('loot-level').value;
+            const type = document.getElementById('loot-type').value;
+            const source = document.getElementById('loot-source').value; // 'ai' or 'wiki'
+
+            // If user selected Wiki (which we don't have an API for yet), warn them or fallback to AI
+            // For now, we will force AI but customize the prompt
+            let prompt = `Generate a D&D 5e loot table for a Level ${level} party. Context: ${type}. 
+            Include values (GP). Format as a clean list.`;
+
+            if (type === 'Shop Inventory') {
+                prompt = `Generate a D&D 5e fantasy shop inventory for a Level ${level} party. 
+                Include item names, descriptions, and gold prices.`;
+            }
+
+            // 3. Call AI
+            const data = await callAI(API_URL, { 
+                contents: [{ parts: [{ text: prompt }] }] 
+            });
+            
+            // 4. Format & Display
+            const rawText = data.candidates[0].content.parts[0].text;
+            
+            // Convert newlines to HTML breaks and bold text
+            const formattedText = rawText
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-yellow-400">$1</strong>'); // Bold text becomes yellow
+
+            output.innerHTML = formattedText;
+
+        } catch(e) { 
+            console.error(e);
+            // 🟢 THIS SHOWS THE ACTUAL ERROR
+            output.innerHTML = `<span class="text-red-400 font-bold">Error:</span> ${e.message}`; 
+        } finally { 
+            spinner.classList.add('hidden'); 
+            btn.disabled = false; 
+        }
     };
 
     window.generateCreativeIdea = async () => {
