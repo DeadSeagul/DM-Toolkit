@@ -1318,30 +1318,39 @@
 
 
 
-    // --- 6. CORE FUNCTIONS ---
+// --- 7. CORE NAVIGATION (Fixed Journey Highlight) ---
     window.switchTab = function(tabId) {
         window.currentTab = tabId;
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-        document.getElementById(tabId).classList.remove('hidden');
         
+        // 1. Hide all tab content
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        
+        // 2. Show the selected tab content
+        const target = document.getElementById(tabId); 
+        if(target) target.classList.remove('hidden');
+        
+        // 3. Highlight the correct button
         document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500');
+            // Reset styles
+            btn.classList.remove('active', 'text-indigo-400', 'border-indigo-500'); 
             btn.classList.add('text-gray-400', 'border-transparent');
             
             const text = btn.textContent.toLowerCase();
             
-            // THE FIX: Add specific checks for Stats and Sound
+            // Check if this button matches the tabId
             if (
                 text.includes(tabId) || 
                 (tabId === 'improv' && text.includes('prep')) ||
                 (tabId === 'statblocks' && text.includes('stats')) ||
-                (tabId === 'soundboard' && text.includes('sound'))
-            ) {
+                (tabId === 'soundboard' && text.includes('sound')) ||
+                (tabId === 'travel' && text.includes('journey')) // <--- ADDED THIS LINE
+            ) { 
                 btn.classList.add('active'); 
-                btn.classList.remove('text-gray-400');
+                btn.classList.remove('text-gray-400'); 
             }
         });
         
+        // 4. Special case for Notes sub-tabs
         if (tabId === 'notes') window.switchSubTab(window.currentSubTab);
     };
 
