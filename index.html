@@ -568,6 +568,43 @@
                     <div id="weather-output" class="text-center text-gray-400 italic text-sm min-h-[1.5rem]">Select biome and roll weather...</div>
                 </div>
 
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-red-500/30">
+                    <h2 class="text-xl font-semibold mb-4 text-red-300 flex items-center gap-2">
+                        <span>⚔️ Random Encounter</span>
+                    </h2>
+                    
+                    <div class="flex gap-2 mb-4">
+                        <select id="encounter-terrain" class="flex-1 p-2 rounded-lg input-style text-sm">
+                            <option value="Road">Road / Highway</option>
+                            <option value="Forest">Forest / Woods</option>
+                            <option value="Mountain">Mountain / Hill</option>
+                            <option value="Swamp">Swamp / Bog</option>
+                            <option value="Desert">Desert / Wasteland</option>
+                            <option value="Arctic">Arctic / Tundra</option>
+                            <option value="Coast">Coast / Sea</option>
+                            <option value="Underdark">Underdark / Cave</option>
+                            <option value="Urban">City / Alley</option>
+                            <option value="Dungeon">Dungeon / Ruins</option>
+                        </select>
+                        <select id="encounter-danger" class="w-1/3 p-2 rounded-lg input-style text-sm">
+                            <option value="Low">Safe / Social</option>
+                            <option value="Medium" selected>Moderate</option>
+                            <option value="High">Dangerous</option>
+                            <option value="Deadly">Deadly</option>
+                        </select>
+                    </div>
+
+                    <button onclick="window.genEncounter()" id="btn-gen-encounter" class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition mb-4 shadow-lg border border-red-600">
+                        Roll Encounter
+                    </button>
+
+                    <div id="encounter-output" class="hidden bg-gray-900/50 p-4 rounded-lg border border-gray-700 text-sm text-gray-300 leading-relaxed whitespace-pre-wrap mb-2"></div>
+                    
+                    <button onclick="window.saveEncounterToNotes()" id="btn-save-encounter" class="hidden w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 rounded-lg text-xs transition">
+                        💾 Save to Prep Notes
+                    </button>
+                </div>
+
                 <div class="card p-4 rounded-lg shadow-xl mb-6 border border-yellow-600/30">
                     <h2 class="text-xl font-semibold mb-4 text-yellow-300">🍺 Downtime Activities</h2>
                     
@@ -3600,6 +3637,70 @@
             el.textContent = `"${p}"`;
             el.style.opacity = 1;
         }, 300);
+    };
+
+      // E. Random Encounter Generator
+    window.genEncounter = async () => {
+        const btn = document.getElementById('btn-gen-encounter');
+        const out = document.getElementById('encounter-output');
+        const saveBtn = document.getElementById('btn-save-encounter');
+        
+        const terrain = document.getElementById('encounter-terrain').value;
+        const danger = document.getElementById('encounter-danger').value;
+
+        // UI Prep
+        btn.disabled = true;
+        saveBtn.classList.add('hidden');
+        out.classList.remove('hidden');
+        out.innerHTML = '<span class="animate-pulse text-red-400">Rolling initiative...</span>';
+
+        try {
+            // Build Prompt
+            const prompt = `Generate a creative D&D 5e random encounter for a party in a ${terrain} environment. 
+            Danger Level: ${danger}. 
+            Structure it with these headers: Title, Description, Monsters (if combat) or NPCs (if social), and a 'Twist' (loot, secret, or environmental hazard). 
+            Keep it concise but flavorful.`;
+
+            // Call AI
+            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+            
+            // Format Result (Bold headers red, newlines)
+            const text = data.candidates[0].content.parts[0].text
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-red-300">$1</strong>') // Bold -> Red
+                .replace(/\n/g, '<br>');
+
+            out.innerHTML = text;
+            saveBtn.classList.remove('hidden');
+
+        } catch(e) {
+            out.innerHTML = `<span class="text-red-400">Error: ${e.message}</span>`;
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
+    // Save Encounter (Uses your Campaign Manager!)
+    window.saveEncounterToNotes = async () => {
+        if (!window.isAuthReady) { alert("Please log in first."); return; }
+
+        // 1. Get Content
+        const content = document.getElementById('encounter-output').innerHTML;
+        if (!content) return;
+
+        // 2. Ask for Campaign
+        const targetCampaign = await window.promptForCampaign();
+        if (!targetCampaign) return;
+
+        // 3. Generate Note Object
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: `Encounter: ${generateTitleFromContent(content)}`, // Auto-extract title
+            content: content, 
+            timestamp: new Date().toISOString() 
+        };
+
+        // 4. Save using your Unified System
+        await window.finalizeSave('prepNotes', newNote, targetCampaign);
     };  
     
 </script>
