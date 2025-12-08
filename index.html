@@ -198,6 +198,7 @@
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('statblocks')">👹 Stats</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('monsters')">🐲 Monsters</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('loot')">💰 Loot</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('travel')">⛺ Journey</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('soundboard')">🔊 Sound</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('notes')">📜 Notes</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active min-w-[100px]" onclick="switchTab('homebrew')">🍺 Homebrew</button>
@@ -517,6 +518,88 @@
                     </div>
                     <div id="loot-split-result" class="text-sm text-yellow-100 text-center min-h-[1.5em] font-mono bg-gray-800/50 p-2 rounded border border-gray-700">Enter amounts to split...</div>
                 </div>
+            </div>
+
+            <div id="travel" class="tab-content hidden">
+                
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-green-800/50">
+                    <h2 class="text-xl font-semibold mb-4 text-green-300 flex items-center gap-2">
+                        <span>🗺️ Travel Calculator</span>
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Distance (Miles)</label>
+                            <input type="number" id="travel-dist" value="24" class="w-full p-2 rounded-lg input-style text-center font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pace</label>
+                            <select id="travel-pace" class="w-full p-2 rounded-lg input-style text-sm">
+                                <option value="fast">Fast (30m/day)</option>
+                                <option value="normal" selected>Normal (24m/day)</option>
+                                <option value="slow">Slow (18m/day)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Party Size</label>
+                            <input type="number" id="travel-party" value="4" class="w-full p-2 rounded-lg input-style text-center font-bold">
+                        </div>
+                    </div>
+
+                    <button onclick="window.calcTravel()" class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-2 rounded-lg transition mb-4 shadow-lg">Calculate Journey</button>
+
+                    <div id="travel-result" class="hidden bg-gray-900/50 p-4 rounded-lg border border-gray-700 text-sm space-y-2">
+                        </div>
+                </div>
+
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-blue-500/30">
+                    <h2 class="text-xl font-semibold mb-4 text-blue-300">⛈️ Weather & Atmosphere</h2>
+                    <div class="flex gap-2 mb-4">
+                        <select id="weather-biome" class="flex-1 p-2 rounded-lg input-style text-sm">
+                            <option value="temperate">Temperate / Forest</option>
+                            <option value="desert">Desert / Wasteland</option>
+                            <option value="arctic">Arctic / Tundra</option>
+                            <option value="swamp">Swamp / Jungle</option>
+                            <option value="underdark">Underdark / Cave</option>
+                            <option value="coast">Coastal / Sea</option>
+                        </select>
+                        <button onclick="window.genWeather()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 rounded-lg">Roll</button>
+                    </div>
+                    <div id="weather-output" class="text-center text-gray-400 italic text-sm min-h-[1.5rem]">Select biome and roll weather...</div>
+                </div>
+
+                <div class="card p-4 rounded-lg shadow-xl mb-6 border border-yellow-600/30">
+                    <h2 class="text-xl font-semibold mb-4 text-yellow-300">🍺 Downtime Activities</h2>
+                    
+                    <div class="flex gap-2 mb-4">
+                        <select id="downtime-activity" class="flex-1 p-2 rounded-lg input-style text-sm">
+                            <option value="crafting">Crafting an Item</option>
+                            <option value="training">Training (Language/Tool)</option>
+                            <option value="research">Researching Lore</option>
+                            <option value="carousing">Carousing (Party)</option>
+                            <option value="crime">Crime / Heist</option>
+                            <option value="work">Working a Job</option>
+                            <option value="gambling">Gambling</option>
+                        </select>
+                        <button onclick="window.resolveDowntime()" class="bg-yellow-700 hover:bg-yellow-600 text-white font-bold px-4 rounded-lg">Check</button>
+                    </div>
+
+                    <div id="downtime-result" class="bg-gray-900 p-4 rounded border border-gray-700 text-sm text-gray-300 leading-relaxed hidden"></div>
+                </div>
+
+                <div class="card p-4 rounded-lg shadow-xl border border-orange-500/30 text-center">
+                    <h2 class="text-xl font-semibold mb-2 text-orange-300">🔥 Campfire Chat</h2>
+                    <p class="text-xs text-gray-500 mb-4">Click to generate a question for your players during a Long Rest.</p>
+                    
+                    <div id="campfire-prompt" class="text-lg font-serif text-orange-100 italic mb-4 min-h-[3rem] flex items-center justify-center">
+                        "The fire crackles..."
+                    </div>
+                    
+                    <button onclick="window.genCampfirePrompt()" class="bg-orange-800 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-full transition shadow-lg border border-orange-600">
+                        Spark Conversation
+                    </button>
+                </div>
+
             </div>
 
             <div id="soundboard" class="tab-content hidden">
@@ -3422,7 +3505,102 @@
         // 6. Switch back to safety
         alert(`🗑️ Deleted "${target}".`);
         window.switchCampaign('Default Campaign');
-    };   
+    };  
+
+      // --- 19. TRAVEL & DOWNTIME ENGINE ---
+
+    // A. Travel Calculator
+    window.calcTravel = () => {
+        const miles = parseFloat(document.getElementById('travel-dist').value) || 0;
+        const pace = document.getElementById('travel-pace').value;
+        const party = parseInt(document.getElementById('travel-party').value) || 1;
+        
+        let rate = 24; // Normal
+        let note = "Normal travel. No modifiers.";
+        
+        if(pace === 'fast') { 
+            rate = 30; 
+            note = "<span class='text-red-400'>-5 penalty to passive Perception.</span>"; 
+        } else if(pace === 'slow') { 
+            rate = 18; 
+            note = "<span class='text-green-400'>Able to use Stealth.</span>"; 
+        }
+
+        const days = (miles / rate).toFixed(1);
+        const rations = Math.ceil(days * party); // 1 ration per person per day
+        const resultDiv = document.getElementById('travel-result');
+        
+        resultDiv.innerHTML = `
+            <div class="grid grid-cols-2 gap-4 text-center mb-2">
+                <div><div class="text-2xl font-bold text-white">${days}</div><div class="text-xs text-gray-500 uppercase">Days</div></div>
+                <div><div class="text-2xl font-bold text-yellow-500">${rations}</div><div class="text-xs text-gray-500 uppercase">Rations Consumed</div></div>
+            </div>
+            <div class="text-center border-t border-gray-700 pt-2 text-gray-300 italic">${note}</div>
+        `;
+        resultDiv.classList.remove('hidden');
+    };
+
+    // B. Weather Generator
+    const weatherTables = {
+        temperate: ["Sunny and mild", "Overcast and breezy", "Light rain", "Heavy rainstorm", "Foggy morning", "Unseasonably hot"],
+        desert:    ["Scorching heat", "Dry windstorm", "Clear skies", "Heat haze", "Cold night", "Sandstorm (Obscured)"],
+        arctic:    ["Light snow", "Bitter cold wind", "Blizzard (Heavy obscurement)", "Clear and freezing", "Hail", "Whiteout"],
+        swamp:     ["Humid and sticky", "Heavy mist", "Light rain", "Tropical storm", "Stagnant heat", "Swarm of insects"],
+        underdark: ["Stale air", "Sulfuric smell", "Cold drafts", "Dripping water echo", "Phosphorescent spore cloud", "Pitch black silence"],
+        coast:     ["Strong sea breeze", "Morning fog", "Heavy storm", "Clear sunny day", "Light drizzle", "Hurricane winds"]
+    };
+
+    window.genWeather = () => {
+        const biome = document.getElementById('weather-biome').value;
+        const list = weatherTables[biome];
+        const result = list[Math.floor(Math.random() * list.length)];
+        const out = document.getElementById('weather-output');
+        out.textContent = result;
+        out.className = "text-center text-xl font-bold text-blue-200 animate-pulse";
+        setTimeout(() => out.className = "text-center text-lg text-white transition duration-500", 500);
+    };
+
+    // C. Downtime Rules (Simplified XGE)
+    const downtimeRules = {
+        crafting: "<strong>Crafting:</strong> Need proficiency in tools. Progress: <strong>50gp per week</strong> (or 25gp/week for magic items). <br><em>Cost:</em> Half item price in materials. <br><em>Complication:</em> 10% chance per workweek.",
+        training: "<strong>Training:</strong> Learn a language or tool. <br><em>Time:</em> 10 weeks minus Int mod. <br><em>Cost:</em> 25gp per week.",
+        research: "<strong>Research:</strong> Spend 50gp+ on books/bribes. Roll <strong>Int (Investigation)</strong>. <br><em>Result:</em> +1 piece of lore per 50gp spent (max +6) on success.",
+        carousing: "<strong>Carousing:</strong> Lower Class (10gp) or Upper Class (50gp). Roll <strong>Cha (Persuasion)</strong>. <br><em>Success:</em> Gain contacts. <br><em>Fail:</em> 10% chance of complication (jail, enemies).",
+        crime: "<strong>Crime:</strong> Set DC (10-25). Roll <strong>Dex (Stealth)</strong> + Thieves' Tools + Investigation. <br><em>Payout:</em> 50gp to 1000gp based on DC. <br><em>Fail:</em> Jail time or fine.",
+        work: "<strong>Work:</strong> Roll skill check. <br><em>9 or lower:</em> Poor lifestyle. <br><em>10-14:</em> Modest (10gp). <br><em>15-20:</em> Comfortable (20gp). <br><em>21+:</em> Wealthy (50gp).",
+        gambling: "<strong>Gambling:</strong> Bet 10gp-1000gp. Roll <strong>Wis (Insight)</strong>, <strong>Cha (Deception)</strong>, and <strong>Cha (Intimidation)</strong> vs DC. <br><em>0 hits:</em> Lose bet x2. <br><em>1 hit:</em> Lose half. <br><em>2 hits:</em> Win bet +50%. <br><em>3 hits:</em> Win bet x2."
+    };
+
+    window.resolveDowntime = () => {
+        const type = document.getElementById('downtime-activity').value;
+        const resDiv = document.getElementById('downtime-result');
+        resDiv.innerHTML = downtimeRules[type];
+        resDiv.classList.remove('hidden');
+    };
+
+    // D. Campfire Prompts
+    const campPrompts = [
+        "Who taught you how to fight (or cast magic)?",
+        "What is your character most afraid of right now?",
+        "What is the best meal your character has ever had?",
+        "Do you have any regrets from before you joined the party?",
+        "What would you do if you retired from adventuring today?",
+        "Who do you miss the most?",
+        "What do you think of [Another PC's Name]?",
+        "What is your character's proudest moment?",
+        "Do you trust the person on watch tonight?",
+        "What is a secret you haven't told the party yet?"
+    ];
+
+    window.genCampfirePrompt = () => {
+        const p = campPrompts[Math.floor(Math.random() * campPrompts.length)];
+        const el = document.getElementById('campfire-prompt');
+        el.style.opacity = 0;
+        setTimeout(() => {
+            el.textContent = `"${p}"`;
+            el.style.opacity = 1;
+        }, 300);
+    };  
     
 </script>
 
