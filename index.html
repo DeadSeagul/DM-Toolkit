@@ -3007,41 +3007,42 @@
         });
     };
     
+    // 🟢 UPDATED LISTENER: Handles Homebrew Items AND Tables
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
+        
+        // Listen to the Homebrew Collection
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
-            const list = document.getElementById('homebrew-weapon-list'); if(!list) return;
-            if(snap.empty) { list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; return; }
-            const items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
-            items.sort((a,b) => a.name.localeCompare(b.name)); 
-            list.innerHTML = '';
-            list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20";
-            items.forEach(item => {
-                items.forEach(item => {
-                // ... existing checks for monster, weapon, item ...
-
-                // 🟢 ADD THIS BLOCK for TABLES
-                if (item.category === 'table') {
-                    // Save to local cache
-                    window.brewTables.push(item);
-                    return; // Don't render as a card in the list
-                }
-                
-                // ... rest of your code rendering cards ...
-            });
-
-            // 🟢 UPDATE DROPDOWN AFTER LOOP
-            const tableSelect = document.getElementById('roll-table-select');
-            if (tableSelect) {
-                // Clear and rebuild options
-                tableSelect.innerHTML = '<option value="" disabled selected>Select a table...</option>';
-                window.brewTables.forEach((t, i) => {
-                    const opt = document.createElement('option');
-                    opt.value = i; // Use index as value
-                    opt.textContent = `${t.name} (${t.die})`;
-                    tableSelect.appendChild(opt);
-                });
+            const list = document.getElementById('homebrew-weapon-list'); 
+            if(!list) return;
+            
+            // 1. Reset Data
+            window.brewTables = []; // Clear the table list so we don't get duplicates
+            
+            if(snap.empty) { 
+                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No items saved.</p>'; 
+                // Even if empty, we refresh the dropdown (to show System tables)
+                if (window.refreshTableDropdown) window.refreshTableDropdown();
+                return; 
             }
+
+            const items = []; 
+            snap.forEach(d => items.push({id: d.id, ...d.data()}));
+            items.sort((a,b) => a.name.localeCompare(b.name)); 
+            
+            list.innerHTML = '';
+            list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20"; // Layout styles
+
+            // 2. Sort Items: Tables go to Dropdown, Others go to Cards
+            items.forEach(item => {
+                
+                // 🟢 CATCH TABLES (Don't draw them as cards)
+                if (item.category === 'table') {
+                    window.brewTables.push(item);
+                    return; // Skip the rest of the loop for this item
+                }
+
+                // 🟢 DRAW CARDS (Monsters, Weapons, Items)
                 let visualHTML = "";
                 if (item.category === 'monster') {
                     visualHTML = `<div class="transform scale-90 origin-top-left">${generateMonsterHTML(item)}</div>`;
@@ -3050,11 +3051,15 @@
                 } else {
                     visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""}</div></div>`;
                 }
+                
                 const div = document.createElement('div'); 
                 div.className = 'break-inside-avoid mb-4 bg-gray-900 p-1 rounded border border-gray-700 relative shadow-lg';
                 div.innerHTML = `<div class="p-1">${visualHTML}</div><div class="flex justify-end gap-2 mt-2 p-2 border-t border-gray-700 bg-gray-800"><button onclick="window.shareHomebrewItem('${item.id}')" class="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase" title="Share">🌍 Share</button><button onclick="window.deleteHomebrewWeapon('${item.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase">Delete</button></div>`;
                 list.appendChild(div);
             });
+
+            // 3. Refresh the Table Dropdown (Now that we have the data)
+            if (window.refreshTableDropdown) window.refreshTableDropdown(); 
         });
     };
         // --- 17. DUAL COMBAT TIMER (Stopwatch & Countdown) ---
@@ -3876,36 +3881,131 @@
         }
     };
 
-    // 3. Load Tables into Dropdown
-    window.brewTables = []; // Local Cache
-    
-    window.loadBrewTables = async () => {
-        if (!window.isAuthReady) return;
+ // ==========================================
+    // 🎲 ENHANCED RANDOM TABLE ENGINE (System + User)
+    // ==========================================
+
+    // 1. SYSTEM PRESET TABLES (Always Available)
+    const systemTables = [
+        {
+            name: "Wild Magic Surge",
+            die: "d10", // Simplified example
+            options: [
+                "Roll on this table at the start of each of your turns for the next minute.",
+                "You cast Fireball as a 3rd-level spell centered on yourself.",
+                "You cast Magic Missile as a 5th-level spell.",
+                "You cast Confusion centered on yourself.",
+                "For the next minute, you regain 5 hit points at the start of each of your turns.",
+                "You grow a long beard made of feathers that remains until you sneeze.",
+                "You cast Grease centered on yourself.",
+                "Creatures have disadvantage on saving throws against the next spell you cast.",
+                "Your skin turns a vibrant shade of blue.",
+                "An eye appears on your forehead for the next minute."
+            ]
+        },
+        {
+            name: "Trinkets (Gothic)",
+            die: "d10",
+            options: [
+                "A picture you drew as a child of your imaginary friend.",
+                "A lock that opens when blood is dripped in the keyhole.",
+                "Clothes of a beggar that fit you perfectly.",
+                "A face of a woman who looks like you, carved into a pendant.",
+                "A invitation to a party where a murder happened.",
+                "A distinct set of silverware used by a king.",
+                "A porcelain doll head that always seems to be looking at you.",
+                "A book that tells the story of a hero with your name.",
+                "A heavy iron key with no teeth.",
+                "A mummified goblin hand."
+            ]
+        },
+        {
+            name: "NPC Personality",
+            die: "d8",
+            options: [
+                "Arrogant and condescending.",
+                "Nervous and twitchy.",
+                "Friendly but clearly hiding something.",
+                "Stoic and speaks in short sentences.",
+                "Overly enthusiastic about everything.",
+                "Suspicious of magic users.",
+                "Constantly complains about the weather.",
+                "Speaks in third person."
+            ]
+        },
+        {
+            name: "Short-Term Madness",
+            die: "d10",
+            options: [
+                "The character retreats into their mind and becomes paralyzed.",
+                "The character becomes incapacitated and spends the duration screaming, laughing, or weeping.",
+                "The character becomes frightened and must use their action to flee.",
+                "The character begins babbling and is incapable of normal speech or spellcasting.",
+                "The character must use their action to attack the nearest creature.",
+                "The character experiences vivid hallucinations and has disadvantage on ability checks.",
+                "The character does whatever anyone tells them to do that isn't obviously harmful.",
+                "The character experiences an overpowering urge to eat something strange such as dirt, slime, or offal.",
+                "The character is stunned.",
+                "The character falls unconscious."
+            ]
+        }
+    ];
+
+    // 2. Load Tables (Merges System + User)
+    window.brewTables = []; // Stores everything
+
+    // Hook this into your existing Homebrew Listener!
+    window.refreshTableDropdown = () => {
+        const select = document.getElementById('roll-table-select');
+        if (!select) return;
+
+        select.innerHTML = '<option value="" disabled selected>Select a table...</option>';
         
-        const q = window.query(getCol('dm_toolkit_homebrew_items'));
-        const snap = await window.getDocs(q); // We need getDocs exposed or use onSnapshot
-        // Since we already have a homebrew listener, let's hook into that instead.
+        // A. Add System Tables Group
+        const sysGroup = document.createElement('optgroup');
+        sysGroup.label = "📚 Official / System";
+        systemTables.forEach((t, i) => {
+            const opt = document.createElement('option');
+            opt.value = `sys-${i}`;
+            opt.textContent = `${t.name} (${t.die})`;
+            sysGroup.appendChild(opt);
+        });
+        select.appendChild(sysGroup);
+
+        // B. Add User Tables Group
+        const usrGroup = document.createElement('optgroup');
+        usrGroup.label = "🍺 My Homebrew";
+        
+        // Filter out tables from the mixed homebrew list
+        // (Assuming you populated window.brewTables in your main listener as discussed before)
+        window.brewTables.forEach((t, i) => {
+            const opt = document.createElement('option');
+            opt.value = `usr-${i}`; // Unique ID logic
+            opt.textContent = `${t.name} (${t.die})`;
+            usrGroup.appendChild(opt);
+        });
+        select.appendChild(usrGroup);
     };
 
-    // *HOOK* this into your existing Homebrew Listener
-    // Find 'window.setupHomebrewListener' and add this logic inside the snapshot loop:
-    /*
-        if (item.category === 'table') {
-            // Add to dropdown logic (see step 4 below)
-        }
-    */
-
-    // 4. Roll Logic
+    // 3. Roll Logic (Handles both types)
     window.rollOnTable = () => {
         const select = document.getElementById('roll-table-select');
-        const index = select.value;
-        if (index === "") return;
+        const val = select.value;
+        if (!val) return;
 
-        const table = window.brewTables[index];
+        let table = null;
+        if (val.startsWith('sys-')) {
+            const idx = parseInt(val.split('-')[1]);
+            table = systemTables[idx];
+        } else {
+            const idx = parseInt(val.split('-')[1]);
+            table = window.brewTables[idx];
+        }
+
         const resultDiv = document.getElementById('table-roll-result');
         const resultVal = document.getElementById('table-roll-value');
         
-        // Visual Roll Effect
+        // Animation
         resultDiv.classList.remove('hidden');
         let count = 0;
         const max = 10;
@@ -3915,29 +4015,44 @@
             count++;
             if(count > max) {
                 clearInterval(interval);
-                // Final Result
+                // Final Roll
                 const roll = Math.floor(Math.random() * table.options.length);
                 const final = table.options[roll];
-                resultVal.innerText = final || "Empty Result";
+                resultVal.innerHTML = `<span class="text-indigo-400 text-xs block mb-1">Rolled ${roll+1} on ${table.die}</span>${final}`;
                 
-                // Play Sound
                 if(window.playTone) window.playTone('success');
             }
         }, 50);
     };
 
+    // 4. Preview Logic (Handles both types)
     window.previewTable = () => {
         const select = document.getElementById('roll-table-select');
-        const index = select.value;
-        if (index === "") return;
-        
-        const table = window.brewTables[index];
+        const val = select.value;
+        if (!val) return;
+
+        let table = null;
+        let isSystem = false;
+
+        if (val.startsWith('sys-')) {
+            const idx = parseInt(val.split('-')[1]);
+            table = systemTables[idx];
+            isSystem = true;
+        } else {
+            const idx = parseInt(val.split('-')[1]);
+            table = window.brewTables[idx];
+        }
+
         const list = document.getElementById('table-preview-list');
         const container = document.getElementById('table-preview-container');
-        
+        const delBtn = document.getElementById('btn-delete-table'); // ID added below
+
         list.innerHTML = table.options.map((opt, i) => `<div class="border-b border-gray-800 pb-1"><strong class="text-indigo-400">${i+1}.</strong> ${opt}</div>`).join('');
         container.classList.remove('hidden');
         container.open = false; 
+        
+        // Hide delete button for System tables
+        if(delBtn) delBtn.style.display = isSystem ? 'none' : 'block';
     };
 
     window.deleteTable = async () => {
