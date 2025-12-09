@@ -1367,7 +1367,7 @@
         renderStructuredNotes(window.currentSubTab);
     };
 
-// --- EXPOSED RENDER FUNCTION (Fixes Search Button) ---
+    // --- EXPOSED RENDER FUNCTION (Fixes Search Button) ---
     window.renderStructuredNotes = function(tab) {
         const list = document.getElementById(`${tab}-list`);
         if(!list) return;
@@ -1438,9 +1438,6 @@
 
     window.updateApiKey = function(val) { userApiKey = val.trim(); localStorage.setItem('dm_toolkit_api_key', userApiKey); const status = document.getElementById('api-key-status'); if(userApiKey.length > 5) { status.textContent = "Key saved!"; status.className="mt-2 text-xs text-green-400"; } else { status.textContent = "Key empty"; status.className="mt-2 text-xs text-red-400"; } };
     window.saveApiKey = function() { window.updateApiKey(document.getElementById('user-api-key').value); };
-
-
-
 
     // --- 7. COMBAT & STATBLOCKS ---
     window.addCombatant = async () => { const name = document.getElementById('combatant-name').value.trim(); if(!name) return; const init = parseInt(document.getElementById('combatant-init').value)||0; const hp = parseInt(document.getElementById('combatant-hp').value)||0; const ac = parseInt(document.getElementById('combatant-ac').value)||0; await window.addDoc(getCol('shared_combatants'), { name, init, maxHp: hp, currentHp: hp, ac, initModifier: init }); document.getElementById('combatant-name').value = ''; };
@@ -3410,92 +3407,118 @@
         if (saveResolve) saveResolve(val);
     };
 
-        // ==========================================
-    // 🟢 UNIFIED CAMPAIGN SAVE SYSTEM (ALL TOOLS)
+    // ==========================================
+    // 🟢 SMART SAVE SYSTEM (Fixes Text Spacing)
     // ==========================================
 
-    // Helper: Smart Save & Redirect Logic
-    // This reduces repetitive code for all the functions below
+    // 1. HELPER: Converts Web HTML -> Readable Note Text
+    function formatForNote(html) {
+        // Create a temporary element to handle the conversion safely
+        let temp = document.createElement("div");
+        temp.innerHTML = html;
+
+        // Replace <br> and <p> with actual newlines (\n)
+        temp.innerHTML = temp.innerHTML
+            .replace(/<br\s*\/?>/gi, "\n")
+            .replace(/<\/p>/gi, "\n\n")
+            .replace(/<li\s*\/?>/gi, "\n• ");
+
+        // Extract pure text (strips remaining <strong>, <em> tags but keeps newlines)
+        return temp.innerText || temp.textContent || "";
+    }
+
+    // 2. HELPER: Unified Save Logic
     window.finalizeSave = async (tab, noteObj, targetCampaign) => {
-        // 1. Add Campaign Tag
         noteObj.campaign = targetCampaign;
         
-        // 2. Add to Local List
         if (!structuredNotes[tab]) structuredNotes[tab] = [];
         structuredNotes[tab].unshift(noteObj);
         
-        // 3. Save to Firebase
         await window.saveStructuredNotes(tab, structuredNotes[tab]);
 
-        // 4. Smart Redirect (Ask if switching campaigns)
         if (targetCampaign !== window.currentCampaign) {
-            if(confirm(`✅ Saved to "${targetCampaign}".\n\nSwitch to that campaign to view it?`)) {
+            if(confirm(`✅ Saved to "${targetCampaign}". Switch to view?`)) {
                 window.switchCampaign(targetCampaign);
                 window.switchTab('notes');
                 window.switchSubTab(tab);
             }
         } else {
-            // If already on the right campaign, just refresh
+            // If already on the tab, refresh the list immediately
             if(window.currentTab === 'notes' && window.currentSubTab === tab) {
                 window.renderStructuredNotes(tab);
             }
-            alert(`✅ Saved to ${targetCampaign}!`);
+            alert(`✅ Saved!`);
         }
     };
 
-    // 1. GENERIC AI CONTENT (Lore, Settlements, Loot)
+    // 3. SAVE GENERIC CONTENT (Lore, Loot, Settlements)
     window.saveGeneratedContent = async function(destinationTab) {
         if (!window.isAuthReady) { alert("Please log in first."); return; }
 
-        // Ask for Campaign
         const targetCampaign = await window.promptForCampaign();
         if (!targetCampaign) return;
 
-        // Get Content
-        let content = document.getElementById('ai-output').innerHTML;
-        if (window.currentTab === 'loot') content = document.getElementById('loot-output').innerText;
+        // Get raw HTML
+        let rawHtml = document.getElementById('ai-output').innerHTML;
+        if (window.currentTab === 'loot') rawHtml = document.getElementById('loot-output').innerHTML;
         
-        // Generate Note
+        // Convert to clean text
+        const cleanContent = formatForNote(rawHtml);
+        
+        // Extract a title from the first line
+        const lines = cleanContent.split('\n');
+        const title = lines[0].substring(0, 40).replace(/\*\*/g, '') + (lines[0].length > 40 ? "..." : "");
+
         const newNote = { 
             id: crypto.randomUUID(), 
-            title: generateTitleFromContent(content), 
-            content: content, 
+            title: title || "Generated Note", 
+            content: cleanContent, 
             timestamp: new Date().toISOString() 
         };
 
         await window.finalizeSave(destinationTab, newNote, targetCampaign);
     };
 
-    // 2. COMBAT NPC GENERATOR
+    // 4. SAVE COMBAT NPC
     window.saveCombatNpcToNotes = async function(tab) {
         if (!window.isAuthReady || !lastGeneratedNpc) return;
 
-        // Ask for Campaign
         const targetCampaign = await window.promptForCampaign();
         if (!targetCampaign) return;
 
+        // Create a clean text block manually for stats
+        const cleanContent = `Name: ${lastGeneratedNpc.name}
+Level/CR: ${lastGeneratedNpc.level_or_cr}
+AC: ${lastGeneratedNpc.armor_class_ac}
+HP: ${lastGeneratedNpc.max_hit_points}
+Initiative: ${lastGeneratedNpc.initiative_bonus}
+Main Attack: ${lastGeneratedNpc.main_attack}`;
+
         const newNote = { 
             id: crypto.randomUUID(), 
-            title: `${lastGeneratedNpc.name} (CR ${lastGeneratedNpc.level_or_cr})`, 
-            content: document.getElementById('ai-output').innerHTML, 
+            title: `${lastGeneratedNpc.name} (Statblock)`, 
+            content: cleanContent, 
             timestamp: new Date().toISOString() 
         };
 
         await window.finalizeSave(tab, newNote, targetCampaign);
     };
 
-    // 3. MONSTER GENERATOR
+    // 5. SAVE MONSTER
     window.saveMonsterToNotes = async function() {
         if (!window.isAuthReady || !lastGeneratedMonster) return;
 
-        // Ask for Campaign
         const targetCampaign = await window.promptForCampaign();
         if (!targetCampaign) return;
+
+        // Use the formatter on the existing HTML output
+        const rawHtml = document.getElementById('monster-output').innerHTML;
+        const cleanContent = formatForNote(rawHtml);
 
         const newNote = { 
             id: crypto.randomUUID(), 
             title: lastGeneratedMonster.name, 
-            content: document.getElementById('monster-output').innerHTML, 
+            content: cleanContent, 
             timestamp: new Date().toISOString() 
         };
 
