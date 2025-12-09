@@ -106,63 +106,6 @@
         .aegis-text { display: flex; flex-direction: column; line-height: 1.1; }
         .aegis-title { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #818cf8; }
         .aegis-subtitle { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.16em; opacity: 0.8; color: #cbd5e1; }
-    /* 🚀 SW5E SCI-FI THEME */
-body.scifi-mode {
-    background-color: #050510 !important;
-    color: #00ffff;
-    font-family: 'Courier New', Courier, monospace; /* Terminal vibe */
-    background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
-}
-
-/* Neon Cards */
-body.scifi-mode .card {
-    background-color: rgba(5, 10, 20, 0.9);
-    border: 1px solid #00ffff;
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.05);
-    border-radius: 4px; /* Sharper corners */
-}
-
-/* Holographic Inputs */
-body.scifi-mode .input-style, 
-body.scifi-mode input, 
-body.scifi-mode select, 
-body.scifi-mode textarea {
-    background-color: rgba(0, 20, 40, 0.8) !important;
-    border: 1px solid #0088ff !important;
-    color: #00ffff !important;
-    font-family: 'Courier New', monospace;
-}
-
-/* Neon Buttons */
-body.scifi-mode button {
-    border-radius: 2px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-/* Active Tabs */
-body.scifi-mode .tab-button.active {
-    color: #00ffff;
-    border-bottom-color: #00ffff;
-    text-shadow: 0 0 8px #00ffff;
-}
-
-/* Headings */
-body.scifi-mode h1, body.scifi-mode h2, body.scifi-mode h3 {
-    color: #ffe81f; /* Star Wars Yellow */
-    text-shadow: 0 0 5px rgba(255, 232, 31, 0.5);
-    font-family: Impact, sans-serif; /* Bold title font */
-    letter-spacing: 1px;
-}
-
-/* Hide Parchment, Show Tech */
-body.scifi-mode .parchment-card {
-    background-image: none;
-    background-color: #001122;
-    border: 2px solid #ffe81f;
-    color: #00ffff;
-    font-family: monospace;
-}
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -225,9 +168,7 @@ body.scifi-mode .parchment-card {
 
             <div class="flex items-center gap-3">
                 <!-- Holiday Toggle -->
-                
                 <button onclick="toggleTheme()" class="text-xl p-2 hover:bg-gray-700 rounded transition" title="Toggle Holiday Mode">🎄</button>
-                <button onclick="toggleSciFiMode()" class="text-xl p-2 hover:bg-gray-700 rounded transition" title="Initialize SW5e Protocol">🚀</button>
                 <button onclick="document.getElementById('share-modal').classList.remove('hidden')" class="p-2 hover:bg-gray-700 rounded-lg transition text-gray-400 hover:text-white" title="Share App">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
@@ -1926,17 +1867,6 @@ body.scifi-mode .parchment-card {
         if(userApiKey) { document.getElementById('user-api-key').value = userApiKey; window.updateApiKey(userApiKey); }
         applyTheme();
         window.switchTab('improv');
-
-        const savedTheme = localStorage.getItem('aegis_theme');
-        if (savedTheme === 'scifi') {
-            window.isSciFiMode = false; // toggleSciFiMode will flip it to true
-            window.toggleSciFiMode();
-        } else if (savedTheme === 'christmas') {
-            document.body.classList.add('christmas-mode');
-            applyTheme(); // Starts snow
-        } else {
-            window.setRandomBackground(); // Normal Fantasy Art
-        }
         // --- DICE VISUALS (Colors, Textures & Reset Fixed) ---
         (function() {
             const canvas = document.getElementById('dice-canvas'); 
@@ -2062,150 +1992,43 @@ body.scifi-mode .parchment-card {
         };
 
         // Main Play Tone Function
-       // 🟢 DUAL-MODE SOUND EFFECTS
         window.playTone = function(type) {
             if (ac.state === 'suspended') ac.resume();
             const now = ac.currentTime;
             const osc = ac.createOscillator(); const gain = ac.createGain();
             
-            // 🚀 SCI-FI SOUNDS
-            if (window.isSciFiMode) {
-                switch (type) {
-                    case 'success': // Computer Chirp
-                        [880, 1760].forEach((f,i) => { 
-                            const o=ac.createOscillator(); o.type='sine'; o.frequency.value=f; 
-                            const g=ac.createGain(); o.connect(g); g.connect(masterGain);
-                            g.gain.setValueAtTime(0.1, now+i*0.1); g.gain.exponentialRampToValueAtTime(0.001, now+i*0.1+0.1);
-                            o.start(now+i*0.1); o.stop(now+i*0.1+0.1);
-                        });
-                        break;
-                    case 'combat_start': // Red Alert Siren
-                        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(800, now);
-                        osc.frequency.linearRampToValueAtTime(400, now+0.5);
-                        osc.frequency.linearRampToValueAtTime(800, now+1.0);
-                        gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now+2);
-                        osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now+2);
-                        break;
-                    case 'spell': // Force Push (Low Rumble + Whoosh)
-                        const n = ac.createBufferSource(); n.buffer = noiseBuf;
-                        const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(100, now); f.frequency.exponentialRampToValueAtTime(1000, now+0.3);
-                        n.connect(f); f.connect(gain); gain.connect(masterGain);
-                        gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.5);
-                        n.start(now); n.stop(now+0.5);
-                        break;
-                    case 'trap': // Hull Breach / Alarm
-                        osc.type = 'square'; osc.frequency.setValueAtTime(2000, now);
-                        gain.gain.setValueAtTime(0.1, now); 
-                        osc.connect(gain); gain.connect(masterGain);
-                        osc.start(now); osc.stop(now+0.1);
-                        setTimeout(() => { 
-                            const o2=ac.createOscillator(); o2.type='square'; o2.frequency.value=2000; 
-                            const g2=ac.createGain(); g2.gain.value=0.1; o2.connect(g2); g2.connect(masterGain); 
-                            o2.start(ac.currentTime); o2.stop(ac.currentTime+0.1); 
-                        }, 200);
-                        break;
-                    case 'wolf': // Droid Beeps
-                        [1200, 800, 1500, 600].forEach((f,i) => {
-                            const o=ac.createOscillator(); o.type='square'; o.frequency.value=f;
-                            const g=ac.createGain(); o.connect(g); g.connect(masterGain);
-                            g.gain.value=0.1; o.start(now+i*0.08); o.stop(now+i*0.08+0.05);
-                        });
-                        break;
-                    case 'mystery': // Scanner Ping
-                        osc.type = 'sine'; osc.frequency.setValueAtTime(2000, now);
-                        gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.2, now+0.5); gain.gain.linearRampToValueAtTime(0, now+1);
-                        osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now+1);
-                        break;
-                    default: // Fallback to normal beep
-                        osc.type='sine'; osc.frequency.value=440; gain.gain.value=0.1; 
-                        osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now+0.2);
-                }
-                return;
-            }
-
-            // ⚔️ FANTASY SOUNDS (Existing Logic)
             switch (type) {
                 case 'success': [523.25, 659.25, 783.99].forEach((freq, i) => { const o = ac.createOscillator(); const g = ac.createGain(); o.type = 'triangle'; o.frequency.value = freq; o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + i*0.1 + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.0); o.start(now + i*0.1); o.stop(now + 1.0); }); break;
                 case 'critical': [523.25, 1046.50, 1318.51].forEach((freq, i) => { const o = ac.createOscillator(); const g = ac.createGain(); o.type = 'square'; o.frequency.value = freq; o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.1, now + 0.05); g.gain.exponentialRampToValueAtTime(0.001, now + 1.5); o.start(now); o.stop(now + 1.5); }); break;
-                case 'fail': { const o1 = ac.createOscillator(); const g1 = ac.createGain(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(196.00, now); o1.frequency.linearRampToValueAtTime(185.00, now + 0.4); o1.connect(g1); g1.connect(masterGain); g1.gain.setValueAtTime(0.2, now); g1.gain.linearRampToValueAtTime(0, now + 0.4); o1.start(now); o1.stop(now+0.4); } break;
+                case 'fail': { const o1 = ac.createOscillator(); const g1 = ac.createGain(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(196.00, now); o1.frequency.linearRampToValueAtTime(185.00, now + 0.4); o1.connect(g1); g1.connect(masterGain); g1.gain.setValueAtTime(0.2, now); g1.gain.linearRampToValueAtTime(0, now + 0.4); o1.start(now); o1.stop(now+0.4); const o2 = ac.createOscillator(); const g2 = ac.createGain(); o2.type = 'sawtooth'; o2.frequency.setValueAtTime(174.61, now + 0.45); o2.frequency.linearRampToValueAtTime(155.56, now + 1.0); o2.connect(g2); g2.connect(masterGain); g2.gain.setValueAtTime(0, now + 0.45); g2.gain.linearRampToValueAtTime(0.2, now + 0.5); g2.gain.linearRampToValueAtTime(0, now + 1.0); o2.start(now + 0.45); o2.stop(now + 1.0); } break;
                 case 'combat_start': { osc.type = 'sawtooth'; osc.frequency.value = 60; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(200, now); filter.frequency.linearRampToValueAtTime(1500, now + 0.1); filter.frequency.exponentialRampToValueAtTime(200, now + 2); osc.connect(filter); filter.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.4, now + 0.1); gain.gain.exponentialRampToValueAtTime(0.001, now + 2); osc.start(now); osc.stop(now + 2); } break;
                 case 'spell': { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(2000, now + 1); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 1); osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now + 1); } break;
-                case 'mystery': { const mo1 = ac.createOscillator(); const mg1 = ac.createGain(); mo1.type = 'sine'; mo1.frequency.value = 440; mo1.connect(mg1); mg1.connect(masterGain); mg1.gain.setValueAtTime(0, now); mg1.gain.linearRampToValueAtTime(0.2, now + 1); mg1.gain.linearRampToValueAtTime(0, now + 3); mo1.start(now); mo1.stop(now + 3); } break;
-                case 'trap': { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000; const ng = ac.createGain(); n.connect(f); f.connect(ng); ng.connect(masterGain); ng.gain.setValueAtTime(0.6, now); ng.gain.exponentialRampToValueAtTime(0.01, now + 0.1); n.start(now); n.stop(now + 0.1); } break;
+                case 'mystery': { const mo1 = ac.createOscillator(); const mg1 = ac.createGain(); mo1.type = 'sine'; mo1.frequency.value = 440; mo1.connect(mg1); mg1.connect(masterGain); mg1.gain.setValueAtTime(0, now); mg1.gain.linearRampToValueAtTime(0.2, now + 1); mg1.gain.linearRampToValueAtTime(0, now + 3); mo1.start(now); mo1.stop(now + 3); const mo2 = ac.createOscillator(); const mg2 = ac.createGain(); mo2.type = 'sine'; mo2.frequency.value = 455; mo2.connect(mg2); mg2.connect(masterGain); mg2.gain.setValueAtTime(0, now); mg2.gain.linearRampToValueAtTime(0.2, now + 1.5); mg2.gain.linearRampToValueAtTime(0, now + 3); mo2.start(now); mo2.stop(now + 3); } break;
+                case 'rest': { [261.63, 329.63, 392.00, 523.25].forEach(f => { const o = ac.createOscillator(); const g = ac.createGain(); o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.05, now + 1); g.gain.linearRampToValueAtTime(0, now + 4); o.start(now); o.stop(now + 4); }); } break;
+                case 'trap': { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1000; const ng = ac.createGain(); n.connect(f); f.connect(ng); ng.connect(masterGain); ng.gain.setValueAtTime(0.6, now); ng.gain.exponentialRampToValueAtTime(0.01, now + 0.1); n.start(now); n.stop(now + 0.1); osc.type = 'square'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.2); osc.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2); osc.start(now); osc.stop(now + 0.2); } break;
+                case 'boss': { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(55, now); const bf = ac.createBiquadFilter(); bf.type='lowpass'; bf.frequency.value=150; osc.connect(bf); bf.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.5, now + 0.1); gain.gain.exponentialRampToValueAtTime(0.001, now + 3); osc.start(now); osc.stop(now + 3); } break;
                 case 'wolf': { osc.type = 'triangle'; osc.frequency.setValueAtTime(400, now); osc.frequency.linearRampToValueAtTime(600, now + 0.5); osc.frequency.linearRampToValueAtTime(300, now + 2.5); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.2, now + 0.5); gain.gain.linearRampToValueAtTime(0, now + 2.5); osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now + 2.5); } break;
-                case 'bird': { osc.type = 'sine'; osc.frequency.setValueAtTime(2000, now); osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.01); osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now + 0.1); } break;
+                case 'bear': { osc.type = 'sawtooth'; osc.frequency.value = 50; const bearF = ac.createBiquadFilter(); bearF.type = 'lowpass'; bearF.frequency.setValueAtTime(100, now); bearF.frequency.linearRampToValueAtTime(600, now + 0.2); bearF.frequency.linearRampToValueAtTime(100, now + 1.0); osc.connect(bearF); bearF.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.4, now + 0.1); gain.gain.linearRampToValueAtTime(0, now + 1.0); osc.start(now); osc.stop(now + 1.0); } break;
+                case 'bird': { osc.type = 'sine'; osc.frequency.setValueAtTime(2000, now); osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.01); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.connect(gain); gain.connect(masterGain); osc.start(now); osc.stop(now + 0.1); setTimeout(() => { const o2 = ac.createOscillator(); const g2 = ac.createGain(); o2.type = 'sine'; o2.frequency.setValueAtTime(2500, ac.currentTime); o2.frequency.exponentialRampToValueAtTime(1200, ac.currentTime + 0.1); g2.gain.setValueAtTime(0, ac.currentTime); g2.gain.linearRampToValueAtTime(0.1, ac.currentTime + 0.01); g2.gain.linearRampToValueAtTime(0, ac.currentTime + 0.1); o2.connect(g2); g2.connect(masterGain); o2.start(ac.currentTime); o2.stop(ac.currentTime + 0.1); }, 150); } break;
+                case 'snake': { const n = ac.createBufferSource(); n.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 3000; n.connect(f); f.connect(gain); gain.connect(masterGain); gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.15, now + 0.5); gain.gain.linearRampToValueAtTime(0, now + 2.0); n.start(now); n.stop(now + 2.0); } break;
+                case 'insect': { 
+                    const playPulse = (t) => { const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 4500; const filter = ac.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 4500; filter.Q.value = 10; const g = ac.createGain(); osc.connect(filter); filter.connect(g); g.connect(masterGain); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.002); g.gain.exponentialRampToValueAtTime(0.001, t + 0.02); osc.start(t); osc.stop(t + 0.03); };
+                    const playChirp = (t) => { for(let i=0; i<4; i++) playPulse(t + (i * 0.018)); };
+                    playChirp(now); playChirp(now + 0.3); playChirp(now + 0.6); 
+                } break;
             }
         };
 
-        // 🟢 DUAL-MODE AMBIENCE
         window.toggleAmbience = function(t) {
             if(ac.state==='suspended') ac.resume();
             ambNodes.forEach(n => { try{n.stop()}catch(e){} try{n.disconnect()}catch(e){} }); ambNodes=[];
             document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active-loop'));
-            
             if(ambType === t) { ambType = null; document.getElementById('ambience-status').innerText = ""; return; }
-            ambType = t;
-            
+            ambType = t; 
             const btn = document.getElementById(`ambience-${t}`);
             if(btn) btn.classList.add('active-loop');
-            
-            document.getElementById('ambience-status').innerText = "Playing: " + (window.isSciFiMode ? t.toUpperCase() + " (SCI-FI)" : t.toUpperCase());
+            document.getElementById('ambience-status').innerText = "Playing: " + t.toUpperCase();
             const now = ac.currentTime;
-
-            // 🚀 SCI-FI LOOPS
-            if (window.isSciFiMode) {
-                if (t === 'ocean') { // HYPERSPACE
-                    const osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 60;
-                    const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.2;
-                    const gain = ac.createGain(); const lfoGain = ac.createGain(); lfoGain.gain.value = 20;
-                    lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
-                    osc.connect(gain); gain.connect(masterGain); gain.gain.value = 0.15;
-                    osc.start(now); lfo.start(now); ambNodes.push(osc, lfo, gain);
-                }
-                else if (t === 'tavern') { // CANTINA
-                    const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true;
-                    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 300;
-                    const g = ac.createGain(); g.gain.value = 0.2;
-                    noise.connect(f); f.connect(g); g.connect(masterGain); noise.start(now);
-                    
-                    // Jizz Music (Synth Jazz)
-                    const jazzScale = [261, 311, 349, 415, 466]; // C Minor Blues
-                    const iv = setInterval(() => {
-                        if(Math.random() > 0.4) {
-                            const note = jazzScale[Math.floor(Math.random()*jazzScale.length)];
-                            const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = note;
-                            const g2 = ac.createGain(); o.connect(g2); g2.connect(masterGain);
-                            g2.gain.setValueAtTime(0.05, ac.currentTime); g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+0.2);
-                            o.start(ac.currentTime); o.stop(ac.currentTime+0.2);
-                        }
-                    }, 150);
-                    ambNodes.push(noise, g, {stop: ()=>clearInterval(iv)});
-                }
-                else if (t === 'city') { // CORUSCANT TRAFFIC
-                    const n = ac.createBufferSource(); n.buffer = noiseBuf; n.loop=true;
-                    const f = ac.createBiquadFilter(); f.type='highpass'; f.frequency.value=800;
-                    const g = ac.createGain(); g.gain.value=0.05; n.connect(f); f.connect(g); g.connect(masterGain);
-                    n.start(now);
-                    
-                    // Flying Cars (Doppler effect)
-                    const iv = setInterval(() => {
-                        const o = ac.createOscillator(); o.type='sawtooth'; o.frequency.setValueAtTime(300, ac.currentTime);
-                        o.frequency.linearRampToValueAtTime(100, ac.currentTime+2);
-                        const g2 = ac.createGain(); g2.gain.setValueAtTime(0, ac.currentTime);
-                        g2.gain.linearRampToValueAtTime(0.1, ac.currentTime+1); g2.gain.linearRampToValueAtTime(0, ac.currentTime+2);
-                        o.connect(g2); g2.connect(masterGain); o.start(ac.currentTime); o.stop(ac.currentTime+2);
-                    }, 4000);
-                    ambNodes.push(n, g, {stop:()=>clearInterval(iv)});
-                }
-                return;
-            }
-
-            // ⚔️ FANTASY LOOPS (Existing Logic)
-            if (t === 'village') { const n = ac.createBufferSource(); n.buffer = noiseBuf; n.loop = true; const f = ac.createBiquadFilter(); f.frequency.value = 400; const g = ac.createGain(); g.gain.value = 0.05; n.connect(f); f.connect(g); g.connect(masterGain); n.start(now); ambNodes.push(n, g); }
-            else if (t === 'ocean') { const n = ac.createBufferSource(); n.buffer = noiseBuf; n.loop=true; const f = ac.createBiquadFilter(); f.type='lowpass'; f.frequency.value=300; const g = ac.createGain(); g.gain.value=0.1; const lfo = ac.createOscillator(); lfo.frequency.value=0.2; const lg = ac.createGain(); lg.gain.value=200; lfo.connect(lg); lg.connect(f.frequency); n.connect(f); f.connect(g); g.connect(masterGain); n.start(now); lfo.start(now); ambNodes.push(n,g,lfo,lg); }
-            else if (t === 'tavern') { const n = ac.createBufferSource(); n.buffer=noiseBuf; n.loop=true; const f=ac.createBiquadFilter(); f.frequency.value=200; const g=ac.createGain(); g.gain.value=0.15; n.connect(f); f.connect(g); g.connect(masterGain); n.start(now); ambNodes.push(n,g); }
-            // ... (keep other fantasy loops basic to save space) ...
-        };
             
             if (t === 'village') {
                 const noise = ac.createBufferSource(); noise.buffer = noiseBuf; noise.loop = true; const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(400, now); const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.1; const lfoGain = ac.createGain(); lfoGain.gain.value = 200; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); const gain = ac.createGain(); gain.gain.value = 0.05; noise.connect(filter); filter.connect(gain); gain.connect(masterGain); noise.start(now); lfo.start(now); ambNodes.push(noise, lfo, gain);
@@ -3957,259 +3780,8 @@ body.scifi-mode .parchment-card {
         await window.finalizeSave('prepNotes', newNote, targetCampaign);
     }; 
 
-     // 🚀 SCI-FI TOGGLE (Visuals + Text + Soundboard Labels)
-    window.toggleSciFiMode = () => {
-        window.isSciFiMode = !window.isSciFiMode;
-        
-        if (window.isSciFiMode) {
-            // ACTIVATE SCI-FI
-            document.body.classList.add('scifi-mode');
-            document.body.classList.remove('christmas-mode');
-            localStorage.setItem('aegis_theme', 'scifi');
-            
-            const bg = document.getElementById('app-background');
-            if(bg) bg.style.backgroundImage = "url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop')";
+      
 
-            // Text Swaps
-            updateUIText("Settlement Generator", "🪐 Planet Generator");
-            updateUIText("Creative Lore", "📡 Holonet Rumors");
-            updateUIText("Loot Generator", "📦 Cargo & Contraband");
-            updateUIText("Combat NPC Stats", "🛡️ Trooper/Sith Stats");
-
-            // Soundboard Swaps
-            updateSoundButton('combat_start', '🚨', 'Red Alert');
-            updateSoundButton('spell', '⚡', 'Force Use');
-            updateSoundButton('trap', '⚠️', 'Hull Breach');
-            updateSoundButton('mystery', '📡', 'Scanning');
-            updateSoundButton('wolf', '🤖', 'Droid');
-            updateSoundButton('bear', '❄️', 'Wampa');
-            updateSoundButton('bird', '🐧', 'Porg');
-            updateSoundButton('ambience-tavern', '🎷', 'Cantina');
-            updateSoundButton('ambience-ocean', '🚀', 'Hyperspace');
-            updateSoundButton('ambience-dungeon', '⛓️', 'Detention');
-            updateSoundButton('ambience-city', '🏙️', 'Coruscant');
-            
-            updateRaceDropdown(true);
-
-        } else {
-            // RESTORE FANTASY
-            document.body.classList.remove('scifi-mode');
-            localStorage.setItem('aegis_theme', 'default');
-            if(window.setRandomBackground) window.setRandomBackground();
-
-            // Text Swaps
-            updateUIText("🪐 Planet Generator", "Settlement Generator");
-            updateUIText("📡 Holonet Rumors", "Creative Lore");
-            updateUIText("📦 Cargo & Contraband", "Loot Generator");
-            updateUIText("🛡️ Trooper/Sith Stats", "Combat NPC Stats");
-
-            // Soundboard Swaps
-            updateSoundButton('combat_start', '⚔️', 'Combat');
-            updateSoundButton('spell', '🔮', 'Spell');
-            updateSoundButton('trap', '⚠️', 'Trap');
-            updateSoundButton('mystery', '👻', 'Mystery');
-            updateSoundButton('wolf', '🐺', 'Wolf');
-            updateSoundButton('bear', '🐻', 'Bear');
-            updateSoundButton('bird', '🐦', 'Bird');
-            updateSoundButton('ambience-tavern', '🍺', 'Tavern');
-            updateSoundButton('ambience-ocean', '⚓', 'Sea Shanty');
-            updateSoundButton('ambience-dungeon', '⛓️', 'Dungeon');
-            updateSoundButton('ambience-city', '🏰', 'City');
-
-            updateRaceDropdown(false);
-        }
-    };
-
-    // Helper to swap button text by ID (onclick lookup)
-    function updateSoundButton(funcName, icon, label) {
-        // Find button by its onclick attribute or ID
-        let btn;
-        if (funcName.startsWith('ambience')) {
-            btn = document.getElementById(funcName);
-        } else {
-            // Search by onclick for effect buttons
-            btn = document.querySelector(`button[onclick="playTone('${funcName}')"]`);
-        }
-        
-        if (btn) {
-            btn.innerHTML = `<span class="text-2xl mb-1">${icon}</span><span class="text-xs">${label}</span>`;
-        }
-    }
-
-        // ==========================================
-    // 🧬 DUAL-MODE GENERATORS (Fantasy / Sci-Fi)
-    // ==========================================
-
-    // 1. DUAL MODE: Name Generator
-    // (You'll need to expand your 'nameDatabase' with these keys if you want instant generation, 
-    // otherwise we can fallback to AI for names if the list is missing, but for now let's just assume the list exists or add a basic fallback)
-    const swNames = {
-        "Twi'lek": { male: ["Bib", "Narr", "Oola"], female: ["Aayla", "Hera", "Eleena"], last: ["Fortuna", "Secura", "Vao"] },
-        "Rodian": { male: ["Greedo", "Kelm"], female: ["Dreela", "Val"], last: ["Tetsus", "Jeng"] },
-        // ... add more if you like, or rely on simple math
-    };
-    // (Note: For a robust system, you might want to ask the AI for names in Sci-Fi mode if you don't want to type 100 names manually. 
-    // But for this step, the Dropdown update in Step 1 is the most important visual change.)
-
-
-    // 2. DUAL MODE: Settlement / Planet
-    window.generateSettlement = async () => {
-        const btn = document.getElementById('generate-settlement-button'); 
-        const spinner = document.getElementById('settlement-loading-spinner');
-        const outputDiv = document.getElementById('ai-output');
-        
-        btn.disabled = true; spinner.classList.remove('hidden'); 
-        
-        try {
-            const type = document.getElementById('settlement-type').value;
-            const vibe = document.getElementById('settlement-vibe').value;
-            let prompt = "";
-
-            if (window.isSciFiMode) {
-                // 🚀 SCI-FI PROMPT
-                outputDiv.textContent = "Scanning planetary data...";
-                prompt = `Generate a Star Wars 5e (SW5e) Planetary Outpost or Space Station. 
-                Type: ${type} (Station/Colony). Vibe: ${vibe}. 
-                Include: Planet Name, Atmosphere, Major Factions, Main Export, and a Local Threat.`;
-            } else {
-                // ⚔️ FANTASY PROMPT
-                outputDiv.textContent = "Generating settlement...";
-                prompt = `Generate details for a D&D 5e Settlement (${type}). Vibe: ${vibe}. 
-                Include sections for Ruler, Key Locations, and Current Quest.`;
-            }
-
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
-            outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-            document.getElementById('save-options-creative').classList.remove('hidden');
-
-        } catch(e) { outputDiv.textContent = "Error: " + e.message; }
-        finally { btn.disabled = false; spinner.classList.add('hidden'); }
-    };
-
-
-    // 3. DUAL MODE: Creative / Hooks
-    window.generateCreativeIdea = async () => {
-        const btn = document.getElementById('generate-button'); btn.disabled = true;
-        const output = document.getElementById('ai-output'); 
-        const userPrompt = document.getElementById('improv-prompt').value;
-
-        try {
-            let prompt = "";
-            if (window.isSciFiMode) {
-                // 🚀 SCI-FI PROMPT
-                output.textContent = "Decrypting transmission...";
-                prompt = `Generate a Star Wars (SW5e) adventure hook or lore idea based on: "${userPrompt}". 
-                Use sci-fi terms (Credits, Hyperspace, Empire/Republic, Blasters).`;
-            } else {
-                // ⚔️ FANTASY PROMPT
-                output.textContent = "Consulting the oracles...";
-                prompt = `Generate a D&D 5e creative idea or lore based on: "${userPrompt}".`;
-            }
-
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
-            output.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-            document.getElementById('save-options-creative').classList.remove('hidden');
-        } catch(e) { output.textContent = "Error: " + e.message; }
-        finally { document.getElementById('creative-loading-spinner').classList.add('hidden'); btn.disabled = false; }
-    };
-
-
-    // 4. DUAL MODE: Loot Generator
-    window.generateLoot = async () => {
-        const btn = document.getElementById('generate-loot-button'); 
-        const spinner = document.getElementById('loot-loading-spinner');
-        const output = document.getElementById('loot-output');
-        const level = document.getElementById('loot-level').value;
-        const type = document.getElementById('loot-type').value;
-
-        btn.disabled = true; spinner.classList.remove('hidden');
-        
-        try {
-            let prompt = "";
-            if (window.isSciFiMode) {
-                // 🚀 SCI-FI PROMPT
-                output.innerHTML = '<span class="text-cyan-400 animate-pulse">Scanning cargo hold...</span>';
-                prompt = `Generate Star Wars 5e (SW5e) loot for Level ${level}. Context: ${type}. 
-                Include Credits (cr) values, Tech/Enhanced items, and Scrap. Format as a clean list.`;
-            } else {
-                // ⚔️ FANTASY PROMPT
-                output.innerHTML = '<span class="text-yellow-400 animate-pulse">Rolling treasure tables...</span>';
-                prompt = `Generate D&D 5e loot for Level ${level}. Context: ${type}. Include GP values. Format as a list.`;
-            }
-
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
-            
-            // Color formatting (Cyan for Credits, Yellow for Gold)
-            const colorClass = window.isSciFiMode ? 'text-cyan-400' : 'text-yellow-400';
-            const text = data.candidates[0].content.parts[0].text
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, `<strong class="${colorClass}">$1</strong>`);
-
-            output.innerHTML = text;
-
-        } catch(e) { output.innerHTML = "Error: " + e.message; }
-        finally { spinner.classList.add('hidden'); btn.disabled = false; }
-    };
-    
-    // 5. DUAL MODE: Combat NPC Stats
-    window.generateCombatNpc = async () => {
-        const btn = document.getElementById('generate-combat-button'); 
-        const outputDiv = document.getElementById('ai-output');
-        btn.disabled = true; document.getElementById('combat-loading-spinner').classList.remove('hidden');
-
-        try {
-            const txt = document.getElementById('npc-type').value;
-            const lvl = document.getElementById('npc-level').value;
-            let prompt = "";
-
-            // Use the same schema for both, but prompt differently
-            if (window.isSciFiMode) {
-                outputDiv.textContent = "Fabricating Trooper data...";
-                prompt = `Generate a SW5e (Star Wars) combat NPC (Level/CR ${lvl}, ${txt}). 
-                Use Blasters/Vibroblades for attacks. Use Kinetic/Energy for damage types. Return strictly JSON matching the schema.`;
-            } else {
-                outputDiv.textContent = "Generating statblock...";
-                prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON matching the schema.`;
-            }
-
-            const data = await callAI(API_URL, { 
-                contents: [{ parts: [{ text: prompt }] }], 
-                generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } 
-            });
-            
-            lastGeneratedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
-            
-            // Dynamic Color for UI
-            const hpColor = window.isSciFiMode ? 'text-cyan-300' : 'text-green-300';
-            const acLabel = window.isSciFiMode ? 'AC / Shields' : 'Armor Class';
-
-            outputDiv.innerHTML = `
-                <div class="text-2xl font-bold ${window.isSciFiMode ? 'text-cyan-400' : 'text-green-400'} mb-2">${lastGeneratedNpc.name}</div>
-                <div class="text-gray-300 text-sm mb-4">Level/CR: ${lastGeneratedNpc.level_or_cr}</div>
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">${acLabel}</div>
-                        <div class="font-bold text-2xl text-blue-300">${lastGeneratedNpc.armor_class_ac}</div>
-                    </div>
-                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">Hit Points</div>
-                        <div class="font-bold text-2xl ${hpColor}">${lastGeneratedNpc.max_hit_points}</div>
-                    </div>
-                    <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">Main Attack</div>
-                        <div class="font-medium text-white mt-1">${lastGeneratedNpc.main_attack}</div>
-                    </div>
-                </div>
-                <button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button>
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button>
-                    <button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button>
-                    <button onclick="saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button>
-                </div>`;
-
-        } catch(e) { outputDiv.textContent = "Error: " + e.message; }
-        finally { document.getElementById('combat-loading-spinner').classList.add('hidden'); btn.disabled = false; }
-    };
     
 </script>
 
