@@ -3850,41 +3850,257 @@ body.scifi-mode .parchment-card {
         await window.finalizeSave('prepNotes', newNote, targetCampaign);
     }; 
 
-     // 🚀 SW5E MODE TOGGLE
-    window.isSciFiMode = localStorage.getItem('aegis_theme') === 'scifi';
-
+     // 🚀 ENHANCED SW5E TOGGLE (Swaps UI & Data)
     window.toggleSciFiMode = () => {
         window.isSciFiMode = !window.isSciFiMode;
         
+        // 1. Visual Theme
         if (window.isSciFiMode) {
             document.body.classList.add('scifi-mode');
-            document.body.classList.remove('christmas-mode'); // Turn off snow if on
+            document.body.classList.remove('christmas-mode');
             localStorage.setItem('aegis_theme', 'scifi');
             
-            // Optional: Auto-switch to Galaxy tab
-            window.switchTab('galaxy'); 
-            
-            // Change Background to Stars
+            // Switch Background
             const bg = document.getElementById('app-background');
-            if(bg) bg.style.backgroundImage = "url('https://images.unsplash.com/photo-1506318137071-a8bcbf675b27?q=80&w=2072&auto=format&fit=crop')"; // Starfield
+            if(bg) bg.style.backgroundImage = "url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop')"; // Orbit view
+            
+            // 2. TEXT SWAPS (Fantasy -> Sci-Fi)
+            updateUIText("Settlement Generator", "🪐 Planet/Station Generator");
+            updateUIText("Creative Lore", "📡 Holonet Rumors & Hooks");
+            updateUIText("Loot Generator", "📦 Cargo & Contraband");
+            updateUIText("Combat NPC Stats", "🛡️ Trooper/Sith Stats");
+            
+            // 3. Update Dropdowns
+            updateRaceDropdown(true); // Switch to Aliens
             
         } else {
             document.body.classList.remove('scifi-mode');
             localStorage.setItem('aegis_theme', 'default');
-            
-            // Restore Fantasy Art
             if(window.setRandomBackground) window.setRandomBackground();
+            
+            // Restore Text
+            updateUIText("🪐 Planet/Station Generator", "Settlement Generator");
+            updateUIText("📡 Holonet Rumors & Hooks", "Creative Lore");
+            updateUIText("📦 Cargo & Contraband", "Loot Generator");
+            updateUIText("🛡️ Trooper/Sith Stats", "Combat NPC Stats");
+            
+            updateRaceDropdown(false); // Restore Fantasy
         }
     };
 
-    // Add this to your startup listener to check saved preference
-    /*
-        if (localStorage.getItem('aegis_theme') === 'scifi') {
-            window.isSciFiMode = false; // Toggle flips it to true
-            window.toggleSciFiMode();
-        }
-    */ 
+    // Helper to find headers and swap text safely
+    function updateUIText(find, replace) {
+        document.querySelectorAll('h2, label, span').forEach(el => {
+            if (el.innerText.includes(find)) el.innerText = el.innerText.replace(find, replace);
+        });
+    }
 
+    // Helper to swap the Name Generator options
+    function updateRaceDropdown(isSciFi) {
+        const sel = document.getElementById('name-race');
+        if (!sel) return;
+        
+        if (isSciFi) {
+            sel.innerHTML = `
+                <option value="Human">Human</option>
+                <option value="Twi'lek">Twi'lek</option>
+                <option value="Zabrak">Zabrak</option>
+                <option value="Rodian">Rodian</option>
+                <option value="Trandoshan">Trandoshan</option>
+                <option value="Wookiee">Wookiee</option>
+                <option value="Mon Calamari">Mon Calamari</option>
+                <option value="Chiss">Chiss</option>
+                <option value="Droid">Droid</option>
+                <option value="Sith Pureblood">Sith Pureblood</option>
+            `;
+        } else {
+            sel.innerHTML = `
+                <option value="Human">Human</option>
+                <option value="Elf">Elf</option>
+                <option value="Dwarf">Dwarf</option>
+                <option value="Orc">Orc/Half-Orc</option>
+                <option value="Halfling">Halfling</option>
+                <option value="Tiefling">Tiefling</option>
+                <option value="Dragonborn">Dragonborn</option>
+                <option value="Gnome">Gnome</option>
+            `;
+        }
+    }
+
+        // ==========================================
+    // 🧬 DUAL-MODE GENERATORS (Fantasy / Sci-Fi)
+    // ==========================================
+
+    // 1. DUAL MODE: Name Generator
+    // (You'll need to expand your 'nameDatabase' with these keys if you want instant generation, 
+    // otherwise we can fallback to AI for names if the list is missing, but for now let's just assume the list exists or add a basic fallback)
+    const swNames = {
+        "Twi'lek": { male: ["Bib", "Narr", "Oola"], female: ["Aayla", "Hera", "Eleena"], last: ["Fortuna", "Secura", "Vao"] },
+        "Rodian": { male: ["Greedo", "Kelm"], female: ["Dreela", "Val"], last: ["Tetsus", "Jeng"] },
+        // ... add more if you like, or rely on simple math
+    };
+    // (Note: For a robust system, you might want to ask the AI for names in Sci-Fi mode if you don't want to type 100 names manually. 
+    // But for this step, the Dropdown update in Step 1 is the most important visual change.)
+
+
+    // 2. DUAL MODE: Settlement / Planet
+    window.generateSettlement = async () => {
+        const btn = document.getElementById('generate-settlement-button'); 
+        const spinner = document.getElementById('settlement-loading-spinner');
+        const outputDiv = document.getElementById('ai-output');
+        
+        btn.disabled = true; spinner.classList.remove('hidden'); 
+        
+        try {
+            const type = document.getElementById('settlement-type').value;
+            const vibe = document.getElementById('settlement-vibe').value;
+            let prompt = "";
+
+            if (window.isSciFiMode) {
+                // 🚀 SCI-FI PROMPT
+                outputDiv.textContent = "Scanning planetary data...";
+                prompt = `Generate a Star Wars 5e (SW5e) Planetary Outpost or Space Station. 
+                Type: ${type} (Station/Colony). Vibe: ${vibe}. 
+                Include: Planet Name, Atmosphere, Major Factions, Main Export, and a Local Threat.`;
+            } else {
+                // ⚔️ FANTASY PROMPT
+                outputDiv.textContent = "Generating settlement...";
+                prompt = `Generate details for a D&D 5e Settlement (${type}). Vibe: ${vibe}. 
+                Include sections for Ruler, Key Locations, and Current Quest.`;
+            }
+
+            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+            outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+            document.getElementById('save-options-creative').classList.remove('hidden');
+
+        } catch(e) { outputDiv.textContent = "Error: " + e.message; }
+        finally { btn.disabled = false; spinner.classList.add('hidden'); }
+    };
+
+
+    // 3. DUAL MODE: Creative / Hooks
+    window.generateCreativeIdea = async () => {
+        const btn = document.getElementById('generate-button'); btn.disabled = true;
+        const output = document.getElementById('ai-output'); 
+        const userPrompt = document.getElementById('improv-prompt').value;
+
+        try {
+            let prompt = "";
+            if (window.isSciFiMode) {
+                // 🚀 SCI-FI PROMPT
+                output.textContent = "Decrypting transmission...";
+                prompt = `Generate a Star Wars (SW5e) adventure hook or lore idea based on: "${userPrompt}". 
+                Use sci-fi terms (Credits, Hyperspace, Empire/Republic, Blasters).`;
+            } else {
+                // ⚔️ FANTASY PROMPT
+                output.textContent = "Consulting the oracles...";
+                prompt = `Generate a D&D 5e creative idea or lore based on: "${userPrompt}".`;
+            }
+
+            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+            output.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+            document.getElementById('save-options-creative').classList.remove('hidden');
+        } catch(e) { output.textContent = "Error: " + e.message; }
+        finally { document.getElementById('creative-loading-spinner').classList.add('hidden'); btn.disabled = false; }
+    };
+
+
+    // 4. DUAL MODE: Loot Generator
+    window.generateLoot = async () => {
+        const btn = document.getElementById('generate-loot-button'); 
+        const spinner = document.getElementById('loot-loading-spinner');
+        const output = document.getElementById('loot-output');
+        const level = document.getElementById('loot-level').value;
+        const type = document.getElementById('loot-type').value;
+
+        btn.disabled = true; spinner.classList.remove('hidden');
+        
+        try {
+            let prompt = "";
+            if (window.isSciFiMode) {
+                // 🚀 SCI-FI PROMPT
+                output.innerHTML = '<span class="text-cyan-400 animate-pulse">Scanning cargo hold...</span>';
+                prompt = `Generate Star Wars 5e (SW5e) loot for Level ${level}. Context: ${type}. 
+                Include Credits (cr) values, Tech/Enhanced items, and Scrap. Format as a clean list.`;
+            } else {
+                // ⚔️ FANTASY PROMPT
+                output.innerHTML = '<span class="text-yellow-400 animate-pulse">Rolling treasure tables...</span>';
+                prompt = `Generate D&D 5e loot for Level ${level}. Context: ${type}. Include GP values. Format as a list.`;
+            }
+
+            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+            
+            // Color formatting (Cyan for Credits, Yellow for Gold)
+            const colorClass = window.isSciFiMode ? 'text-cyan-400' : 'text-yellow-400';
+            const text = data.candidates[0].content.parts[0].text
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, `<strong class="${colorClass}">$1</strong>`);
+
+            output.innerHTML = text;
+
+        } catch(e) { output.innerHTML = "Error: " + e.message; }
+        finally { spinner.classList.add('hidden'); btn.disabled = false; }
+    };
+    
+    // 5. DUAL MODE: Combat NPC Stats
+    window.generateCombatNpc = async () => {
+        const btn = document.getElementById('generate-combat-button'); 
+        const outputDiv = document.getElementById('ai-output');
+        btn.disabled = true; document.getElementById('combat-loading-spinner').classList.remove('hidden');
+
+        try {
+            const txt = document.getElementById('npc-type').value;
+            const lvl = document.getElementById('npc-level').value;
+            let prompt = "";
+
+            // Use the same schema for both, but prompt differently
+            if (window.isSciFiMode) {
+                outputDiv.textContent = "Fabricating Trooper data...";
+                prompt = `Generate a SW5e (Star Wars) combat NPC (Level/CR ${lvl}, ${txt}). 
+                Use Blasters/Vibroblades for attacks. Use Kinetic/Energy for damage types. Return strictly JSON matching the schema.`;
+            } else {
+                outputDiv.textContent = "Generating statblock...";
+                prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON matching the schema.`;
+            }
+
+            const data = await callAI(API_URL, { 
+                contents: [{ parts: [{ text: prompt }] }], 
+                generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } 
+            });
+            
+            lastGeneratedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
+            
+            // Dynamic Color for UI
+            const hpColor = window.isSciFiMode ? 'text-cyan-300' : 'text-green-300';
+            const acLabel = window.isSciFiMode ? 'AC / Shields' : 'Armor Class';
+
+            outputDiv.innerHTML = `
+                <div class="text-2xl font-bold ${window.isSciFiMode ? 'text-cyan-400' : 'text-green-400'} mb-2">${lastGeneratedNpc.name}</div>
+                <div class="text-gray-300 text-sm mb-4">Level/CR: ${lastGeneratedNpc.level_or_cr}</div>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                        <div class="text-xs text-gray-400 uppercase">${acLabel}</div>
+                        <div class="font-bold text-2xl text-blue-300">${lastGeneratedNpc.armor_class_ac}</div>
+                    </div>
+                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                        <div class="text-xs text-gray-400 uppercase">Hit Points</div>
+                        <div class="font-bold text-2xl ${hpColor}">${lastGeneratedNpc.max_hit_points}</div>
+                    </div>
+                    <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
+                        <div class="text-xs text-gray-400 uppercase">Main Attack</div>
+                        <div class="font-medium text-white mt-1">${lastGeneratedNpc.main_attack}</div>
+                    </div>
+                </div>
+                <button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button>
+                    <button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button>
+                    <button onclick="saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button>
+                </div>`;
+
+        } catch(e) { outputDiv.textContent = "Error: " + e.message; }
+        finally { document.getElementById('combat-loading-spinner').classList.add('hidden'); btn.disabled = false; }
+    };
     
 </script>
 
