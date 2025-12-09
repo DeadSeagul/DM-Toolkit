@@ -374,6 +374,10 @@
                     <div class="flex justify-between items-center mb-4">
                         <button onclick="window.sortInitiative()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Sort</button>
                         <button onclick="window.nextTurn()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Next &raquo;</button>
+                        <button onclick="window.shareCombatLink()" class="w-full mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center gap-2 transition transform active:scale-95">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+    Broadcast Link to Players
+</button>
                         <button onclick="window.clearCombat()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Clear</button>
                     </div>
                     
@@ -3791,7 +3795,58 @@
         await window.finalizeSave('prepNotes', newNote, targetCampaign);
     }; 
 
-      
+     // ==========================================
+    // 📡 BROADCAST / SHARE LINK
+    // ==========================================
+
+    window.shareCombatLink = function() {
+        // 1. Check Login
+        if (!window.userId) {
+            alert("Please log in to a session first.");
+            window.openLoginModal();
+            return;
+        }
+
+        // 2. Check "Pro" Status (Paywall)
+        // If you want to remove the paywall, delete this entire IF block.
+        if (localStorage.getItem('aegis_pro') !== 'active') { 
+            document.getElementById('paywall-modal').classList.remove('hidden'); 
+            return; 
+        }
+
+        // 3. Construct URL
+        // Takes your current site URL, removes index.html, points to player.html
+        let baseUrl = window.location.href;
+        if (baseUrl.endsWith('index.html')) {
+            baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
+        }
+        if (baseUrl.endsWith('/')) {
+            baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+        }
+        
+        const playerLink = `${baseUrl}/player.html?dm=${window.userId}`;
+
+        // 4. Copy to Clipboard
+        navigator.clipboard.writeText(playerLink).then(() => {
+            alert("✅ Copied!\n\nSend this link to your players:\n" + playerLink);
+        }).catch(err => {
+            prompt("Copy this link manually:", playerLink);
+        });
+    };
+
+    // Unlock Function (Called by the Modal)
+    window.redeemLicense = function() { 
+        const key = document.getElementById('license-key-input').value;
+        // Simple check: Any key starting with "PRO" works (e.g., "PRO-DM")
+        if (key.toUpperCase().startsWith("PRO")) { 
+            localStorage.setItem('aegis_pro', 'active'); 
+            document.getElementById('paywall-modal').classList.add('hidden'); 
+            alert("Unlocked! You can now broadcast."); 
+            window.shareCombatLink(); // Retry share immediately
+        } else {
+            alert("Invalid Key. Try 'PRO-DM'");
+        }
+    }; 
 
     
 </script>
