@@ -106,80 +106,6 @@
         .aegis-text { display: flex; flex-direction: column; line-height: 1.1; }
         .aegis-title { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #818cf8; }
         .aegis-subtitle { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.16em; opacity: 0.8; color: #cbd5e1; }
-    
-   /* ========================
-   🚀 SW5E SCI-FI THEME
-   ======================== */
-
-/* 1. Main Background & Font */
-body.scifi-mode {
-    background-color: #050510 !important;
-    color: #00ffff !important;
-    font-family: 'Courier New', Courier, monospace !important; /* Terminal feel */
-    background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%) !important;
-}
-
-/* 2. Neon Cards */
-body.scifi-mode .card, 
-body.scifi-mode .bg-gray-900, 
-body.scifi-mode .bg-gray-800 {
-    background-color: rgba(5, 10, 20, 0.95) !important;
-    border: 1px solid #00ffff !important;
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.05) !important;
-    border-radius: 4px !important; /* Sharp tech corners */
-}
-
-/* 3. Holographic Inputs & Textareas */
-body.scifi-mode .input-style, 
-body.scifi-mode input, 
-body.scifi-mode select, 
-body.scifi-mode textarea {
-    background-color: rgba(0, 20, 40, 0.8) !important;
-    border: 1px solid #0088ff !important;
-    color: #00ffff !important;
-    font-family: 'Courier New', monospace !important;
-    box-shadow: inset 0 0 5px rgba(0, 136, 255, 0.3) !important;
-}
-
-/* 4. Neon Buttons */
-body.scifi-mode button {
-    border-radius: 2px !important;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-family: 'Courier New', monospace !important;
-}
-
-/* 5. Star Wars Yellow Headers */
-body.scifi-mode h1, 
-body.scifi-mode h2, 
-body.scifi-mode h3, 
-body.scifi-mode .text-indigo-300, 
-body.scifi-mode .text-orange-300, 
-body.scifi-mode .text-purple-300, 
-body.scifi-mode .text-green-300 {
-    color: #ffe81f !important;
-    text-shadow: 0 0 5px rgba(255, 232, 31, 0.5);
-    font-family: Impact, sans-serif !important;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
-/* 6. Active Tabs (Neon Glow) */
-body.scifi-mode .tab-button.active {
-    color: #00ffff !important;
-    border-bottom: 2px solid #00ffff !important;
-    text-shadow: 0 0 8px #00ffff;
-}
-
-/* 7. Hide Parchment Texture (Important!) */
-body.scifi-mode .parchment-card {
-    background-image: none !important;
-    background-color: #001122 !important;
-    border: 2px solid #ffe81f !important;
-    color: #00ffff !important;
-    font-family: monospace !important;
-}
-    
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -243,7 +169,6 @@ body.scifi-mode .parchment-card {
             <div class="flex items-center gap-3">
                 <!-- Holiday Toggle -->
                 <button onclick="toggleTheme()" class="text-xl p-2 hover:bg-gray-700 rounded transition" title="Toggle Holiday Mode">🎄</button>
-                <button onclick="toggleSciFiMode()" class="text-xl p-2 hover:bg-gray-700 rounded transition" title="Initialize SW5e Protocol">🚀</button>
                 <button onclick="document.getElementById('share-modal').classList.remove('hidden')" class="p-2 hover:bg-gray-700 rounded-lg transition text-gray-400 hover:text-white" title="Share App">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
@@ -1939,28 +1864,9 @@ body.scifi-mode .parchment-card {
     });
 
     document.addEventListener('DOMContentLoaded', () => {
-        if(userApiKey) { 
-            document.getElementById('user-api-key').value = userApiKey; 
-            window.updateApiKey(userApiKey); 
-        }
-        
-        // CHECK SAVED THEME
-        const savedTheme = localStorage.getItem('aegis_theme');
-        if (savedTheme === 'scifi') {
-             window.isSciFiMode = false; // Toggle flips it to true
-             window.toggleSciFiMode();
-        } 
-        else if (savedTheme === 'christmas' || isChristmasMode) {
-             document.body.classList.add('christmas-mode');
-             applyTheme(); 
-        } 
-        else {
-             if(window.setRandomBackground) window.setRandomBackground();
-        }
-
+        if(userApiKey) { document.getElementById('user-api-key').value = userApiKey; window.updateApiKey(userApiKey); }
+        applyTheme();
         window.switchTab('improv');
-        // ... (Keep existing Dice initialization code here) ...
-    });
         // --- DICE VISUALS (Colors, Textures & Reset Fixed) ---
         (function() {
             const canvas = document.getElementById('dice-canvas'); 
@@ -3875,157 +3781,7 @@ body.scifi-mode .parchment-card {
     }; 
 
       
-// ==========================================
-    // 🚀 SW5E MODE (SAFE VERSION)
-    // ==========================================
 
-    window.toggleSciFiMode = () => {
-        window.isSciFiMode = !window.isSciFiMode;
-        const isSciFi = window.isSciFiMode;
-
-        // 1. Toggle Theme Class
-        if (isSciFi) {
-            document.body.classList.add('scifi-mode');
-            document.body.classList.remove('christmas-mode');
-            localStorage.setItem('aegis_theme', 'scifi');
-            
-            // Background
-            const bg = document.getElementById('app-background');
-            if(bg) bg.style.backgroundImage = "url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop')";
-
-            // Text Swaps (Fantasy -> Sci-Fi)
-            safeReplaceText("Settlement Generator", "🪐 Planet Generator");
-            safeReplaceText("Creative Lore", "📡 Holonet Rumors");
-            safeReplaceText("Loot Generator", "📦 Cargo & Contraband");
-            safeReplaceText("Combat NPC Stats", "🛡️ Trooper/Sith Stats");
-            
-            safeReplaceText("Village", "Outpost");
-            safeReplaceText("Gold", "Credits");
-            safeReplaceText("Potion", "Medpac");
-
-            // Soundboard Labels
-            updateSoundLabel('combat_start', '🚨 Red Alert');
-            updateSoundLabel('spell', '⚡ Force');
-            updateSoundLabel('trap', '⚠️ Breach');
-            updateSoundLabel('mystery', '📡 Scan');
-            updateSoundLabel('wolf', '🤖 Droid');
-            updateSoundLabel('ambience-tavern', '🎷 Cantina');
-            updateSoundLabel('ambience-ocean', '🚀 Hyperspace');
-            updateSoundLabel('ambience-city', '🏙️ Coruscant');
-
-            updateRaceDropdown(true);
-
-        } else {
-            // Restore Fantasy
-            document.body.classList.remove('scifi-mode');
-            localStorage.setItem('aegis_theme', 'default');
-            if(window.setRandomBackground) window.setRandomBackground();
-
-            // Restore Text
-            safeReplaceText("🪐 Planet Generator", "Settlement Generator");
-            safeReplaceText("📡 Holonet Rumors", "Creative Lore");
-            safeReplaceText("📦 Cargo & Contraband", "Loot Generator");
-            safeReplaceText("🛡️ Trooper/Sith Stats", "Combat NPC Stats");
-            
-            safeReplaceText("Outpost", "Village");
-            safeReplaceText("Credits", "Gold");
-            safeReplaceText("Medpac", "Potion");
-
-            // Restore Sounds
-            updateSoundLabel('combat_start', '⚔️ Combat');
-            updateSoundLabel('spell', '🔮 Spell');
-            updateSoundLabel('trap', '⚠️ Trap');
-            updateSoundLabel('mystery', '👻 Mystery');
-            updateSoundLabel('wolf', '🐺 Wolf');
-            updateSoundLabel('ambience-tavern', '🍺 Tavern');
-            updateSoundLabel('ambience-ocean', '⚓ Sea Shanty');
-            updateSoundLabel('ambience-city', '🏰 City');
-
-            updateRaceDropdown(false);
-        }
-    };
-
-    // --- SAFE TEXT REPLACER ---
-    // Only touches text nodes, never overwrites HTML/Buttons
-    function safeReplaceText(find, replace) {
-        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-        let node;
-        while(node = walker.nextNode()) {
-            // Skip scripts and styles to prevent breaking code
-            if (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE') continue;
-            
-            if (node.nodeValue.includes(find)) {
-                node.nodeValue = node.nodeValue.replace(find, replace);
-            }
-        }
-    }
-
-    // Helper for Sound Buttons
-    function updateSoundLabel(idOrFunc, newLabel) {
-        let btn;
-        if(idOrFunc.startsWith('ambience')) {
-            btn = document.getElementById(idOrFunc);
-        } else {
-            btn = document.querySelector(`button[onclick="playTone('${idOrFunc}')"]`);
-        }
-        if(btn) btn.innerHTML = `<span class="text-xl">${newLabel.split(' ')[0]}</span> <span class="text-xs">${newLabel.split(' ').slice(1).join(' ')}</span>`;
-    }
-
-    // Update Dropdown
-    function updateRaceDropdown(isSciFi) {
-        const sel = document.getElementById('name-race');
-        if (!sel) return;
-        if (isSciFi) {
-            sel.innerHTML = `<option value="Human">Human</option><option value="Twi'lek">Twi'lek</option><option value="Rodian">Rodian</option><option value="Wookiee">Wookiee</option><option value="Droid">Droid</option><option value="Sith">Sith</option>`;
-        } else {
-            sel.innerHTML = `<option value="Human">Human</option><option value="Elf">Elf</option><option value="Dwarf">Dwarf</option><option value="Orc">Orc</option><option value="Halfling">Halfling</option>`;
-        }
-    }
-
-    // --- GENERATORS (The AI Logic) ---
-    // These override the fantasy versions when mode is active
-    
-    const originalGenSettlement = window.generateSettlement;
-    window.generateSettlement = async () => {
-        if (!window.isSciFiMode) return originalGenSettlement();
-        
-        const btn = document.getElementById('generate-settlement-button'); 
-        const outputDiv = document.getElementById('ai-output');
-        btn.disabled = true; 
-        outputDiv.innerHTML = '<span class="animate-pulse text-cyan-400">Scanning sector...</span>';
-        
-        try {
-            const type = document.getElementById('settlement-type').value;
-            const vibe = document.getElementById('settlement-vibe').value;
-            const prompt = `Generate a Star Wars 5e (SW5e) Planet or Space Station. Type: ${type}. Vibe: ${vibe}. Include Name, Atmosphere, Factions, and Threats.`;
-            
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
-            outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-            document.getElementById('save-options-creative').classList.remove('hidden');
-        } catch(e) { outputDiv.textContent = "Error: " + e.message; }
-        finally { btn.disabled = false; }
-    };
-
-    const originalGenLoot = window.generateLoot;
-    window.generateLoot = async () => {
-        if (!window.isSciFiMode) return originalGenLoot();
-
-        const btn = document.getElementById('generate-loot-button'); 
-        const output = document.getElementById('loot-output');
-        btn.disabled = true; 
-        output.innerHTML = '<span class="animate-pulse text-cyan-400">Scanning cargo...</span>';
-        
-        try {
-            const level = document.getElementById('loot-level').value;
-            const prompt = `Generate Star Wars 5e (SW5e) loot for Level ${level}. Include Credits (cr) and tech items.`;
-            
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
-            output.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong class="text-cyan-400">$1</strong>');
-        } catch(e) { output.textContent = "Error: " + e.message; }
-        finally { btn.disabled = false; }
-    };
-
-   
     
 </script>
 
