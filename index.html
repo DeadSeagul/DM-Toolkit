@@ -1368,7 +1368,7 @@
     };
 
  // ==========================================
-    // 6. NOTES LOGIC (Inline Editing & Auto-Save)
+    // 6. NOTES LOGIC (Fixed Collapsing & Editing)
     // ==========================================
 
     window.renderStructuredNotes = (tab) => {
@@ -1378,7 +1378,7 @@
         const q = document.getElementById('notes-search').value.toLowerCase().trim();
         const allNotes = structuredNotes[tab] || [];
         
-        // Filter by Campaign & Search Query
+        // Filter
         const notes = allNotes.filter(n => 
             (n.campaign || 'Default Campaign') === currentCampaign && 
             (n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
@@ -1391,25 +1391,28 @@
             div.className = 'card p-0 mb-2 bg-gray-800 border-gray-700 shadow-md group'; 
             div.id = `note-${n.id}`;
             
-            // Calculate row height for textarea
-            const lineCount = n.content.split('\n').length;
-            const rows = Math.min(Math.max(lineCount, 3), 15); // Min 3 lines, Max 15 lines
+            // Calc rows
+            const rows = Math.min(Math.max(n.content.split('\n').length, 3), 15);
 
             div.innerHTML = `
-                <div class="p-2 border-b border-gray-700 flex items-center gap-2 bg-gray-900/50 rounded-t-lg">
-                    <span class="text-gray-500 text-[10px] cursor-pointer hover:text-white" onclick="toggleCollapse('${n.id}')">▼</span>
+                <div class="p-2 border-b border-gray-700 flex items-center gap-2 bg-gray-900/50 rounded-t-lg cursor-pointer hover:bg-gray-800 transition select-none" 
+                     onclick="window.toggleCollapse('${n.id}')">
+                    
+                    <span id="arrow-${n.id}" class="text-gray-500 text-[10px] w-4 text-center">▼</span>
                     
                     <input type="text" value="${n.title}" 
+                        onclick="event.stopPropagation()"
                         onblur="window.updateNote('${n.id}', '${tab}', 'title', this.value)"
                         class="flex-1 bg-transparent text-indigo-300 font-bold text-sm outline-none border-b border-transparent focus:border-indigo-500 transition px-1 placeholder-gray-600"
                         placeholder="Note Title..."
                     >
                     
-                    <button onclick="deleteNote('${n.id}', '${tab}')" class="text-gray-600 hover:text-red-400 text-xs font-bold px-2" title="Delete Note">✕</button>
+                    <button onclick="event.stopPropagation(); deleteNote('${n.id}', '${tab}')" class="text-gray-600 hover:text-red-400 text-xs font-bold px-2" title="Delete Note">✕</button>
                 </div>
 
                 <div class="p-0" id="content-${n.id}">
                     <textarea 
+                        onclick="event.stopPropagation()"
                         onblur="window.updateNote('${n.id}', '${tab}', 'content', this.value)"
                         class="w-full bg-transparent text-gray-300 text-sm p-3 outline-none resize-y font-sans leading-relaxed border-none focus:bg-gray-800 transition"
                         rows="${rows}"
@@ -1426,20 +1429,30 @@
         });
     };
 
-    // Auto-Save Function (Triggered when you click away)
+    // 🟢 FIXED TOGGLE FUNCTION
+    window.toggleCollapse = (id) => { 
+        const content = document.getElementById(`content-${id}`); 
+        const arrow = document.getElementById(`arrow-${id}`);
+        
+        if (content) {
+            content.classList.toggle('hidden');
+            // Rotate Arrow visual
+            if (arrow) {
+                arrow.textContent = content.classList.contains('hidden') ? '▶' : '▼';
+            }
+        }
+    };
+
+    // Auto-Save (Unchanged)
     window.updateNote = (id, tab, field, value) => {
         const idx = structuredNotes[tab].findIndex(n => n.id === id);
         if (idx === -1) return;
 
-        // Only save if data actually changed
         if (structuredNotes[tab][idx][field] !== value) {
             structuredNotes[tab][idx][field] = value;
             structuredNotes[tab][idx].timestamp = new Date().toISOString();
-            
-            // Save to Database
             window.saveStructuredNotes(tab, structuredNotes[tab]);
             
-            // Visual Feedback (Green Flash)
             const el = document.getElementById(`note-${id}`);
             if(el) {
                 el.classList.replace('border-gray-700', 'border-green-500');
@@ -1447,34 +1460,6 @@
             }
         }
     };
-
-    window.toggleCollapse = (id) => { 
-        const el = document.getElementById(`content-${id}`); 
-        if(el) el.classList.toggle('hidden'); 
-    };
-
-    window.addNewNote = (tab) => { 
-        structuredNotes[tab].unshift({
-            id: crypto.randomUUID(), 
-            title: 'New Note', 
-            content: '', 
-            campaign: currentCampaign, 
-            timestamp: new Date().toISOString()
-        }); 
-        window.saveStructuredNotes(tab, structuredNotes[tab]); 
-        window.renderStructuredNotes(tab); 
-    };
-
-    window.deleteNote = (id, tab) => { 
-        if(!confirm("Delete this note?")) return;
-        structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); 
-        window.saveStructuredNotes(tab, structuredNotes[tab]); 
-        window.renderStructuredNotes(tab); 
-    };
-
-    // (Kept these so you don't lose them)
-    window.updateApiKey = function(val) { userApiKey = val.trim(); localStorage.setItem('dm_toolkit_api_key', userApiKey); const status = document.getElementById('api-key-status'); if(userApiKey.length > 5) { status.textContent = "Key saved!"; status.className="mt-2 text-xs text-green-400"; } else { status.textContent = "Key empty"; status.className="mt-2 text-xs text-red-400"; } };
-    window.saveApiKey = function() { window.updateApiKey(document.getElementById('user-api-key').value); };
 
     // --- 7. COMBAT & STATBLOCKS ---
     window.addCombatant = async () => { const name = document.getElementById('combatant-name').value.trim(); if(!name) return; const init = parseInt(document.getElementById('combatant-init').value)||0; const hp = parseInt(document.getElementById('combatant-hp').value)||0; const ac = parseInt(document.getElementById('combatant-ac').value)||0; await window.addDoc(getCol('shared_combatants'), { name, init, maxHp: hp, currentHp: hp, ac, initModifier: init }); document.getElementById('combatant-name').value = ''; };
