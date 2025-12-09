@@ -3856,246 +3856,156 @@ body.scifi-mode .parchment-card {
 
       
 // ==========================================
-    // 🚀 TOTAL CONVERSION ENGINE (Safe Mode)
+    // 🚀 SW5E MODE (SAFE VERSION)
     // ==========================================
 
     window.toggleSciFiMode = () => {
         window.isSciFiMode = !window.isSciFiMode;
         const isSciFi = window.isSciFiMode;
 
+        // 1. Toggle Theme Class
         if (isSciFi) {
-            // --- ACTIVATE SCI-FI ---
             document.body.classList.add('scifi-mode');
             document.body.classList.remove('christmas-mode');
             localStorage.setItem('aegis_theme', 'scifi');
             
-            // 1. Background
+            // Background
             const bg = document.getElementById('app-background');
             if(bg) bg.style.backgroundImage = "url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop')";
 
-            // 2. Text Swaps (Targeted Elements Only)
-            safeSwap("h2, h3, button, label, span", "Settlement Generator", "🪐 Planet Generator");
-            safeSwap("h2, h3, button, label, span", "Creative Lore", "📡 Holonet Rumors");
-            safeSwap("h2, h3, button, label, span", "Loot Generator", "📦 Cargo & Contraband");
-            safeSwap("h2, h3, button, label, span", "Combat NPC Stats", "🛡️ Trooper/Sith Stats");
-            safeSwap("h2, h3, button, label, span", "Name Generator", "👽 Alien ID Generator");
+            // Text Swaps (Fantasy -> Sci-Fi)
+            safeReplaceText("Settlement Generator", "🪐 Planet Generator");
+            safeReplaceText("Creative Lore", "📡 Holonet Rumors");
+            safeReplaceText("Loot Generator", "📦 Cargo & Contraband");
+            safeReplaceText("Combat NPC Stats", "🛡️ Trooper/Sith Stats");
             
-            // Nav Bar
-            safeSwap(".tab-button", "Prep", "Mission");
-            safeSwap(".tab-button", "Combat", "Tactical");
-            safeSwap(".tab-button", "Stats", "Databanks");
-            safeSwap(".tab-button", "Loot", "Cargo");
-            safeSwap(".tab-button", "Notes", "Logs");
-            safeSwap(".tab-button", "Homebrew", "Workshop");
-            safeSwap(".tab-button", "Rules", "Holocron");
+            safeReplaceText("Village", "Outpost");
+            safeReplaceText("Gold", "Credits");
+            safeReplaceText("Potion", "Medpac");
 
-            // 3. Soundboard
-            updateSoundButton('combat_start', '🚨', 'Red Alert');
-            updateSoundButton('spell', '⚡', 'Force');
-            updateSoundButton('trap', '⚠️', 'Breach');
-            updateSoundButton('mystery', '📡', 'Scan');
-            updateSoundButton('wolf', '🤖', 'Droid');
-            updateSoundButton('bear', '❄️', 'Wampa');
-            updateSoundButton('bird', '🐧', 'Porg');
-            updateSoundButton('ambience-tavern', '🎷', 'Cantina');
-            updateSoundButton('ambience-ocean', '🚀', 'Hyperspace');
-            updateSoundButton('ambience-dungeon', '⛓️', 'Detention');
-            updateSoundButton('ambience-city', '🏙️', 'Coruscant');
+            // Soundboard Labels
+            updateSoundLabel('combat_start', '🚨 Red Alert');
+            updateSoundLabel('spell', '⚡ Force');
+            updateSoundLabel('trap', '⚠️ Breach');
+            updateSoundLabel('mystery', '📡 Scan');
+            updateSoundLabel('wolf', '🤖 Droid');
+            updateSoundLabel('ambience-tavern', '🎷 Cantina');
+            updateSoundLabel('ambience-ocean', '🚀 Hyperspace');
+            updateSoundLabel('ambience-city', '🏙️ Coruscant');
 
             updateRaceDropdown(true);
 
         } else {
-            // --- RESTORE FANTASY ---
+            // Restore Fantasy
             document.body.classList.remove('scifi-mode');
             localStorage.setItem('aegis_theme', 'default');
             if(window.setRandomBackground) window.setRandomBackground();
 
             // Restore Text
-            safeSwap("h2, h3, button, label, span", "🪐 Planet Generator", "Settlement Generator");
-            safeSwap("h2, h3, button, label, span", "📡 Holonet Rumors", "Creative Lore");
-            safeSwap("h2, h3, button, label, span", "📦 Cargo & Contraband", "Loot Generator");
-            safeSwap("h2, h3, button, label, span", "🛡️ Trooper/Sith Stats", "Combat NPC Stats");
-            safeSwap("h2, h3, button, label, span", "👽 Alien ID Generator", "Name Generator");
-
-            safeSwap(".tab-button", "Mission", "Prep");
-            safeSwap(".tab-button", "Tactical", "Combat");
-            safeSwap(".tab-button", "Databanks", "Stats");
-            safeSwap(".tab-button", "Cargo", "Loot");
-            safeSwap(".tab-button", "Logs", "Notes");
-            safeSwap(".tab-button", "Workshop", "Homebrew");
-            safeSwap(".tab-button", "Holocron", "Rules");
+            safeReplaceText("🪐 Planet Generator", "Settlement Generator");
+            safeReplaceText("📡 Holonet Rumors", "Creative Lore");
+            safeReplaceText("📦 Cargo & Contraband", "Loot Generator");
+            safeReplaceText("🛡️ Trooper/Sith Stats", "Combat NPC Stats");
+            
+            safeReplaceText("Outpost", "Village");
+            safeReplaceText("Credits", "Gold");
+            safeReplaceText("Medpac", "Potion");
 
             // Restore Sounds
-            updateSoundButton('combat_start', '⚔️', 'Combat');
-            updateSoundButton('spell', '🔮', 'Spell');
-            updateSoundButton('trap', '⚠️', 'Trap');
-            updateSoundButton('mystery', '👻', 'Mystery');
-            updateSoundButton('wolf', '🐺', 'Wolf');
-            updateSoundButton('bear', '🐻', 'Bear');
-            updateSoundButton('bird', '🐦', 'Bird');
-            updateSoundButton('ambience-tavern', '🍺', 'Tavern');
-            updateSoundButton('ambience-ocean', '⚓', 'Sea Shanty');
-            updateSoundButton('ambience-dungeon', '⛓️', 'Dungeon');
-            updateSoundButton('ambience-city', '🏰', 'City');
+            updateSoundLabel('combat_start', '⚔️ Combat');
+            updateSoundLabel('spell', '🔮 Spell');
+            updateSoundLabel('trap', '⚠️ Trap');
+            updateSoundLabel('mystery', '👻 Mystery');
+            updateSoundLabel('wolf', '🐺 Wolf');
+            updateSoundLabel('ambience-tavern', '🍺 Tavern');
+            updateSoundLabel('ambience-ocean', '⚓ Sea Shanty');
+            updateSoundLabel('ambience-city', '🏰 City');
 
             updateRaceDropdown(false);
         }
     };
 
-    // --- SAFETY HELPERS ---
-    
-    // 1. Safe Text Swap: Only targets specific HTML tags, avoids Scripts
-    function safeSwap(selector, find, replace) {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(el => {
-            // Only replace if the text is directly in this element (not a child)
-            if (el.innerText.includes(find)) {
-                el.innerHTML = el.innerHTML.replace(find, replace);
+    // --- SAFE TEXT REPLACER ---
+    // Only touches text nodes, never overwrites HTML/Buttons
+    function safeReplaceText(find, replace) {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        while(node = walker.nextNode()) {
+            // Skip scripts and styles to prevent breaking code
+            if (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE') continue;
+            
+            if (node.nodeValue.includes(find)) {
+                node.nodeValue = node.nodeValue.replace(find, replace);
             }
-        });
+        }
     }
 
-    // 2. Sound Button Updater
-    function updateSoundButton(funcName, icon, label) {
+    // Helper for Sound Buttons
+    function updateSoundLabel(idOrFunc, newLabel) {
         let btn;
-        if (funcName.startsWith('ambience')) btn = document.getElementById(funcName);
-        else btn = document.querySelector(`button[onclick="playTone('${funcName}')"]`);
-        
-        if (btn) btn.innerHTML = `<span class="text-2xl mb-1">${icon}</span><span class="text-xs">${label}</span>`;
+        if(idOrFunc.startsWith('ambience')) {
+            btn = document.getElementById(idOrFunc);
+        } else {
+            btn = document.querySelector(`button[onclick="playTone('${idOrFunc}')"]`);
+        }
+        if(btn) btn.innerHTML = `<span class="text-xl">${newLabel.split(' ')[0]}</span> <span class="text-xs">${newLabel.split(' ').slice(1).join(' ')}</span>`;
     }
 
-    // 3. Dropdown Updater
+    // Update Dropdown
     function updateRaceDropdown(isSciFi) {
         const sel = document.getElementById('name-race');
         if (!sel) return;
         if (isSciFi) {
-            sel.innerHTML = `<option value="Human">Human</option><option value="Twi'lek">Twi'lek</option><option value="Zabrak">Zabrak</option><option value="Rodian">Rodian</option><option value="Trandoshan">Trandoshan</option><option value="Wookiee">Wookiee</option><option value="Mon Calamari">Mon Calamari</option><option value="Chiss">Chiss</option><option value="Droid">Droid</option><option value="Sith Pureblood">Sith Pureblood</option>`;
+            sel.innerHTML = `<option value="Human">Human</option><option value="Twi'lek">Twi'lek</option><option value="Rodian">Rodian</option><option value="Wookiee">Wookiee</option><option value="Droid">Droid</option><option value="Sith">Sith</option>`;
         } else {
-            sel.innerHTML = `<option value="Human">Human</option><option value="Elf">Elf</option><option value="Dwarf">Dwarf</option><option value="Orc">Orc/Half-Orc</option><option value="Halfling">Halfling</option><option value="Tiefling">Tiefling</option><option value="Dragonborn">Dragonborn</option><option value="Gnome">Gnome</option><option value="Goblin">Goblin</option>`;
+            sel.innerHTML = `<option value="Human">Human</option><option value="Elf">Elf</option><option value="Dwarf">Dwarf</option><option value="Orc">Orc</option><option value="Halfling">Halfling</option>`;
         }
     }
 
-    // --- DUAL MODE GENERATORS (AI Logic) ---
-
+    // --- GENERATORS (The AI Logic) ---
+    // These override the fantasy versions when mode is active
+    
+    const originalGenSettlement = window.generateSettlement;
     window.generateSettlement = async () => {
+        if (!window.isSciFiMode) return originalGenSettlement();
+        
         const btn = document.getElementById('generate-settlement-button'); 
         const outputDiv = document.getElementById('ai-output');
-        const spinner = document.getElementById('settlement-loading-spinner'); // Ensure this ID exists in HTML
-        
         btn.disabled = true; 
-        if(spinner) spinner.classList.remove('hidden');
-        outputDiv.innerHTML = '<span class="animate-pulse">Accessing database...</span>';
+        outputDiv.innerHTML = '<span class="animate-pulse text-cyan-400">Scanning sector...</span>';
         
         try {
             const type = document.getElementById('settlement-type').value;
             const vibe = document.getElementById('settlement-vibe').value;
-            let prompt = "";
-
-            if (window.isSciFiMode) {
-                prompt = `Generate a Star Wars 5e (SW5e) Planetary Outpost. Type: ${type}. Vibe: ${vibe}. Include: Planet Name, Atmosphere, Factions, Exports, and a Threat.`;
-            } else {
-                prompt = `Generate a D&D 5e Settlement (${type}). Vibe: ${vibe}. Include Ruler, Locations, and Quest.`;
-            }
-
+            const prompt = `Generate a Star Wars 5e (SW5e) Planet or Space Station. Type: ${type}. Vibe: ${vibe}. Include Name, Atmosphere, Factions, and Threats.`;
+            
             const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
             outputDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-            const saveOpts = document.getElementById('save-options-creative');
-            if(saveOpts) saveOpts.classList.remove('hidden');
+            document.getElementById('save-options-creative').classList.remove('hidden');
         } catch(e) { outputDiv.textContent = "Error: " + e.message; }
-        finally { 
-            btn.disabled = false; 
-            if(spinner) spinner.classList.add('hidden'); 
-        }
+        finally { btn.disabled = false; }
     };
 
-    window.generateCreativeIdea = async () => {
-        const btn = document.getElementById('generate-button'); btn.disabled = true;
-        const output = document.getElementById('ai-output'); 
-        const userPrompt = document.getElementById('improv-prompt').value;
-        const spinner = document.getElementById('creative-loading-spinner');
-
-        if(spinner) spinner.classList.remove('hidden');
-
-        try {
-            let prompt = "";
-            if (window.isSciFiMode) {
-                prompt = `Generate a Star Wars (SW5e) adventure hook: "${userPrompt}". Use sci-fi terms.`;
-            } else {
-                prompt = `Generate a D&D 5e creative idea: "${userPrompt}".`;
-            }
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
-            output.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
-            const saveOpts = document.getElementById('save-options-creative');
-            if(saveOpts) saveOpts.classList.remove('hidden');
-        } catch(e) { output.textContent = "Error: " + e.message; }
-        finally { 
-            if(spinner) spinner.classList.add('hidden'); 
-            btn.disabled = false; 
-        }
-    };
-
+    const originalGenLoot = window.generateLoot;
     window.generateLoot = async () => {
+        if (!window.isSciFiMode) return originalGenLoot();
+
         const btn = document.getElementById('generate-loot-button'); 
         const output = document.getElementById('loot-output');
-        const spinner = document.getElementById('loot-loading-spinner');
-        
         btn.disabled = true; 
-        if(spinner) spinner.classList.remove('hidden');
+        output.innerHTML = '<span class="animate-pulse text-cyan-400">Scanning cargo...</span>';
         
         try {
             const level = document.getElementById('loot-level').value;
-            const type = document.getElementById('loot-type').value;
-            let prompt = "";
+            const prompt = `Generate Star Wars 5e (SW5e) loot for Level ${level}. Include Credits (cr) and tech items.`;
             
-            if (window.isSciFiMode) {
-                output.innerHTML = '<span class="text-cyan-400 animate-pulse">Scanning cargo...</span>';
-                prompt = `Generate Star Wars 5e (SW5e) loot for Level ${level}. Context: ${type}. Include Credits (cr) values. Format as a clean list.`;
-            } else {
-                output.innerHTML = '<span class="text-yellow-400 animate-pulse">Rolling treasure...</span>';
-                prompt = `Generate D&D 5e loot for Level ${level}. Context: ${type}. Include GP values. Format as a list.`;
-            }
-
             const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
-            const colorClass = window.isSciFiMode ? 'text-cyan-400' : 'text-yellow-400';
-            output.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, `<strong class="${colorClass}">$1</strong>`);
-        } catch(e) { output.innerHTML = "Error: " + e.message; }
-        finally { 
-            if(spinner) spinner.classList.add('hidden'); 
-            btn.disabled = false; 
-        }
+            output.innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong class="text-cyan-400">$1</strong>');
+        } catch(e) { output.textContent = "Error: " + e.message; }
+        finally { btn.disabled = false; }
     };
-    
-    window.generateCombatNpc = async () => {
-        const btn = document.getElementById('generate-combat-button'); 
-        const outputDiv = document.getElementById('ai-output');
-        const spinner = document.getElementById('combat-loading-spinner');
-        
-        btn.disabled = true; 
-        if(spinner) spinner.classList.remove('hidden');
 
-        try {
-            const txt = document.getElementById('npc-type').value;
-            const lvl = document.getElementById('npc-level').value;
-            let prompt = "";
-
-            if (window.isSciFiMode) {
-                outputDiv.textContent = "Fabricating Trooper data...";
-                prompt = `Generate a SW5e (Star Wars) combat NPC (Level/CR ${lvl}, ${txt}). Use Blasters/Vibroblades. Return strictly JSON.`;
-            } else {
-                outputDiv.textContent = "Generating statblock...";
-                prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON.`;
-            }
-
-            const data = await callAI(API_URL, { 
-                contents: [{ parts: [{ text: prompt }] }], 
-                generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } 
-            });
-            
-            lastGeneratedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
-            const hpColor = window.isSciFiMode ? 'text-cyan-300' : 'text-green-300';
-            const acLabel = window.isSciFiMode ? 'AC / Shields' : 'Armor Class';
-
-            outputDiv.innerHTML = `<div class="text-2xl font-bold ${window.isSciFiMode ? 'text-cyan-400' : 'text-green-400'} mb-2">${lastGeneratedNpc.name}</div><div class="text-gray-300 text-sm mb-4">Level/CR: ${lastGeneratedNpc.level_or_cr}</div><div class="grid grid-cols-2 gap-3 mb-4"><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">${acLabel}</div><div class="font-bold text-2xl text-blue-300">${lastGeneratedNpc.armor_class_ac}</div></div><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Hit Points</div><div class="font-bold text-2xl ${hpColor}">${lastGeneratedNpc.max_hit_points}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Main Attack</div><div class="font-medium text-white mt-1">${lastGeneratedNpc.main_attack}</div></div></div><button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button><div class="grid grid-cols-3 gap-2"><button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button><button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text
+   
     
 </script>
 
