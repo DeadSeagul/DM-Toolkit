@@ -106,6 +106,58 @@
         .aegis-text { display: flex; flex-direction: column; line-height: 1.1; }
         .aegis-title { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #818cf8; }
         .aegis-subtitle { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.16em; opacity: 0.8; color: #cbd5e1; }
+    
+    /* 🚀 SW5E SCI-FI THEME */
+body.scifi-mode {
+    background-color: #050510 !important;
+    color: #00ffff;
+    font-family: 'Courier New', Courier, monospace; /* Terminal font */
+    background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
+}
+
+/* Neon Cards */
+body.scifi-mode .card {
+    background-color: rgba(5, 10, 20, 0.95);
+    border: 1px solid #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+/* Holographic Inputs */
+body.scifi-mode .input-style, 
+body.scifi-mode input, 
+body.scifi-mode select, 
+body.scifi-mode textarea {
+    background-color: rgba(0, 20, 40, 0.8) !important;
+    border: 1px solid #0088ff !important;
+    color: #00ffff !important;
+    font-family: 'Courier New', monospace;
+}
+
+/* Neon Buttons */
+body.scifi-mode button {
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Headings & Text */
+body.scifi-mode h1, body.scifi-mode h2, body.scifi-mode h3 {
+    color: #ffe81f; /* Star Wars Yellow */
+    text-shadow: 0 0 5px rgba(255, 232, 31, 0.5);
+    font-family: Impact, sans-serif;
+    letter-spacing: 1px;
+}
+
+/* Hide Parchment, Show Tech */
+body.scifi-mode .parchment-card {
+    background-image: none;
+    background-color: #001122;
+    border: 2px solid #ffe81f;
+    color: #00ffff;
+    font-family: monospace;
+}
+    
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -169,6 +221,7 @@
             <div class="flex items-center gap-3">
                 <!-- Holiday Toggle -->
                 <button onclick="toggleTheme()" class="text-xl p-2 hover:bg-gray-700 rounded transition" title="Toggle Holiday Mode">🎄</button>
+                <button onclick="toggleSciFiMode()" class="text-xl p-2 hover:bg-gray-700 rounded transition" title="Initialize SW5e Protocol">🚀</button>
                 <button onclick="document.getElementById('share-modal').classList.remove('hidden')" class="p-2 hover:bg-gray-700 rounded-lg transition text-gray-400 hover:text-white" title="Share App">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
@@ -1863,10 +1916,36 @@
         }
     });
 
+    // --- STARTUP LISTENER ---
     document.addEventListener('DOMContentLoaded', () => {
-        if(userApiKey) { document.getElementById('user-api-key').value = userApiKey; window.updateApiKey(userApiKey); }
-        applyTheme();
+        // 1. Load API Key
+        if(userApiKey) { 
+            document.getElementById('user-api-key').value = userApiKey; 
+            window.updateApiKey(userApiKey); 
+        }
+        
+        // 2. Handle Themes (Sci-Fi vs Christmas vs Fantasy)
+        const savedTheme = localStorage.getItem('aegis_theme');
+        
+        if (savedTheme === 'scifi') {
+             // Activate Sci-Fi Mode
+             window.isSciFiMode = false; // Toggle will flip it to true
+             window.toggleSciFiMode();
+        } 
+        else if (savedTheme === 'christmas' || isChristmasMode) {
+             document.body.classList.add('christmas-mode');
+             applyTheme(); 
+             const cred = document.getElementById('artist-credit');
+             if(cred) cred.classList.add('hidden');
+        } 
+        else {
+             // Default: Fantasy Art Background
+             if(window.setRandomBackground) window.setRandomBackground();
+        }
+
+        // 3. Default Tab
         window.switchTab('improv');
+        
         // --- DICE VISUALS (Colors, Textures & Reset Fixed) ---
         (function() {
             const canvas = document.getElementById('dice-canvas'); 
@@ -3780,7 +3859,134 @@
         await window.finalizeSave('prepNotes', newNote, targetCampaign);
     }; 
 
-      
+   // ==========================================
+    // 🚀 SW5E TOTAL CONVERSION ENGINE
+    // ==========================================
+
+    window.toggleSciFiMode = () => {
+        window.isSciFiMode = !window.isSciFiMode;
+        
+        if (window.isSciFiMode) {
+            // --- ACTIVATE PROTOCOL ---
+            document.body.classList.add('scifi-mode');
+            document.body.classList.remove('christmas-mode');
+            localStorage.setItem('aegis_theme', 'scifi');
+            
+            // 1. Background -> Stars
+            const bg = document.getElementById('app-background');
+            if(bg) bg.style.backgroundImage = "url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop')";
+
+            // 2. Text Swaps (Fantasy -> Sci-Fi)
+            updateUIText("Settlement Generator", "🪐 Planet Generator");
+            updateUIText("Creative Lore", "📡 Holonet Rumors");
+            updateUIText("Loot Generator", "📦 Cargo & Contraband");
+            updateUIText("Combat NPC Stats", "🛡️ Trooper/Sith Stats");
+
+            // 3. Soundboard Swaps
+            updateSoundButton('combat_start', '🚨', 'Red Alert');
+            updateSoundButton('spell', '⚡', 'Force Use');
+            updateSoundButton('trap', '⚠️', 'Hull Breach');
+            updateSoundButton('mystery', '📡', 'Scanning');
+            updateSoundButton('wolf', '🤖', 'Droid');
+            updateSoundButton('bear', '❄️', 'Wampa');
+            updateSoundButton('bird', '🐧', 'Porg');
+            updateSoundButton('ambience-tavern', '🎷', 'Cantina');
+            updateSoundButton('ambience-ocean', '🚀', 'Hyperspace');
+            updateSoundButton('ambience-dungeon', '⛓️', 'Detention');
+            updateSoundButton('ambience-city', '🏙️', 'Coruscant');
+            
+            // 4. Update Dropdowns
+            updateRaceDropdown(true);
+
+        } else {
+            // --- DEACTIVATE PROTOCOL ---
+            document.body.classList.remove('scifi-mode');
+            localStorage.setItem('aegis_theme', 'default');
+            
+            // Restore Fantasy Art
+            if(window.setRandomBackground) window.setRandomBackground();
+
+            // Restore Text
+            updateUIText("🪐 Planet Generator", "Settlement Generator");
+            updateUIText("📡 Holonet Rumors", "Creative Lore");
+            updateUIText("📦 Cargo & Contraband", "Loot Generator");
+            updateUIText("🛡️ Trooper/Sith Stats", "Combat NPC Stats");
+
+            // Restore Sounds
+            updateSoundButton('combat_start', '⚔️', 'Combat');
+            updateSoundButton('spell', '🔮', 'Spell');
+            updateSoundButton('trap', '⚠️', 'Trap');
+            updateSoundButton('mystery', '👻', 'Mystery');
+            updateSoundButton('wolf', '🐺', 'Wolf');
+            updateSoundButton('bear', '🐻', 'Bear');
+            updateSoundButton('bird', '🐦', 'Bird');
+            updateSoundButton('ambience-tavern', '🍺', 'Tavern');
+            updateSoundButton('ambience-ocean', '⚓', 'Sea Shanty');
+            updateSoundButton('ambience-dungeon', '⛓️', 'Dungeon');
+            updateSoundButton('ambience-city', '🏰', 'City');
+
+            // Restore Dropdowns
+            updateRaceDropdown(false);
+        }
+    };
+
+    // --- HELPERS ---
+    
+    // Finds text on the page and replaces it safely
+    function updateUIText(find, replace) {
+        document.querySelectorAll('h2, label, span').forEach(el => {
+            if (el.innerText.includes(find)) el.innerText = el.innerText.replace(find, replace);
+        });
+    }
+
+    // Renames Soundboard buttons
+    function updateSoundButton(funcName, icon, label) {
+        let btn;
+        // Check ID first (for ambience)
+        if (funcName.startsWith('ambience')) {
+            btn = document.getElementById(funcName);
+        } else {
+            // Check onclick attribute (for effects)
+            btn = document.querySelector(`button[onclick="playTone('${funcName}')"]`);
+        }
+        
+        if (btn) {
+            btn.innerHTML = `<span class="text-2xl mb-1">${icon}</span><span class="text-xs">${label}</span>`;
+        }
+    }
+
+    // Swaps the Name Generator options
+    function updateRaceDropdown(isSciFi) {
+        const sel = document.getElementById('name-race');
+        if (!sel) return;
+        
+        if (isSciFi) {
+            sel.innerHTML = `
+                <option value="Human">Human</option>
+                <option value="Twi'lek">Twi'lek</option>
+                <option value="Zabrak">Zabrak</option>
+                <option value="Rodian">Rodian</option>
+                <option value="Trandoshan">Trandoshan</option>
+                <option value="Wookiee">Wookiee</option>
+                <option value="Mon Calamari">Mon Calamari</option>
+                <option value="Chiss">Chiss</option>
+                <option value="Droid">Droid</option>
+                <option value="Sith Pureblood">Sith Pureblood</option>
+            `;
+        } else {
+            sel.innerHTML = `
+                <option value="Human">Human</option>
+                <option value="Elf">Elf</option>
+                <option value="Dwarf">Dwarf</option>
+                <option value="Orc">Orc/Half-Orc</option>
+                <option value="Halfling">Halfling</option>
+                <option value="Tiefling">Tiefling</option>
+                <option value="Dragonborn">Dragonborn</option>
+                <option value="Gnome">Gnome</option>
+                <option value="Goblin">Goblin</option>
+            `;
+        }
+    }   
 
     
 </script>
