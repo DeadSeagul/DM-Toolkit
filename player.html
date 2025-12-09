@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis | Player View</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: sans-serif; }
+        .active-turn { border: 2px solid #34d399; background-color: rgba(52, 211, 153, 0.1); transform: scale(1.02); }
+        .animate-pulse-slow { animation: pulse 3s infinite; }
+    </style>
+</head>
+<body class="p-4 max-w-md mx-auto">
+
+    <div class="mb-6 text-center">
+        <h1 class="text-2xl font-bold text-indigo-400 tracking-widest">INITIATIVE</h1>
+        <div id="status" class="text-xs text-gray-500">Connecting to session...</div>
+    </div>
+
+    <div id="combat-list" class="space-y-3">
+        </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, query, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 1. SETUP (Same Config as Main App)
+        const app = initializeApp({
+            apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
+            projectId: "aegisdmtoolkit",
+            appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
+        });
+        const db = getFirestore(app);
+
+        // 2. GET DM ID FROM URL (e.g., player.html?dm=USER_ID_HERE)
+        const urlParams = new URLSearchParams(window.location.search);
+        const dmId = urlParams.get('dm');
+
+        if (!dmId) {
+            document.getElementById('status').innerHTML = "<span class='text-red-400'>Error: No Session ID found. Ask your DM for the link.</span>";
+        } else {
+            initPlayerView(dmId);
+        }
+
+        // 3. LISTEN TO DATABASE
+        function initPlayerView(dmId) {
+            document.getElementById('status').textContent = "● Live Session Active";
+            const list = document.getElementById('combat-list');
+            let currentTurn = -1;
+
+            // A. Listen for Turn Order
+            onSnapshot(doc(db, 'artifacts', 'default', 'sessions', dmId, 'singles', 'shared_combat_state'), (doc) => {
+                if(doc.exists()) {
+                    currentTurn = doc.data().currentTurnIndex || 0;
+                    render(); // Re-render to update the green border
+                }
+            });
+
+            // B. Listen for Combatants
+            let combatants = [];
+            const q = collection(db, 'artifacts', 'default', 'sessions', dmId, 'shared_combatants');
+            
+            onSnapshot(q, (snapshot) => {
+                combatants = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Optional: Filter out hidden monsters if you add a 'hidden' flag later
+                    // if (!data.hidden) 
+                    combatants.push({ id: doc.id, ...data });
+                });
+                
+                // Sort by Initiative (High to Low)
+                combatants.sort((a, b) => (b.init || 0) - (a.init || 0));
+                render();
+            });
+
+            function render() {
+                list.innerHTML = "";
+                if (combatants.length === 0) {
+                    list.innerHTML = "<div class='text-center text-gray-600 mt-10'>Waiting for combat to start...</div>";
+                    return;
+                }
+
+                combatants.forEach((c, index) => {
+                    const isActive = index === currentTurn;
+                    const healthPercent = Math.min(100, Math.max(0, (c.currentHp / c.maxHp) * 100));
+                    
+                    // Color code health bar
+                    let hpColor = "bg-green-500";
+                    if (healthPercent < 50) hpColor = "bg-yellow-500";
+                    if (healthPercent < 20) hpColor = "bg-red-500";
+
+                    const div = document.createElement('div');
+                    div.className = `bg-gray-800 rounded-lg p-3 shadow-lg transition-all duration-300 ${isActive ? 'active-turn' : 'border border-gray-700'}`;
+                    
+                    div.innerHTML = `
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-gray-900 w-8 h-8 flex items-center justify-center rounded font-bold text-indigo-400 border border-gray-700">
+                                    ${c.init}
+                                </div>
+                                <div class="font-bold text-lg ${isActive ? 'text-white' : 'text-gray-300'}">
+                                    ${c.name}
+                                </div>
+                            </div>
+                            ${isActive ? '<span class="text-[10px] bg-green-900 text-green-300 px-2 py-1 rounded uppercase tracking-wider font-bold animate-pulse">Active</span>' : ''}
+                        </div>
+                        
+                        <div class="w-full bg-gray-900 rounded-full h-2 overflow-hidden border border-gray-700">
+                            <div class="${hpColor} h-2 transition-all duration-500" style="width: ${healthPercent}%"></div>
+                        </div>
+                        <div class="flex justify-between mt-1">
+                            <span class="text-[10px] text-gray-500">Status</span>
+                            <span class="text-[10px] text-gray-500">${healthPercent > 50 ? 'Healthy' : (healthPercent > 0 ? 'Bloodied' : 'Down')}</span>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
