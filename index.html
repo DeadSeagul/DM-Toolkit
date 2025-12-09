@@ -1368,9 +1368,39 @@
     };
 
 // ==========================================
-    // 6. NOTES LOGIC (Inline Editing + Auto-Grow)
+    // 6. NOTES LOGIC (Fixed Tabs + Collapsing)
     // ==========================================
 
+    // 🟢 1. TAB SWITCHING (Restored Function)
+    window.switchSubTab = function(tabId) {
+        window.currentSubTab = tabId;
+        
+        // Clear search
+        const searchInput = document.getElementById('notes-search');
+        if(searchInput) searchInput.value = "";
+
+        // Hide all sub-contents
+        document.querySelectorAll('.sub-tab-content').forEach(el => el.classList.add('hidden'));
+        
+        // Show target content
+        const target = document.getElementById(`${tabId}-sub-content`);
+        if(target) target.classList.remove('hidden');
+        
+        // Update Buttons
+        document.querySelectorAll('.sub-tab-button').forEach(btn => {
+            btn.classList.remove('active', 'text-gray-400', 'text-indigo-400');
+            if (btn.dataset.subtab === tabId) {
+                btn.classList.add('active', 'text-indigo-400'); 
+            } else {
+                btn.classList.add('text-gray-400');
+            }
+        });
+
+        // Render data
+        window.renderStructuredNotes(window.currentSubTab);
+    };
+
+    // 🟢 2. RENDER NOTES (With Working Collapse Button)
     window.renderStructuredNotes = (tab) => {
         const list = document.getElementById(`${tab}-list`); 
         if(!list) return;
@@ -1378,7 +1408,6 @@
         const q = document.getElementById('notes-search').value.toLowerCase().trim();
         const allNotes = structuredNotes[tab] || [];
         
-        // Filter by Campaign & Search
         const notes = allNotes.filter(n => 
             (n.campaign || 'Default Campaign') === currentCampaign && 
             (n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
@@ -1392,25 +1421,24 @@
             div.id = `note-${n.id}`;
 
             div.innerHTML = `
-                <div class="p-3 border-b border-gray-700 flex items-center gap-2 bg-gray-900/50 rounded-t-lg cursor-pointer hover:bg-gray-800 transition select-none" 
-                     onclick="window.toggleCollapse('${n.id}')">
+                <div class="p-2 border-b border-gray-700 flex items-center gap-2 bg-gray-900/50 rounded-t-lg">
                     
-                    <span id="arrow-${n.id}" class="text-gray-500 text-xs w-4 text-center">▼</span>
+                    <button onclick="window.toggleCollapse('${n.id}')" class="p-2 text-gray-400 hover:text-white transition cursor-pointer">
+                        <span id="arrow-${n.id}" class="text-xs">▼</span>
+                    </button>
                     
                     <input type="text" value="${n.title}" 
-                        onclick="event.stopPropagation()"
                         onblur="window.updateNote('${n.id}', '${tab}', 'title', this.value)"
                         class="flex-1 bg-transparent text-indigo-300 font-bold text-sm outline-none border-b border-transparent focus:border-indigo-500 transition px-1 placeholder-gray-600"
                         placeholder="Note Title..."
                     >
                     
-                    <button onclick="event.stopPropagation(); deleteNote('${n.id}', '${tab}')" class="text-gray-600 hover:text-red-400 text-xs font-bold px-2" title="Delete Note">✕</button>
+                    <button onclick="deleteNote('${n.id}', '${tab}')" class="text-gray-600 hover:text-red-400 text-xs font-bold px-3 py-1">✕</button>
                 </div>
 
                 <div class="p-0" id="content-${n.id}">
                     <textarea 
                         id="text-${n.id}"
-                        onclick="event.stopPropagation()"
                         oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
                         onblur="window.updateNote('${n.id}', '${tab}', 'content', this.value)"
                         class="w-full bg-transparent text-gray-300 text-sm p-4 outline-none resize-none font-sans leading-relaxed border-none focus:bg-gray-800/50 transition overflow-hidden block"
@@ -1425,40 +1453,15 @@
             
             list.appendChild(div);
             
-            // Auto-Resize immediately to fit content
+            // Initial Resize
             setTimeout(() => {
                 const ta = document.getElementById(`text-${n.id}`);
-                if(ta) {
-                    ta.style.height = 'auto'; 
-                    ta.style.height = (ta.scrollHeight) + 'px';
-                }
+                if(ta) { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight) + 'px'; }
             }, 10);
         });
     };
 
-    // Auto-Save Triggered on Blur (Click Away)
-    window.updateNote = (id, tab, field, value) => {
-        const idx = structuredNotes[tab].findIndex(n => n.id === id);
-        if (idx === -1) return;
-
-        // Only save if changed
-        if (structuredNotes[tab][idx][field] !== value) {
-            structuredNotes[tab][idx][field] = value;
-            structuredNotes[tab][idx].timestamp = new Date().toISOString();
-            
-            // Save to DB
-            window.saveStructuredNotes(tab, structuredNotes[tab]);
-            
-            // Visual Feedback (Green border flash)
-            const el = document.getElementById(`note-${id}`);
-            if(el) {
-                el.classList.replace('border-gray-700', 'border-green-500');
-                setTimeout(() => el.classList.replace('border-green-500', 'border-gray-700'), 1000);
-            }
-        }
-    };
-
-    // Toggle Collapse Logic
+    // 🟢 3. HELPERS
     window.toggleCollapse = (id) => { 
         const content = document.getElementById(`content-${id}`); 
         const arrow = document.getElementById(`arrow-${id}`);
@@ -1468,13 +1471,25 @@
         }
     };
 
+    window.updateNote = (id, tab, field, value) => {
+        const idx = structuredNotes[tab].findIndex(n => n.id === id);
+        if (idx === -1) return;
+        if (structuredNotes[tab][idx][field] !== value) {
+            structuredNotes[tab][idx][field] = value;
+            structuredNotes[tab][idx].timestamp = new Date().toISOString();
+            window.saveStructuredNotes(tab, structuredNotes[tab]);
+            const el = document.getElementById(`note-${id}`);
+            if(el) {
+                el.classList.replace('border-gray-700', 'border-green-500');
+                setTimeout(() => el.classList.replace('border-green-500', 'border-gray-700'), 1000);
+            }
+        }
+    };
+
     window.addNewNote = (tab) => { 
         structuredNotes[tab].unshift({
-            id: crypto.randomUUID(), 
-            title: 'New Note', 
-            content: '', 
-            campaign: currentCampaign, 
-            timestamp: new Date().toISOString()
+            id: crypto.randomUUID(), title: 'New Note', content: '', 
+            campaign: currentCampaign, timestamp: new Date().toISOString()
         }); 
         window.saveStructuredNotes(tab, structuredNotes[tab]); 
         window.renderStructuredNotes(tab); 
@@ -1487,7 +1502,7 @@
         window.renderStructuredNotes(tab); 
     };
 
-    // (Re-adding API functions so you don't lose them)
+    // Re-adding API functions just in case
     window.updateApiKey = function(val) { userApiKey = val.trim(); localStorage.setItem('dm_toolkit_api_key', userApiKey); const status = document.getElementById('api-key-status'); if(userApiKey.length > 5) { status.textContent = "Key saved!"; status.className="mt-2 text-xs text-green-400"; } else { status.textContent = "Key empty"; status.className="mt-2 text-xs text-red-400"; } };
     window.saveApiKey = function() { window.updateApiKey(document.getElementById('user-api-key').value); };
 
