@@ -3818,6 +3818,43 @@
         });
     };
 
+        // ==========================================
+    // 📡 BROADCAST LOGIC (Generates Player Link)
+    // ==========================================
+
+    window.shareCombatLink = function() {
+        // 1. Security Check
+        if (!window.userId) {
+            alert("🔒 Premium Feature\n\nYou must be logged into a Session (click 'Connect') to broadcast combat.");
+            window.openLoginModal();
+            return;
+        }
+
+        // 2. Build the URL dynamically
+        // This grabs your current website URL, removes 'index.html', and points to 'player.html'
+        let baseUrl = window.location.href;
+        
+        // Clean up the URL (remove index.html or trailing slashes)
+        if (baseUrl.endsWith('index.html')) {
+            baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
+        }
+        if (baseUrl.endsWith('/')) {
+            baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+        }
+        
+        // Create the unique link with your Session ID
+        const playerLink = `${baseUrl}/player.html?dm=${window.userId}`;
+
+        // 3. Copy to Clipboard & Notify
+        navigator.clipboard.writeText(playerLink).then(() => {
+            // Success Message
+            alert("✅ PLAYER LINK COPIED!\n\nSend this URL to your players:\n" + playerLink);
+        }).catch(err => {
+            // Fallback if clipboard fails
+            prompt("Copy this link manually:", playerLink);
+        });
+    };
+
     
 </script>
 
