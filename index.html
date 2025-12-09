@@ -1432,12 +1432,34 @@
     window.toggleCollapse = (id) => { const el = document.getElementById(`content-${id}`); if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; } };
     window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
     window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+    // 🟢 FIXED EDIT FUNCTION (Preserves Spaces/Newlines)
     window.editNote = (id, tab) => {
-        const n = structuredNotes[tab].find(x => x.id === id); if(!n) return;
-        document.getElementById('modal-note-id').value = id; document.getElementById('modal-tab-name').value = tab;
+        const n = structuredNotes[tab].find(x => x.id === id); 
+        if(!n) return;
+
+        // Set IDs and Title
+        document.getElementById('modal-note-id').value = id; 
+        document.getElementById('modal-tab-name').value = tab;
         document.getElementById('modal-title').value = n.title;
-        const tempDiv = document.createElement('div'); tempDiv.innerHTML = n.content;
-        document.getElementById('modal-content').value = tempDiv.textContent.trim();
+        
+        // Fix Content Formatting
+        let content = n.content || "";
+
+        // If the note has HTML (from AI generation), convert HTML breaks to text newlines
+        if (content.includes('<')) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // Replace <br> tags with actual newlines
+            tempDiv.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+            // Add newlines after paragraphs or divs
+            tempDiv.querySelectorAll('p, div, li').forEach(block => block.after('\n'));
+            
+            // Get the clean text
+            content = tempDiv.textContent;
+        }
+
+        document.getElementById('modal-content').value = content;
         document.getElementById('edit-modal').classList.remove('hidden');
     };
     window.saveEditedNote = () => {
