@@ -106,6 +106,64 @@
         .aegis-text { display: flex; flex-direction: column; line-height: 1.1; }
         .aegis-title { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #818cf8; }
         .aegis-subtitle { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.16em; opacity: 0.8; color: #cbd5e1; }
+    /* 🚀 SW5E SCI-FI THEME */
+body.scifi-mode {
+    background-color: #050510 !important;
+    color: #00ffff;
+    font-family: 'Courier New', Courier, monospace; /* Terminal vibe */
+    background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
+}
+
+/* Neon Cards */
+body.scifi-mode .card {
+    background-color: rgba(5, 10, 20, 0.9);
+    border: 1px solid #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.05);
+    border-radius: 4px; /* Sharper corners */
+}
+
+/* Holographic Inputs */
+body.scifi-mode .input-style, 
+body.scifi-mode input, 
+body.scifi-mode select, 
+body.scifi-mode textarea {
+    background-color: rgba(0, 20, 40, 0.8) !important;
+    border: 1px solid #0088ff !important;
+    color: #00ffff !important;
+    font-family: 'Courier New', monospace;
+}
+
+/* Neon Buttons */
+body.scifi-mode button {
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Active Tabs */
+body.scifi-mode .tab-button.active {
+    color: #00ffff;
+    border-bottom-color: #00ffff;
+    text-shadow: 0 0 8px #00ffff;
+}
+
+/* Headings */
+body.scifi-mode h1, body.scifi-mode h2, body.scifi-mode h3 {
+    color: #ffe81f; /* Star Wars Yellow */
+    text-shadow: 0 0 5px rgba(255, 232, 31, 0.5);
+    font-family: Impact, sans-serif; /* Bold title font */
+    letter-spacing: 1px;
+}
+
+/* Hide Parchment, Show Tech */
+body.scifi-mode .parchment-card {
+    background-image: none;
+    background-color: #001122;
+    border: 2px solid #ffe81f;
+    color: #00ffff;
+    font-family: monospace;
+}
+    
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -1864,29 +1922,48 @@
         }
     });
 
+    // --- FINAL STARTUP LISTENER ---
     document.addEventListener('DOMContentLoaded', () => {
-        if(userApiKey) { document.getElementById('user-api-key').value = userApiKey; window.updateApiKey(userApiKey); }
-        applyTheme();
-        window.switchTab('improv');
-        // --- DICE VISUALS (Colors, Textures & Reset Fixed) ---
-        (function() {
-            const canvas = document.getElementById('dice-canvas'); 
-            if(!canvas) return; 
-            const ctx = canvas.getContext('2d'); 
-            let dice = []; 
-            window.customDiceImage = null; // Global variable for the image
+        // 1. Load API Key
+        if(userApiKey) { 
+            document.getElementById('user-api-key').value = userApiKey; 
+            window.updateApiKey(userApiKey); 
+        }
+        
+        // 2. Handle Themes (Sci-Fi vs Christmas vs Fantasy)
+        const savedTheme = localStorage.getItem('aegis_theme');
+        
+        if (savedTheme === 'scifi') {
+             // Activate Sci-Fi Mode
+             window.isSciFiMode = false; // Toggle will flip it to true
+             window.toggleSciFiMode();
+        } 
+        else if (savedTheme === 'christmas' || isChristmasMode) {
+             // Activate Christmas Mode
+             document.body.classList.add('christmas-mode');
+             applyTheme(); // Starts snow
+             const cred = document.getElementById('artist-credit');
+             if(cred) cred.classList.add('hidden');
+        } 
+        else {
+             // Default: Fantasy Art Background
+             if(window.setRandomBackground) window.setRandomBackground();
+        }
 
-            window.uploadDiceTexture = function(input) { 
-                if (input.files && input.files[0]) { 
-                    const reader = new FileReader(); 
-                    reader.onload = function(e) { 
-                        const img = new Image(); 
-                        img.onload = function() { window.customDiceImage = img; }; 
-                        img.src = e.target.result; 
-                    }; 
-                    reader.readAsDataURL(input.files[0]); 
-                } 
-            };
+        // 3. Default Tab
+        window.switchTab('improv');
+        
+        // 4. Initialize Dice (Visuals)
+        (function() {
+            const canvas = document.getElementById('dice-canvas'); if(!canvas) return; const ctx = canvas.getContext('2d'); let dice = []; window.customDiceImage = null;
+            window.uploadDiceTexture = function(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { window.customDiceImage = img; }; img.src = e.target.result; }; reader.readAsDataURL(input.files[0]); } };
+            window.resetDiceTexture = function() { window.customDiceImage = null; const input = document.getElementById('dice-texture-input'); if(input) input.value = ""; };
+            function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; } window.addEventListener('resize', resize); resize();
+            class VisualDie { constructor(val, type) { this.val = val; this.type = type; this.x = canvas.width/2; this.y = canvas.height + 30; this.vx = (Math.random()-0.5)*20; this.vy = -(Math.random() * 15 + 20); this.angle = 0; this.vAngle = 0.2; const picker = document.getElementById('dice-color-picker'); this.color = picker ? picker.value : '#6366f1'; } update() { this.vy += 1; this.x += this.vx; this.y += this.vy; this.angle += this.vAngle; if(this.y > canvas.height - 50) { this.y = canvas.height - 50; this.vy *= -0.6; this.vx *= 0.9; if(Math.abs(this.vx) < 0.5 && Math.abs(this.vy) < 1) { this.vAngle = 0; } } if(this.x < 20 || this.x > canvas.width - 20) this.vx *= -0.8; } draw() { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.beginPath(); if(this.type === 4) { ctx.moveTo(0,-20); ctx.lineTo(20,15); ctx.lineTo(-20,15); } else if(this.type === 6) { ctx.rect(-15,-15,30,30); } else if(this.type === 8 || this.type === 10) { ctx.moveTo(0,-25); ctx.lineTo(15,0); ctx.lineTo(0,25); ctx.lineTo(-15,0); } else if(this.type === 12) { for(let i=0;i<5;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/5-Math.PI/2), 22*Math.sin(i*2*Math.PI/5-Math.PI/2)); } else { for(let i=0;i<6;i++) ctx.lineTo(22*Math.cos(i*2*Math.PI/6), 22*Math.sin(i*2*Math.PI/6)); } ctx.closePath(); if (window.customDiceImage) { ctx.save(); ctx.clip(); ctx.drawImage(window.customDiceImage, -25, -25, 50, 50); ctx.restore(); } else { ctx.fillStyle = this.color; ctx.fill(); } ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = 'white'; ctx.shadowColor = 'black'; ctx.shadowBlur = 4; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(this.val, 0, 2); ctx.restore(); } }
+            function animate() { ctx.clearRect(0,0,canvas.width,canvas.height); dice.forEach(d => { d.update(); d.draw(); }); requestAnimationFrame(animate); } animate();
+            window.throwDiceVisuals = (rolls, type) => { dice = rolls.map(r => new VisualDie(r, type)); setTimeout(() => { dice = []; ctx.clearRect(0, 0, canvas.width, canvas.height); }, 3500); };
+        })();
+    });
 
             // --- THE MISSING FUNCTION ---
             window.resetDiceTexture = function() {
@@ -3782,7 +3859,40 @@
     }; 
 
       
+// 🚀 SW5E MODE TOGGLE
+    window.isSciFiMode = localStorage.getItem('aegis_theme') === 'scifi';
 
+    window.toggleSciFiMode = () => {
+        window.isSciFiMode = !window.isSciFiMode;
+        
+        if (window.isSciFiMode) {
+            document.body.classList.add('scifi-mode');
+            document.body.classList.remove('christmas-mode'); // Turn off snow if on
+            localStorage.setItem('aegis_theme', 'scifi');
+            
+            // Optional: Auto-switch to Galaxy tab
+            window.switchTab('galaxy'); 
+            
+            // Change Background to Stars
+            const bg = document.getElementById('app-background');
+            if(bg) bg.style.backgroundImage = "url('https://images.unsplash.com/photo-1506318137071-a8bcbf675b27?q=80&w=2072&auto=format&fit=crop')"; // Starfield
+            
+        } else {
+            document.body.classList.remove('scifi-mode');
+            localStorage.setItem('aegis_theme', 'default');
+            
+            // Restore Fantasy Art
+            if(window.setRandomBackground) window.setRandomBackground();
+        }
+    };
+
+    // Add this to your startup listener to check saved preference
+    /*
+        if (localStorage.getItem('aegis_theme') === 'scifi') {
+            window.isSciFiMode = false; // Toggle flips it to true
+            window.toggleSciFiMode();
+        }
+    */
     
 </script>
 
