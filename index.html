@@ -1688,7 +1688,7 @@
     }
 
     // ==========================================
-    // 🐉 FIXED MONSTER GENERATOR (Shows All Stats)
+    // 🐉 ROBUST MONSTER GENERATOR (Resets Every Time)
     // ==========================================
 
     window.generateMonsterStatblock = async function() {
@@ -1697,6 +1697,10 @@
         const output = document.getElementById('monster-output'); 
         const status = document.getElementById('monster-status-message');
 
+        // 1. HARD RESET (Clear previous data to prevent bugs)
+        window.lastGeneratedMonster = null; 
+        
+        // 2. UI Updates
         btn.disabled = true; 
         spinner.classList.remove('hidden');
         output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
@@ -1706,26 +1710,27 @@
             const name = document.getElementById('monster-name').value;
             const cr = document.getElementById('monster-cr').value;
             
-            // 1. Enhanced Prompt to force complete data
+            // 3. Prompt
             const prompt = `Generate a D&D 5e monster statblock for "${name}" (CR ${cr}). 
             Must include: Ability Scores, Special Traits (abilities), Actions, and Legendary Actions (if applicable).
             Return strictly JSON matching the schema.`;
 
-            // 2. Call AI
+            // 4. Call AI
             const data = await callAI(API_URL, { 
                 contents: [{ parts: [{ text: prompt }] }], 
                 generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } 
             });
             
+            // 5. Save to Global Variable
             window.lastGeneratedMonster = JSON.parse(data.candidates[0].content.parts[0].text);
             const m = window.lastGeneratedMonster;
 
-            // 3. Safety Checks for Ability Scores
+            // 6. Helpers
             const s = m.ability_scores || { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
             const getMod = (score) => Math.floor((score - 10) / 2);
             const fmtMod = (score) => { const v = getMod(score); return v >= 0 ? `+${v}` : v; };
 
-            // 4. Build HTML (Now includes Traits & Legendary Actions)
+            // 7. Render HTML
             let html = `
                 <div class="dnd-statblock text-left">
                     <div class="dnd-header">${m.name}</div>
@@ -1748,28 +1753,16 @@
                     <div class="tapered-rule"></div>
                     <div class="space-y-3 mt-3 text-sm text-black">`;
 
-            // A. Traits (Abilities)
             if (m.abilities && m.abilities.length > 0) {
-                m.abilities.forEach(t => {
-                    html += `<div><strong class="italic">${t.name}.</strong> ${t.description}</div>`;
-                });
+                m.abilities.forEach(t => { html += `<div><strong class="italic">${t.name}.</strong> ${t.description}</div>`; });
             }
-
-            // B. Actions
             if (m.actions && m.actions.length > 0) {
                 html += `<div class="dnd-section-title mt-2">Actions</div>`;
-                m.actions.forEach(a => {
-                    html += `<div><strong class="italic">${a.name}.</strong> ${a.description}</div>`;
-                });
+                m.actions.forEach(a => { html += `<div><strong class="italic">${a.name}.</strong> ${a.description}</div>`; });
             }
-
-            // C. Legendary Actions
             if (m.legendary_actions && m.legendary_actions.length > 0) {
-                html += `<div class="dnd-section-title mt-2">Legendary Actions</div>`;
-                html += `<p class="text-xs">The ${m.name} can take 3 legendary actions, choosing from the options below.</p>`;
-                m.legendary_actions.forEach(a => {
-                    html += `<div><strong class="italic">${a.name}.</strong> ${a.description}</div>`;
-                });
+                html += `<div class="dnd-section-title mt-2">Legendary Actions</div><p class="text-xs">The ${m.name} can take 3 legendary actions.</p>`;
+                m.legendary_actions.forEach(a => { html += `<div><strong class="italic">${a.name}.</strong> ${a.description}</div>`; });
             }
 
             html += `</div></div>`;
@@ -1779,29 +1772,21 @@
 
         } catch(e) { 
             console.error(e); 
-            output.textContent = "Error generating monster. Please try again.";
-            if(status) { status.textContent = "AI Error: " + e.message; status.classList.remove('hidden'); }
+            output.textContent = "Error. Please try again.";
+            if(status) { status.textContent = "Error: " + e.message; status.classList.remove('hidden'); }
         } finally { 
             spinner.classList.add('hidden'); 
             btn.disabled = false; 
         }
     };
 
-    window.addMonsterToStatblocks = async function() {
-        if (!window.isAuthReady || !lastGeneratedMonster) return;
-        const m = lastGeneratedMonster;
-        let toHit = 0; const atk = m.actions[0]; if(atk) { const h = atk.description.match(/\+(\d+)/); if(h) toHit = parseInt(h[1]); }
-        await window.addDoc(getCol('dm_toolkit_statblocks'), { name: m.name, hp: m.hit_points, ac: m.armor_class, toHit: toHit, initMod: Math.floor((m.ability_scores.DEX-10)/2), dmg: atk ? atk.name : "Attack", timestamp: new Date().toISOString() });
-    }
-
     // ==========================================
-    // 💾 SAVE MONSTER TO NOTES (Fixed)
+    // 💾 DIRECT SAVE (Bypasses Helpers)
     // ==========================================
 
     window.saveMonsterToNotes = async function() {
         // 1. Validation
-        if (!window.isAuthReady) { alert("Please log in first."); return; }
-        
+        if (!window.userId) { alert("Please log in first."); return; }
         const m = window.lastGeneratedMonster;
         if (!m) { alert("Please click 'Generate' first."); return; }
 
@@ -1809,28 +1794,36 @@
         const content = document.getElementById('monster-output').innerHTML;
         const note = { 
             id: crypto.randomUUID(), 
-            title: m.name, 
+            title: m.name || "Monster", 
             content: content, 
             campaign: window.currentCampaign || "Default Campaign",
             timestamp: new Date().toISOString() 
         };
 
-        // 3. Update Memory
-        // Ensure the array exists so we don't crash
-        if (!window.structuredNotes) window.structuredNotes = {};
-        if (!window.structuredNotes.enemyNotes) window.structuredNotes.enemyNotes = [];
-        
-        // Add new note to the top
-        window.structuredNotes.enemyNotes.unshift(note);
+        try {
+            // 3. Update Global Memory (Safe)
+            if (!window.structuredNotes) window.structuredNotes = {};
+            if (!window.structuredNotes.enemyNotes) window.structuredNotes.enemyNotes = [];
+            
+            window.structuredNotes.enemyNotes.unshift(note);
 
-        // 4. SAVE TO DB (Using your app's native helper)
-        // This is the key fix: We use the function that we know works for other notes
-        await window.saveStructuredNotes('enemyNotes', window.structuredNotes.enemyNotes);
+            // 4. DIRECT DATABASE SAVE (The Fix)
+            // We write directly to the path, ignoring any broken helper functions
+            const docRef = window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'singles', 'shared_notes');
+            
+            await window.setDoc(docRef, { 
+                structuredEnemyNotes: window.structuredNotes.enemyNotes 
+            }, { merge: true });
 
-        // 5. Redirect
-        window.switchTab('notes');
-        if (typeof window.switchSubTab === 'function') {
-            window.switchSubTab('enemyNotes');
+            // 5. Success
+            window.switchTab('notes');
+            if (typeof window.switchSubTab === 'function') {
+                window.switchSubTab('enemyNotes');
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert("Save failed: " + e.message);
         }
     };
 
