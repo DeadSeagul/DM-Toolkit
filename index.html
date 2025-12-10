@@ -1016,6 +1016,30 @@
                     </details>
                 </div>
 
+            <div class="card p-6 rounded-lg shadow-xl border border-red-500/30 mb-6 text-left">
+                <h3 class="text-lg font-bold text-red-300 mb-2 flex items-center gap-2">
+                    <span>⚠️</span> Getting a "Quota Exceeded" Error?
+                </h3>
+                
+                <div class="bg-black/50 p-3 rounded border border-gray-700 font-mono text-[10px] text-gray-400 mb-3 overflow-x-auto">
+                    Error: { "code": 429, "status": "RESOURCE_EXHAUSTED" ... }
+                </div>
+
+                <p class="text-sm text-gray-300 mb-4">
+                    This error means you have hit the daily limit for the Free Tier AI.
+                </p>
+
+                <div class="bg-gray-800 p-4 rounded-lg border-l-4 border-green-500">
+                    <p class="text-sm font-bold text-white">✅ The Fix:</p>
+                    <p class="text-xs text-gray-400 mt-1 leading-relaxed">
+                        Simply <strong>create a new API Key</strong> (you may need to use a different Google Account) and paste it into the <strong>Prep Tab</strong>.
+                    </p>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="inline-block mt-3 bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-2 px-4 rounded transition">
+                        Get New Key ➜
+                    </a>
+                </div>
+            </div>
+
                 <div class="card p-6 rounded-lg shadow-xl border border-yellow-500/30 text-center">
                     <h2 class="text-xl font-bold mb-2 text-yellow-300">⭐ Support the Project</h2>
                     <p class="text-gray-400 text-sm mb-6">If you enjoy using Aegis, please give it a Star on GitHub! It helps more DMs find it.</p>
