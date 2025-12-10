@@ -1661,16 +1661,78 @@
         return (shortTitle + (cleanLine.length > 50 ? '...' : '')) || 'Untitled Generated Note';
     }
 
+   // ==========================================
+    // ⚔️ COMBAT NPC GENERATOR (With Random Names)
+    // ==========================================
+
     window.generateCombatNpc = async () => {
-        const btn = document.getElementById('generate-combat-button'); btn.disabled = true;
-        const outputDiv = document.getElementById('ai-output'); outputDiv.textContent = "Generating combat stats...";
+        const btn = document.getElementById('generate-combat-button'); 
+        const outputDiv = document.getElementById('ai-output'); 
+        
+        btn.disabled = true;
+        outputDiv.textContent = "Generating combat stats...";
+
+        // 1. RANDOM NAME LIST (To prevent repetitive names)
+        const names = [
+            "Kaelen", "Tharok", "Elara", "Vorn", "Lyra", "Grommash", "Sylas", "Mara", "Dorian", "Isolde",
+            "Ragnar", "Seraphina", "Malakai", "Theorgar", "Vesper", "Caelum", "Nyx", "Orion", "Thalia",
+            "Bram", "Kael", "Jareth", "Lucius", "Soren", "Eyla", "Faelan", "Gorlag", "Zarathos", "Xylo",
+            "Merrick", "Osric", "Rowan", "Lysandra", "Kaelith", "Varic", "Thorne", "Ash", "Raven", "Draven",
+            "Alaric", "Baelor", "Cedric", "Daeron", "Eamon", "Fenris", "Gareth", "Halian", "Ivar", "Jory"
+        ];
+        const randomName = names[Math.floor(Math.random() * names.length)];
+
         try {
-            const txt = document.getElementById('npc-type').value, lvl = document.getElementById('npc-level').value;
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } });
-            lastGeneratedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
-            outputDiv.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${lastGeneratedNpc.name}</div><div class="text-gray-300 text-sm mb-4">Level/CR: ${lastGeneratedNpc.level_or_cr}</div><div class="grid grid-cols-2 gap-3 mb-4"><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Armor Class</div><div class="font-bold text-2xl text-blue-300">${lastGeneratedNpc.armor_class_ac}</div></div><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Hit Points</div><div class="font-bold text-2xl text-green-300">${lastGeneratedNpc.max_hit_points}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Initiative</div><div class="font-bold text-xl text-yellow-300">${lastGeneratedNpc.initiative_bonus >= 0 ? '+' : ''}${lastGeneratedNpc.initiative_bonus}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Main Attack</div><div class="font-medium text-white mt-1">${lastGeneratedNpc.main_attack}</div></div></div><button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button><div class="grid grid-cols-3 gap-2"><button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button><button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button><button onclick="saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button></div>`;
-        } catch(e) { outputDiv.textContent = "Error: " + e.message; }
-        finally { document.getElementById('combat-loading-spinner').classList.add('hidden'); btn.disabled = false; }
+            const txt = document.getElementById('npc-type').value;
+            const lvl = document.getElementById('npc-level').value;
+            
+            // 2. Updated Prompt: We force the AI to use our random name
+            const prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}) named "${randomName}". 
+            Return strictly JSON with keys: name, level_or_cr, armor_class_ac, max_hit_points, initiative_bonus, main_attack.`;
+
+            const data = await callAI(API_URL, { 
+                contents: [{ parts: [{ text: prompt }] }], 
+                generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } 
+            });
+            
+            window.lastGeneratedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
+            const n = window.lastGeneratedNpc;
+
+            // 3. Render
+            outputDiv.innerHTML = `
+                <div class="text-2xl font-bold text-green-400 mb-2">${n.name}</div>
+                <div class="text-gray-300 text-sm mb-4">Level/CR: ${n.level_or_cr}</div>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                        <div class="text-xs text-gray-400 uppercase">Armor Class</div>
+                        <div class="font-bold text-2xl text-blue-300">${n.armor_class_ac}</div>
+                    </div>
+                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                        <div class="text-xs text-gray-400 uppercase">Hit Points</div>
+                        <div class="font-bold text-2xl text-green-300">${n.max_hit_points}</div>
+                    </div>
+                    <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
+                        <div class="text-xs text-gray-400 uppercase">Initiative</div>
+                        <div class="font-bold text-xl text-yellow-300">${n.initiative_bonus >= 0 ? '+' : ''}${n.initiative_bonus}</div>
+                    </div>
+                    <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
+                        <div class="text-xs text-gray-400 uppercase">Main Attack</div>
+                        <div class="font-medium text-white mt-1">${n.main_attack}</div>
+                    </div>
+                </div>
+                <button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button>
+                    <button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button>
+                    <button onclick="saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button>
+                </div>`;
+
+        } catch(e) { 
+            outputDiv.textContent = "Error: " + e.message; 
+        } finally { 
+            document.getElementById('combat-loading-spinner').classList.add('hidden'); 
+            btn.disabled = false; 
+        }
     };
 
     window.addNpcToStatblocks = async function() {
