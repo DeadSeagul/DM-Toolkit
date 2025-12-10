@@ -185,9 +185,6 @@
                     <div id="user-profile" class="hidden flex items-center gap-3">
                         <div class="text-right hidden sm:block"><div id="user-name" class="text-sm font-semibold text-white">Adventurer</div><div class="text-xs text-green-400">Online & Saving</div></div>
                         <img id="user-avatar" src="" alt="User" class="w-9 h-9 rounded-full border-2 border-indigo-500">
-                        <button onclick="window.exportContentLibrary()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-3 rounded-lg text-xs shadow-lg transition">
-                            📚 Save Library
-                        </button>
                         <button onclick="logoutUser()" class="bg-red-900/50 hover:bg-red-800 text-red-200 p-2 rounded-lg text-xs border border-red-800 transition duration-200">Sign Out</button>
                     </div>
                 </div>
@@ -1072,50 +1069,43 @@
     <canvas id="snow-canvas"></canvas>
 
     <script type="module">
-        // 1. IMPORT FIREBASE FUNCTIONS (Added getDoc & getDocs)
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, getDoc, getDocs, collection, query, onSnapshot, addDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
+    // 🟢 1. ANALYTICS IMPORT (Must be here)
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+
+    // --- 1. FIREBASE SETUP ---
+    const manualFirebaseConfig = {
+        apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
+        authDomain: "aegisdmtoolkit.firebaseapp.com",
+        projectId: "aegisdmtoolkit",
+        storageBucket: "aegisdmtoolkit.firebasestorage.app",
+        messagingSenderId: "654767294266",
+        appId: "1:654767294266:web:fbee20be7d458fb7d6f203",
         
-        // 2. ANALYTICS
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        // 🟢 2. MEASUREMENT ID (Must be here)
+        measurementId: "G-S0Y2NKNG7R"
+    };
+    const app = initializeApp(manualFirebaseConfig);
     
-        // 3. FIREBASE CONFIG
-        const manualFirebaseConfig = {
-            apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
-            authDomain: "aegisdmtoolkit.firebaseapp.com",
-            projectId: "aegisdmtoolkit",
-            storageBucket: "aegisdmtoolkit.firebasestorage.app",
-            messagingSenderId: "654767294266",
-            appId: "1:654767294266:web:fbee20be7d458fb7d6f203",
-            measurementId: "G-S0Y2NKNG7R"
-        };
-        const app = initializeApp(manualFirebaseConfig);
-        const analytics = getAnalytics(app);
+    // 🟢 3. START ANALYTICS (Must be here)
+    const analytics = getAnalytics(app);
+
+    window.db = getFirestore(app);
+    window.auth = getAuth(app);
+    window.userId = null; 
+    window.isAuthReady = false;
+
+    // Expose Functions (FIX: Added limit and orderBy here)
+    window.doc = doc; window.setDoc = setDoc; window.deleteDoc = deleteDoc; window.collection = collection;
+    window.query = query; window.onSnapshot = onSnapshot; window.addDoc = addDoc; window.updateDoc = updateDoc; window.writeBatch = writeBatch;
+    window.limit = limit; window.orderBy = orderBy;
     
-        window.db = getFirestore(app);
-        window.auth = getAuth(app);
-        window.userId = null; 
-        window.isAuthReady = false;
-    
-        // 🟢 4. EXPOSE FUNCTIONS TO WINDOW (Added getDoc & getDocs here)
-        window.doc = doc; 
-        window.setDoc = setDoc; 
-        window.deleteDoc = deleteDoc; 
-        window.getDoc = getDoc;       // <--- NEW: Required for Export
-        window.getDocs = getDocs;     // <--- NEW: Required for Export
-        window.collection = collection;
-        window.query = query; 
-        window.onSnapshot = onSnapshot; 
-        window.addDoc = addDoc; 
-        window.updateDoc = updateDoc; 
-        window.writeBatch = writeBatch;
-        window.limit = limit; 
-        window.orderBy = orderBy;
-        
-        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
-        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
-        window.signOut = signOut;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+    window.signOut = signOut;
 
     // --- 2. GLOBAL VARIABLES ---
     // We attach these to 'window' so the HTML buttons can see them!
@@ -1289,14 +1279,12 @@
 
     window.setupNotesListener = () => {
         if(!window.isAuthReady) return;
-        
         window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
             if(doc.exists()) {
                 const d = doc.data();
-                // 1. Save to the variable your App uses (Keeps Edit working)
                 structuredNotes = { 
                     prepNotes: d.structuredPrepNotes||[], 
-                    pcNotes: d.structuredPcNotes||[], 
+                    pcNotes: d.structuredPcNotes||[], // <--- NEW
                     enemyNotes: d.structuredEnemyNotes||[], 
                     npcNotes: d.structuredNpcNotes||[], 
                     lootNotes: d.structuredLootNotes||[] 
@@ -1304,11 +1292,6 @@
             } else {
                 structuredNotes = { prepNotes: [], pcNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
             }
-
-            // 🟢 2. THIS IS THE FIX: Share it so the Download Button can see it
-            window.structuredNotes = structuredNotes; 
-
-            // Refresh UI
             if(window.currentTab==='notes') window.renderStructuredNotes(window.currentSubTab);
         });
     };
@@ -1336,15 +1319,12 @@
 
     window.setupStatblocksListener = () => {
         if(!window.isAuthReady) return;
-        window.onSnapshot(window.query(getCol('dm_toolkit_statblocks')), (snap) => {
+        if (window.unsubStats) window.unsubStats();
+        window.unsubStats = window.onSnapshot(window.query(getCol('dm_toolkit_statblocks')), (snap) => {
             savedStatblocks = []; 
             snap.forEach(d => savedStatblocks.push({id: d.id, ...d.data()}));
             savedStatblocks.sort((a,b) => a.name.localeCompare(b.name));
-            
-            // 🟢 FIX: Share for Download
-            window.savedStatblocks = savedStatblocks;
-
-            if(typeof renderStatblocks === 'function') renderStatblocks();
+            renderStatblocks();
         });
     };
 
@@ -3030,15 +3010,9 @@
     // 🟢 STANDARD LISTENER (Monsters, Weapons, Items only)
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
-
+        
         // Listen to the Homebrew Collection
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
-            
-            // 1. 🟢 SAVE DATA GLOBALLY (Fixes the Empty Backup)
-            window.allHomebrewItems = []; 
-            snap.forEach(d => window.allHomebrewItems.push({id: d.id, ...d.data()}));
-
-            // 2. UPDATE THE UI (Standard Logic)
             const list = document.getElementById('homebrew-weapon-list'); 
             if(!list) return;
             
@@ -3047,20 +3021,26 @@
                 return; 
             }
 
-            // Sort A-Z
-            window.allHomebrewItems.sort((a,b) => a.name.localeCompare(b.name)); 
+            const items = []; 
+            snap.forEach(d => items.push({id: d.id, ...d.data()}));
+            items.sort((a,b) => a.name.localeCompare(b.name)); 
             
             list.innerHTML = '';
             list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20";
 
-            window.allHomebrewItems.forEach(item => {
+            items.forEach(item => {
                 let visualHTML = "";
-                // Logic to display item (Monsters vs Weapons vs Items)
+                
+                // 1. Check for Monster
                 if (item.category === 'monster') {
                     visualHTML = `<div class="transform scale-90 origin-top-left">${generateMonsterHTML(item)}</div>`;
-                } else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
+                } 
+                // 2. Check for Parchment Items (Weapons/Magic Items)
+                else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
                     visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
-                } else {
+                } 
+                // 3. Fallback / Generic
+                else {
                     visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""}</div></div>`;
                 }
                 
@@ -3850,136 +3830,7 @@
         });
     }; 
 
-    window.downloadSessionData = function() {
-        if (!window.userId) { alert("Please log in first."); return; }
-
-        console.log("Downloading...");
-
-        // Grab the data we just exposed in the listeners
-        const notes = window.structuredNotes || structuredNotes || {};
-        const stats = window.savedStatblocks || savedStatblocks || [];
-        const items = window.allHomebrewItems || [];
-
-        const data = {
-            metadata: { date: new Date().toLocaleString(), user: window.userId },
-            campaign: window.currentCampaign || "Default",
-            notes: notes,
-            statblocks: stats,
-            homebrew: items
-        };
-
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `Aegis_Backup_${new Date().toISOString().split('T')[0]}.json`;
-        link.href = url;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-// ==========================================
-    // 📚 FORCE EXPORT (Direct Database Fetch)
-    // ==========================================
-
-    window.exportContentLibrary = async function() {
-        console.log("Starting Force Export...");
-
-        if (!window.userId) { 
-            alert("Please log in to export your library."); 
-            return; 
-        }
-
-        const btn = document.querySelector('button[title="Export Sorted Library"]') || document.activeElement;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = "⏳ Downloading...";
-        btn.disabled = true;
-
-        try {
-            // 1. DIRECT DATABASE FETCH (Bypass local variables)
-            // We go straight to the 'shared_notes' document in Firebase
-            const notesRef = window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'singles', 'shared_notes');
-            const notesSnap = await window.getDoc(notesRef);
-            
-            // 2. FETCH LISTS (Stats & Homebrew)
-            const statsQ = window.query(window.collection(window.db, 'artifacts', 'default', 'sessions', window.userId, 'dm_toolkit_statblocks'));
-            const brewQ = window.query(window.collection(window.db, 'artifacts', 'default', 'sessions', window.userId, 'dm_toolkit_homebrew_items'));
-            
-            const statsSnap = await window.getDocs(statsQ); // Note: getDocs (plural) needs to be available
-            const brewSnap = await window.getDocs(brewQ);
-
-            // 3. Process Data
-            const notesData = notesSnap.exists() ? notesSnap.data() : {};
-            const statsData = [];
-            statsSnap.forEach(d => statsData.push(d.data()));
-            
-            const brewData = [];
-            brewSnap.forEach(d => {
-                const item = d.data();
-                delete item.imageData; // Remove images to save space
-                brewData.push(item);
-            });
-
-            // 4. Helper Sorter
-            const sorter = (a, b) => (a.title || a.name || "").toLowerCase().localeCompare((b.title || b.name || "").toLowerCase());
-
-            // 5. Build Object (Using the Fresh Data)
-            const library = {
-                metadata: {
-                    type: "Aegis Master Library (Direct Fetch)",
-                    date: new Date().toLocaleDateString(),
-                    exportedBy: window.userId
-                },
-                notes: {
-                    // We check both naming conventions just in case
-                    general: (notesData.structuredPrepNotes || notesData.prepNotes || []).sort(sorter),
-                    pcs:     (notesData.structuredPcNotes || notesData.pcNotes || []).sort(sorter),
-                    npcs:    (notesData.structuredNpcNotes || notesData.npcNotes || []).sort(sorter),
-                    enemies: (notesData.structuredEnemyNotes || notesData.enemyNotes || []).sort(sorter),
-                    loot:    (notesData.structuredLootNotes || notesData.lootNotes || []).sort(sorter)
-                },
-                statblocks: statsData.sort(sorter),
-                homebrew: brewData.sort(sorter)
-            };
-
-            // 6. Verify
-            const totalNotes = 
-                library.notes.general.length + 
-                library.notes.pcs.length + 
-                library.notes.npcs.length + 
-                library.notes.enemies.length + 
-                library.notes.loot.length;
-
-            console.log(`Exporting ${totalNotes} notes directly from DB.`);
-
-            if (totalNotes + library.statblocks.length + library.homebrew.length === 0) {
-                alert("⚠️ Database is empty. Are you logged into the correct session?");
-                return;
-            }
-
-            // 7. Download
-            const dataStr = JSON.stringify(library, null, 2);
-            const blob = new Blob([dataStr], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `Aegis_Library_FORCE_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-        } catch (e) {
-            console.error("Force Export Error:", e);
-            alert("Export Failed: " + e.message);
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-    };
-
-
+    
 </script>
 
     <!-- Login Modal -->
