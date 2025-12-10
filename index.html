@@ -1687,14 +1687,17 @@
         window.switchTab('notes'); window.switchSubTab(tab);
     }
 
-    // 🟢 FIXED: Monster Generator (Prevents 'STR undefined' crash)
-    window.generateMonsterStatblock = async () => {
+    // ==========================================
+    // 🐉 FIXED MONSTER GENERATOR (Shows All Stats)
+    // ==========================================
+
+    window.generateMonsterStatblock = async function() {
         const btn = document.getElementById('generate-monster-button'); 
         const spinner = document.getElementById('monster-loading-spinner');
         const output = document.getElementById('monster-output'); 
         const status = document.getElementById('monster-status-message');
 
-        btn.disabled = true;
+        btn.disabled = true; 
         spinner.classList.remove('hidden');
         output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
         if(status) status.classList.add('hidden');
@@ -1703,63 +1706,81 @@
             const name = document.getElementById('monster-name').value;
             const cr = document.getElementById('monster-cr').value;
             
-            // 1. Call AI
+            // 1. Enhanced Prompt to force complete data
+            const prompt = `Generate a D&D 5e monster statblock for "${name}" (CR ${cr}). 
+            Must include: Ability Scores, Special Traits (abilities), Actions, and Legendary Actions (if applicable).
+            Return strictly JSON matching the schema.`;
+
+            // 2. Call AI
             const data = await callAI(API_URL, { 
-                contents: [{ parts: [{ text: `Generate 5e monster statblock for "${name}" CR "${cr}". Return strictly JSON.` }] }], 
+                contents: [{ parts: [{ text: prompt }] }], 
                 generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } 
             });
             
-            lastGeneratedMonster = JSON.parse(data.candidates[0].content.parts[0].text);
-            const stats = lastGeneratedMonster;
+            window.lastGeneratedMonster = JSON.parse(data.candidates[0].content.parts[0].text);
+            const m = window.lastGeneratedMonster;
 
-            // 🟢 2. SAFETY FIX: Normalize Ability Scores
-            // If the AI forgot to nest them, or named them differently, we fix it here.
-            const scores = stats.ability_scores || {
-                STR: stats.STR || 10,
-                DEX: stats.DEX || 10,
-                CON: stats.CON || 10,
-                INT: stats.INT || 10,
-                WIS: stats.WIS || 10,
-                CHA: stats.CHA || 10
-            };
-            // Save the fixed version back to the global object so Save buttons work
-            lastGeneratedMonster.ability_scores = scores;
+            // 3. Safety Checks for Ability Scores
+            const s = m.ability_scores || { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
+            const getMod = (score) => Math.floor((score - 10) / 2);
+            const fmtMod = (score) => { const v = getMod(score); return v >= 0 ? `+${v}` : v; };
 
-            // 3. Render HTML
-            output.innerHTML = `
+            // 4. Build HTML (Now includes Traits & Legendary Actions)
+            let html = `
                 <div class="dnd-statblock text-left">
-                    <div class="dnd-header">${stats.name}</div>
-                    <div class="italic text-black text-sm">${stats.size || "Medium"} ${stats.type || "Monster"}, ${stats.alignment || "Unaligned"}</div>
+                    <div class="dnd-header">${m.name}</div>
+                    <div class="italic text-black text-sm">${m.size} ${m.type}, ${m.alignment}</div>
                     <div class="tapered-rule"></div>
-                    <div class="text-sm text-red-900">
-                        <p><strong>AC</strong> ${stats.armor_class}</p>
-                        <p><strong>HP</strong> ${stats.hit_points}</p>
-                        <p><strong>Spd</strong> ${stats.speed}</p>
+                    <div class="text-sm text-red-900 leading-relaxed">
+                        <p><strong>AC</strong> ${m.armor_class}</p>
+                        <p><strong>HP</strong> ${m.hit_points}</p>
+                        <p><strong>Speed</strong> ${m.speed}</p>
                     </div>
                     <div class="tapered-rule"></div>
-                    <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold">
-                        <div>STR<br>${scores.STR}</div>
-                        <div>DEX<br>${scores.DEX}</div>
-                        <div>CON<br>${scores.CON}</div>
-                        <div>INT<br>${scores.INT}</div>
-                        <div>WIS<br>${scores.WIS}</div>
-                        <div>CHA<br>${scores.CHA}</div>
+                    <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
+                        <div>STR<br>${s.STR} (${fmtMod(s.STR)})</div>
+                        <div>DEX<br>${s.DEX} (${fmtMod(s.DEX)})</div>
+                        <div>CON<br>${s.CON} (${fmtMod(s.CON)})</div>
+                        <div>INT<br>${s.INT} (${fmtMod(s.INT)})</div>
+                        <div>WIS<br>${s.WIS} (${fmtMod(s.WIS)})</div>
+                        <div>CHA<br>${s.CHA} (${fmtMod(s.CHA)})</div>
                     </div>
                     <div class="tapered-rule"></div>
-                    <div class="text-sm text-black space-y-2 mt-2">
-                        ${stats.actions ? stats.actions.map(a => `<div><strong>${a.name}.</strong> ${a.description}</div>`).join('') : '<em>No actions provided.</em>'}
-                    </div>
-                </div>`;
+                    <div class="space-y-3 mt-3 text-sm text-black">`;
+
+            // A. Traits (Abilities)
+            if (m.abilities && m.abilities.length > 0) {
+                m.abilities.forEach(t => {
+                    html += `<div><strong class="italic">${t.name}.</strong> ${t.description}</div>`;
+                });
+            }
+
+            // B. Actions
+            if (m.actions && m.actions.length > 0) {
+                html += `<div class="dnd-section-title mt-2">Actions</div>`;
+                m.actions.forEach(a => {
+                    html += `<div><strong class="italic">${a.name}.</strong> ${a.description}</div>`;
+                });
+            }
+
+            // C. Legendary Actions
+            if (m.legendary_actions && m.legendary_actions.length > 0) {
+                html += `<div class="dnd-section-title mt-2">Legendary Actions</div>`;
+                html += `<p class="text-xs">The ${m.name} can take 3 legendary actions, choosing from the options below.</p>`;
+                m.legendary_actions.forEach(a => {
+                    html += `<div><strong class="italic">${a.name}.</strong> ${a.description}</div>`;
+                });
+            }
+
+            html += `</div></div>`;
+            output.innerHTML = html;
             
             document.getElementById('save-options-monster').classList.remove('hidden');
 
         } catch(e) { 
-            console.error(e);
+            console.error(e); 
             output.textContent = "Error generating monster. Please try again.";
-            if(status) {
-                status.textContent = "AI Error: " + e.message;
-                status.classList.remove('hidden');
-            }
+            if(status) { status.textContent = "AI Error: " + e.message; status.classList.remove('hidden'); }
         } finally { 
             spinner.classList.add('hidden'); 
             btn.disabled = false; 
