@@ -3546,6 +3546,77 @@
         await window.finalizeSave(tab, newNote, targetCampaign);
     };
 
+        // ==========================================
+    // 👹 SAVE MONSTER TO STATBLOCKS (Restored)
+    // ==========================================
+
+    window.addMonsterToStatblocks = async function() {
+        // 1. Validation
+        if (!window.userId) { alert("Please log in first."); return; }
+        
+        const m = window.lastGeneratedMonster;
+        if (!m) { alert("Please click 'Generate' first."); return; }
+
+        // Change button text briefly to show activity
+        const btn = document.querySelector('#save-options-monster button:first-child');
+        if(btn) btn.innerText = "Saving...";
+
+        try {
+            // 2. Calculate Derived Stats for the Tracker
+            // Initiative Modifier (Dex - 10 / 2)
+            const dex = parseInt(m.dex) || 10;
+            const initMod = Math.floor((dex - 10) / 2);
+
+            // Attack Bonus (Parse from the first action text)
+            let toHit = 0;
+            let mainAttack = "Attack";
+
+            if (m.actions && m.actions.length > 0) {
+                const act = m.actions[0];
+                mainAttack = act.name || "Attack";
+                
+                // Regex to find "+X to hit" in the description
+                const match = (act.description || act.desc || "").match(/\+(\d+)\s+to\s+hit/);
+                if (match) {
+                    toHit = parseInt(match[1]);
+                } else {
+                    toHit = initMod; // Fallback
+                }
+            }
+
+            // 3. Create Database Object
+            const statData = {
+                name: m.name || "Unnamed Monster",
+                hp: parseInt(m.hp) || 10,
+                ac: parseInt(m.ac) || 10,
+                toHit: toHit,
+                initMod: initMod,
+                dmg: mainAttack, // Shows as the main action in the tracker
+                timestamp: new Date().toISOString()
+            };
+
+            // 4. DIRECT DATABASE SAVE
+            await window.addDoc(
+                window.collection(window.db, 'artifacts', 'default', 'sessions', window.userId, 'dm_toolkit_statblocks'), 
+                statData
+            );
+
+            // 5. Success Feedback
+            // Add to local list immediately so it shows up if they switch tabs
+            if(window.savedStatblocks) window.savedStatblocks.push({id: "temp", ...statData});
+            
+            if(confirm(`✅ Saved "${m.name}" to Statblocks!\n\nDo you want to go to the Stats tab now?`)) {
+                window.switchTab('statblocks');
+            }
+
+        } catch (e) {
+            console.error("Stat Save Error:", e);
+            alert("Error saving statblock: " + e.message);
+        } finally {
+            if(btn) btn.innerText = "Save to Stats";
+        }
+    };
+
     // 3. MONSTER GENERATOR
    // ==========================================
     // 💾 ROBUST SAVE (Direct to Database)
