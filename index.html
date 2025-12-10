@@ -1795,64 +1795,42 @@
     }
 
     // ==========================================
-    // 💾 FIX: SAVE MONSTER TO NOTES
+    // 💾 SAVE MONSTER TO NOTES (Fixed)
     // ==========================================
 
     window.saveMonsterToNotes = async function() {
-        // 1. Check for Data
-        // We look for 'window.lastGeneratedMonster' which the generator creates
+        // 1. Validation
+        if (!window.isAuthReady) { alert("Please log in first."); return; }
+        
         const m = window.lastGeneratedMonster;
-        
-        if (!m) { 
-            alert("No monster found. Please click 'Generate' first."); 
-            return; 
-        }
-        if (!window.userId) { 
-            alert("Please log in first."); 
-            return; 
-        }
+        if (!m) { alert("Please click 'Generate' first."); return; }
 
-        // 2. Grab the HTML Visuals
-        const contentDiv = document.getElementById('monster-output');
-        const content = contentDiv ? contentDiv.innerHTML : "No details.";
-        
-        // 3. Determine Campaign
-        const campaign = window.currentCampaign || "Default Campaign";
-
-        // 4. Create Note Object
-        const newNote = { 
+        // 2. Prepare Data
+        const content = document.getElementById('monster-output').innerHTML;
+        const note = { 
             id: crypto.randomUUID(), 
-            title: m.name || "Unnamed Monster", 
+            title: m.name, 
             content: content, 
-            campaign: campaign,
+            campaign: window.currentCampaign || "Default Campaign",
             timestamp: new Date().toISOString() 
         };
 
-        try {
-            // 5. Update Memory
-            // We ensure we are updating the Global 'window.structuredNotes'
-            if (!window.structuredNotes) window.structuredNotes = {};
-            if (!window.structuredNotes.enemyNotes) window.structuredNotes.enemyNotes = [];
-            
-            window.structuredNotes.enemyNotes.unshift(newNote);
+        // 3. Update Memory
+        // Ensure the array exists so we don't crash
+        if (!window.structuredNotes) window.structuredNotes = {};
+        if (!window.structuredNotes.enemyNotes) window.structuredNotes.enemyNotes = [];
+        
+        // Add new note to the top
+        window.structuredNotes.enemyNotes.unshift(note);
 
-            // 6. Update Database
-            await window.setDoc(
-                window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'singles', 'shared_notes'), 
-                { structuredEnemyNotes: window.structuredNotes.enemyNotes }, 
-                { merge: true }
-            );
+        // 4. SAVE TO DB (Using your app's native helper)
+        // This is the key fix: We use the function that we know works for other notes
+        await window.saveStructuredNotes('enemyNotes', window.structuredNotes.enemyNotes);
 
-            // 7. Success & Redirect
-            // alert(`Saved "${m.name}" to Enemy Notes!`); // Optional: Uncomment if you want a popup
-            window.switchTab('notes');
-            if (typeof window.switchSubTab === 'function') {
-                window.switchSubTab('enemyNotes');
-            }
-
-        } catch (e) {
-            console.error("Save Error:", e);
-            alert("Failed to save note: " + e.message);
+        // 5. Redirect
+        window.switchTab('notes');
+        if (typeof window.switchSubTab === 'function') {
+            window.switchSubTab('enemyNotes');
         }
     };
 
