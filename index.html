@@ -1794,12 +1794,67 @@
         await window.addDoc(getCol('dm_toolkit_statblocks'), { name: m.name, hp: m.hit_points, ac: m.armor_class, toHit: toHit, initMod: Math.floor((m.ability_scores.DEX-10)/2), dmg: atk ? atk.name : "Attack", timestamp: new Date().toISOString() });
     }
 
+    // ==========================================
+    // 💾 FIX: SAVE MONSTER TO NOTES
+    // ==========================================
+
     window.saveMonsterToNotes = async function() {
-        if (!window.isAuthReady || !lastGeneratedMonster) return;
-        const newNote = { id: crypto.randomUUID(), title: lastGeneratedMonster.name, content: document.getElementById('monster-output').innerHTML, timestamp: new Date().toISOString() };
-        structuredNotes['enemyNotes'].unshift(newNote); await window.saveStructuredNotes('enemyNotes', structuredNotes['enemyNotes']);
-        window.switchTab('notes'); window.switchSubTab('enemyNotes');
-    }
+        // 1. Check for Data
+        // We look for 'window.lastGeneratedMonster' which the generator creates
+        const m = window.lastGeneratedMonster;
+        
+        if (!m) { 
+            alert("No monster found. Please click 'Generate' first."); 
+            return; 
+        }
+        if (!window.userId) { 
+            alert("Please log in first."); 
+            return; 
+        }
+
+        // 2. Grab the HTML Visuals
+        const contentDiv = document.getElementById('monster-output');
+        const content = contentDiv ? contentDiv.innerHTML : "No details.";
+        
+        // 3. Determine Campaign
+        const campaign = window.currentCampaign || "Default Campaign";
+
+        // 4. Create Note Object
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: m.name || "Unnamed Monster", 
+            content: content, 
+            campaign: campaign,
+            timestamp: new Date().toISOString() 
+        };
+
+        try {
+            // 5. Update Memory
+            // We ensure we are updating the Global 'window.structuredNotes'
+            if (!window.structuredNotes) window.structuredNotes = {};
+            if (!window.structuredNotes.enemyNotes) window.structuredNotes.enemyNotes = [];
+            
+            window.structuredNotes.enemyNotes.unshift(newNote);
+
+            // 6. Update Database
+            await window.setDoc(
+                window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'singles', 'shared_notes'), 
+                { structuredEnemyNotes: window.structuredNotes.enemyNotes }, 
+                { merge: true }
+            );
+
+            // 7. Success & Redirect
+            // alert(`Saved "${m.name}" to Enemy Notes!`); // Optional: Uncomment if you want a popup
+            window.switchTab('notes');
+            if (typeof window.switchSubTab === 'function') {
+                window.switchSubTab('enemyNotes');
+            }
+
+        } catch (e) {
+            console.error("Save Error:", e);
+            alert("Failed to save note: " + e.message);
+        }
+    };
 
    // 🟢 FIXED: Loot Generator (Shows Errors & Formatting)
     window.generateLoot = async () => {
