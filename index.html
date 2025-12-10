@@ -1688,7 +1688,7 @@
     }
 
     // ==========================================
-    // 🐉 ROBUST MONSTER GENERATOR (Resets Every Time)
+    // 🐉 ROBUST MONSTER GENERATOR (Fixes "Undefined" Bug)
     // ==========================================
 
     window.generateMonsterStatblock = async function() {
@@ -1697,10 +1697,8 @@
         const output = document.getElementById('monster-output'); 
         const status = document.getElementById('monster-status-message');
 
-        // 1. HARD RESET (Clear previous data to prevent bugs)
+        // 1. Reset & UI Prep
         window.lastGeneratedMonster = null; 
-        
-        // 2. UI Updates
         btn.disabled = true; 
         spinner.classList.remove('hidden');
         output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
@@ -1710,59 +1708,91 @@
             const name = document.getElementById('monster-name').value;
             const cr = document.getElementById('monster-cr').value;
             
-            // 3. Prompt
+            // 2. Strict Prompt
             const prompt = `Generate a D&D 5e monster statblock for "${name}" (CR ${cr}). 
-            Must include: Ability Scores, Special Traits (abilities), Actions, and Legendary Actions (if applicable).
-            Return strictly JSON matching the schema.`;
+            Return strictly JSON with these keys: name, size, type, alignment, armor_class, hit_points, speed, 
+            STR, DEX, CON, INT, WIS, CHA, 
+            traits (array of {name, description}), 
+            actions (array of {name, description}), 
+            legendary_actions (array of {name, description}).`;
 
-            // 4. Call AI
-            const data = await callAI(API_URL, { 
-                contents: [{ parts: [{ text: prompt }] }], 
-                generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } 
-            });
+            // 3. Call AI
+            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
             
-            // 5. Save to Global Variable
-            window.lastGeneratedMonster = JSON.parse(data.candidates[0].content.parts[0].text);
-            const m = window.lastGeneratedMonster;
+            // 4. Parse & Normalize Data (The Fix)
+            let raw = {};
+            try {
+                // Remove Markdown code blocks if present
+                const cleanText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '');
+                raw = JSON.parse(cleanText);
+            } catch (e) {
+                throw new Error("AI returned invalid JSON. Try again.");
+            }
 
-            // 6. Helpers
-            const s = m.ability_scores || { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 };
-            const getMod = (score) => Math.floor((score - 10) / 2);
-            const fmtMod = (score) => { const v = getMod(score); return v >= 0 ? `+${v}` : v; };
+            // Map all possible AI variations to a standard format
+            const m = {
+                name: raw.name || name,
+                size: raw.size || "Medium",
+                type: raw.type || "Monster",
+                align: raw.alignment || raw.align || "Unaligned",
+                ac: raw.armor_class || raw.AC || raw.ac || 10,
+                hp: raw.hit_points || raw.HP || raw.hp || 10,
+                speed: raw.speed || "30 ft.",
+                // Stats: Check root level OR nested 'ability_scores'
+                str: raw.STR || (raw.ability_scores?.STR) || 10,
+                dex: raw.DEX || (raw.ability_scores?.DEX) || 10,
+                con: raw.CON || (raw.ability_scores?.CON) || 10,
+                int: raw.INT || (raw.ability_scores?.INT) || 10,
+                wis: raw.WIS || (raw.ability_scores?.WIS) || 10,
+                cha: raw.CHA || (raw.ability_scores?.CHA) || 10,
+                // Lists
+                traits: raw.traits || raw.special_abilities || [],
+                actions: raw.actions || [],
+                legendary: raw.legendary_actions || []
+            };
 
-            // 7. Render HTML
+            // Save cleaned data for the Save Button
+            window.lastGeneratedMonster = m;
+
+            // 5. Helper for Modifiers
+            const fmtMod = (score) => { 
+                const mod = Math.floor((score - 10) / 2); 
+                return mod >= 0 ? `+${mod}` : mod; 
+            };
+
+            // 6. Build HTML
             let html = `
                 <div class="dnd-statblock text-left">
                     <div class="dnd-header">${m.name}</div>
-                    <div class="italic text-black text-sm">${m.size} ${m.type}, ${m.alignment}</div>
+                    <div class="italic text-black text-sm">${m.size} ${m.type}, ${m.align}</div>
                     <div class="tapered-rule"></div>
                     <div class="text-sm text-red-900 leading-relaxed">
-                        <p><strong>AC</strong> ${m.armor_class}</p>
-                        <p><strong>HP</strong> ${m.hit_points}</p>
+                        <p><strong>AC</strong> ${m.ac}</p>
+                        <p><strong>HP</strong> ${m.hp}</p>
                         <p><strong>Speed</strong> ${m.speed}</p>
                     </div>
                     <div class="tapered-rule"></div>
                     <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
-                        <div>STR<br>${s.STR} (${fmtMod(s.STR)})</div>
-                        <div>DEX<br>${s.DEX} (${fmtMod(s.DEX)})</div>
-                        <div>CON<br>${s.CON} (${fmtMod(s.CON)})</div>
-                        <div>INT<br>${s.INT} (${fmtMod(s.INT)})</div>
-                        <div>WIS<br>${s.WIS} (${fmtMod(s.WIS)})</div>
-                        <div>CHA<br>${s.CHA} (${fmtMod(s.CHA)})</div>
+                        <div>STR<br>${m.str} (${fmtMod(m.str)})</div>
+                        <div>DEX<br>${m.dex} (${fmtMod(m.dex)})</div>
+                        <div>CON<br>${m.con} (${fmtMod(m.con)})</div>
+                        <div>INT<br>${m.int} (${fmtMod(m.int)})</div>
+                        <div>WIS<br>${m.wis} (${fmtMod(m.wis)})</div>
+                        <div>CHA<br>${m.cha} (${fmtMod(m.cha)})</div>
                     </div>
                     <div class="tapered-rule"></div>
                     <div class="space-y-3 mt-3 text-sm text-black">`;
 
-            if (m.abilities && m.abilities.length > 0) {
-                m.abilities.forEach(t => { html += `<div><strong class="italic">${t.name}.</strong> ${t.description}</div>`; });
+            if (m.traits.length) {
+                m.traits.forEach(t => html += `<div><strong class="italic">${t.name}.</strong> ${t.description||t.desc}</div>`);
             }
-            if (m.actions && m.actions.length > 0) {
+            if (m.actions.length) {
                 html += `<div class="dnd-section-title mt-2">Actions</div>`;
-                m.actions.forEach(a => { html += `<div><strong class="italic">${a.name}.</strong> ${a.description}</div>`; });
+                m.actions.forEach(a => html += `<div><strong class="italic">${a.name}.</strong> ${a.description||a.desc}</div>`);
             }
-            if (m.legendary_actions && m.legendary_actions.length > 0) {
-                html += `<div class="dnd-section-title mt-2">Legendary Actions</div><p class="text-xs">The ${m.name} can take 3 legendary actions.</p>`;
-                m.legendary_actions.forEach(a => { html += `<div><strong class="italic">${a.name}.</strong> ${a.description}</div>`; });
+            if (m.legendary.length) {
+                html += `<div class="dnd-section-title mt-2">Legendary Actions</div>`;
+                m.legendary.forEach(a => html += `<div><strong class="italic">${a.name}.</strong> ${a.description||a.desc}</div>`);
             }
 
             html += `</div></div>`;
@@ -1772,58 +1802,10 @@
 
         } catch(e) { 
             console.error(e); 
-            output.textContent = "Error. Please try again.";
-            if(status) { status.textContent = "Error: " + e.message; status.classList.remove('hidden'); }
+            output.textContent = "Error: " + e.message;
         } finally { 
             spinner.classList.add('hidden'); 
             btn.disabled = false; 
-        }
-    };
-
-    // ==========================================
-    // 💾 DIRECT SAVE (Bypasses Helpers)
-    // ==========================================
-
-    window.saveMonsterToNotes = async function() {
-        // 1. Validation
-        if (!window.userId) { alert("Please log in first."); return; }
-        const m = window.lastGeneratedMonster;
-        if (!m) { alert("Please click 'Generate' first."); return; }
-
-        // 2. Prepare Data
-        const content = document.getElementById('monster-output').innerHTML;
-        const note = { 
-            id: crypto.randomUUID(), 
-            title: m.name || "Monster", 
-            content: content, 
-            campaign: window.currentCampaign || "Default Campaign",
-            timestamp: new Date().toISOString() 
-        };
-
-        try {
-            // 3. Update Global Memory (Safe)
-            if (!window.structuredNotes) window.structuredNotes = {};
-            if (!window.structuredNotes.enemyNotes) window.structuredNotes.enemyNotes = [];
-            
-            window.structuredNotes.enemyNotes.unshift(note);
-
-            // 4. DIRECT DATABASE SAVE (The Fix)
-            // We write directly to the path, ignoring any broken helper functions
-            const docRef = window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'singles', 'shared_notes');
-            
-            await window.setDoc(docRef, { 
-                structuredEnemyNotes: window.structuredNotes.enemyNotes 
-            }, { merge: true });
-
-            // 5. Success
-            window.switchTab('notes');
-            if (typeof window.switchSubTab === 'function') {
-                window.switchSubTab('enemyNotes');
-            }
-
-        } catch (e) {
-            console.error(e);
-            alert("Save failed: " + e.message);
         }
     };
 
