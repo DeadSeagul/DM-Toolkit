@@ -3547,21 +3547,69 @@
     };
 
     // 3. MONSTER GENERATOR
+   // ==========================================
+    // 💾 ROBUST SAVE (Direct to Database)
+    // ==========================================
+
     window.saveMonsterToNotes = async function() {
-        if (!window.isAuthReady || !lastGeneratedMonster) return;
+        // 1. Validation
+        if (!window.userId) { alert("Please log in first."); return; }
+        
+        // Grab the monster data we just generated
+        const m = window.lastGeneratedMonster;
+        if (!m) { alert("Please click 'Generate' first."); return; }
 
-        // Ask for Campaign
-        const targetCampaign = await window.promptForCampaign();
-        if (!targetCampaign) return;
+        const btn = document.querySelector('#save-options-monster button:nth-child(2)');
+        if(btn) btn.innerText = "Saving...";
 
-        const newNote = { 
-            id: crypto.randomUUID(), 
-            title: lastGeneratedMonster.name, 
-            content: document.getElementById('monster-output').innerHTML, 
-            timestamp: new Date().toISOString() 
-        };
+        try {
+            // 2. Prepare the New Note
+            const content = document.getElementById('monster-output').innerHTML;
+            const newNote = { 
+                id: crypto.randomUUID(), 
+                title: m.name || "Monster", 
+                content: content, 
+                campaign: window.currentCampaign || "Default Campaign",
+                timestamp: new Date().toISOString() 
+            };
 
-        await window.finalizeSave('enemyNotes', newNote, targetCampaign);
+            // 3. FETCH CURRENT NOTES (Direct Read)
+            // We fetch the latest list from the DB to ensure we don't overwrite anything
+            const docRef = window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'singles', 'shared_notes');
+            const snap = await window.getDoc(docRef);
+            
+            let currentNotes = [];
+            if (snap.exists()) {
+                const data = snap.data();
+                // Grab existing Enemy notes, or empty list if none exist
+                currentNotes = data.structuredEnemyNotes || [];
+            }
+
+            // 4. ADD NEW NOTE TO FRONT
+            currentNotes.unshift(newNote);
+
+            // 5. SAVE BACK TO DB
+            await window.setDoc(docRef, { 
+                structuredEnemyNotes: currentNotes 
+            }, { merge: true });
+
+            // 6. UPDATE UI (Visual Confirmation)
+            // Update the global variable so the UI sees it immediately without a refresh
+            if (!window.structuredNotes) window.structuredNotes = {};
+            window.structuredNotes.enemyNotes = currentNotes;
+
+            // Switch tabs to show the user
+            window.switchTab('notes');
+            if (typeof window.switchSubTab === 'function') {
+                window.switchSubTab('enemyNotes');
+            }
+
+        } catch (e) {
+            console.error("Save Error:", e);
+            alert("Save failed: " + e.message);
+        } finally {
+            if(btn) btn.innerText = "Save to Notes";
+        }
     };
 
     // 4. HOMEBREW (Weapons, Items, Monsters)
