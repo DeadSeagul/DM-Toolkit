@@ -1053,8 +1053,8 @@
         
     </div>
  <!-- Modals -->
- <div id="edit-modal" class="hidden fixed inset-0 z-[200] bg-black bg-opacity-80 flex items-center justify-center p-4">
-    <div class="card w-full max-w-4xl h-[80vh] p-6 rounded-lg shadow-2xl flex flex-col bg-gray-900 border border-gray-600">
+ <div id="edit-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4">
+    <div class="card w-full max-w-5xl h-[85vh] p-6 rounded-lg shadow-2xl flex flex-col bg-gray-900 border border-gray-600">
         
         <h3 class="text-2xl font-bold text-indigo-300 mb-4">Edit Note</h3>
         
@@ -1062,14 +1062,14 @@
         <input type="hidden" id="modal-tab-name">
         
         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Title</label>
-        <input type="text" id="modal-title" class="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 mb-4 font-bold outline-none focus:border-indigo-500">
+        <input type="text" id="modal-title" class="w-full p-3 rounded-lg input-style mb-4 text-lg font-bold">
         
         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Content</label>
-        <textarea id="modal-content" class="flex-1 w-full p-4 rounded-lg bg-gray-800 text-gray-200 border border-gray-700 mb-6 resize-none text-base leading-relaxed focus:outline-none focus:border-indigo-500 font-mono"></textarea>
+        <textarea id="modal-content" class="flex-1 w-full p-4 rounded-lg input-style mb-6 resize-none text-base leading-relaxed"></textarea>
         
-        <div class="flex justify-end gap-3">
-            <button onclick="window.closeEditModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg">Cancel</button>
-            <button onclick="window.saveEditedNote()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg">Save</button>
+        <div class="flex justify-end space-x-3 mt-auto">
+            <button onclick="closeEditModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg">Cancel</button>
+            <button onclick="saveEditedNote()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg">Save Changes</button>
         </div>
     </div>
 </div>
@@ -1427,205 +1427,73 @@
         renderStructuredNotes(window.currentSubTab);
     };
 
-    // ==========================================
-    // ☢️ NUCLEAR OPTION (Forces Edit & Delete to Work)
-    // ==========================================
-
-    // 1. RENDER LIST (Uses explicit 'window.' calls)
+    // --- EXPOSED RENDER FUNCTION (Fixes Search Button) ---
     window.renderStructuredNotes = function(tab) {
         const list = document.getElementById(`${tab}-list`);
         if(!list) return;
 
+        // 1. GET SEARCH QUERY
         const searchInput = document.getElementById('notes-search');
         const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
         
-        // Safety Check
-        if (!window.structuredNotes) window.structuredNotes = {};
-        const allNotes = window.structuredNotes[tab] || [];
+        // 2. GET NOTES
+        // We use the global structuredNotes variable
+        const allNotes = structuredNotes[tab] || [];
         
-        const filtered = allNotes.filter(n => {
-            const camp = n.campaign || 'Default Campaign';
-            return camp === window.currentCampaign && 
-                   (n.title.toLowerCase().includes(query) || (n.content||"").toLowerCase().includes(query));
-        });
+        // 3. FILTER NOTES
+        // If query is empty, filter returns true (shows all). 
+        // If not, it checks Title OR Content.
+        const filteredNotes = allNotes.filter(n => 
+            n.title.toLowerCase().includes(query) || 
+            n.content.toLowerCase().includes(query)
+        );
 
-        list.innerHTML = filtered.length ? '' : `<p class="text-center text-gray-500 pt-8 text-xs">No notes in <strong>${window.currentCampaign}</strong>.</p>`;
+        // 4. RENDER RESULTS
+        list.innerHTML = filteredNotes.length ? '' : '<p class="text-center text-gray-500 pt-8">No matching notes found.</p>';
         
-        filtered.forEach(n => {
+        filteredNotes.forEach(n => {
             const div = document.createElement('div'); 
-            div.className = 'note-item card p-0 rounded-lg shadow-md mb-2 bg-gray-800 border border-gray-700 overflow-hidden'; 
+            div.className = 'note-item card p-0 rounded-lg shadow-md'; 
             div.id = `note-${n.id}`;
             
-            // 🟢 CRITICAL CHANGE: We added "window." before the function names
             div.innerHTML = `
-            <div class="collapsible-header hover:bg-gray-700/50 transition p-3 cursor-pointer flex justify-between items-center" onclick="window.toggleCollapse('${n.id}')">
-                <span class="font-bold text-indigo-300 truncate text-sm">${n.title}</span>
-                <span id="arrow-${n.id}" class="text-gray-500 text-xs">▼</span>
+            <div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')">
+                <span class="font-bold text-indigo-300 truncate">${n.title}</span>
+                <span class="text-gray-400">▼</span>
             </div>
-            
-            <div class="collapsible-content bg-gray-900/50" id="content-${n.id}">
+            <div class="collapsible-content" id="content-${n.id}">
                 <div class="flex justify-end p-2 gap-2 border-b border-gray-700 mb-2">
-                    <button onclick="window.editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold text-white">Edit</button>
-                    <button onclick="window.deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold text-white">Delete</button>
+                    <button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold">Edit</button>
+                    <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold">Delete</button>
                 </div>
-                <div class="p-3 whitespace-pre-wrap text-sm text-gray-300 leading-relaxed font-sans">${n.content}</div>
+                <div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div>
             </div>`;
             
             list.appendChild(div);
         });
     };
 
-    // 2. TOGGLE (Standard Slide Animation)
-    window.toggleCollapse = function(id) {
-        const el = document.getElementById(`content-${id}`);
-        const arrow = document.getElementById(`arrow-${id}`);
-        if(el) {
-            el.classList.toggle('expanded');
-            // Check existence of class to set height
-            if (el.classList.contains('expanded')) {
-                el.style.maxHeight = el.scrollHeight + "px";
-                if(arrow) arrow.innerText = "▲";
-            } else {
-                el.style.maxHeight = null;
-                if(arrow) arrow.innerText = "▼";
-            }
-        }
-    };
-
-    // ==========================================
-    // 💾 ROBUST EDIT & SAVE (Fixes "Not Found" & Saving)
-    // ==========================================
-
-    // 1. EDIT NOTE (Always opens, even if memory is empty)
-    window.editNote = function(id, tab) {
-        // A. Setup inputs
-        document.getElementById('modal-note-id').value = id;
-        document.getElementById('modal-tab-name').value = tab;
-        
-        // B. Try to find data in Memory
-        let title = "Edit Note";
-        let content = "";
-        
-        if (window.structuredNotes && window.structuredNotes[tab]) {
-            const n = window.structuredNotes[tab].find(x => x.id === id);
-            if (n) {
-                title = n.title;
-                content = n.content;
-            }
-        }
-
-        // C. FALLBACK: If memory failed (content is empty), scrape the screen
-        if (!content) {
-            // Try new layout ID first
-            let el = document.getElementById('note-body-' + id);
-            // Try old layout ID second
-            if (!el) el = document.getElementById('content-' + id);
-            
-            // Try title
-            const card = document.getElementById('note-' + id);
-            if (card) {
-                const titleEl = card.querySelector('.font-bold');
-                if (titleEl) title = titleEl.innerText;
-            }
-
-            if (el) {
-                // Use innerText to preserve newlines
-                content = el.innerText || el.textContent; 
-                // Cleanup: Remove button text if it accidentally got grabbed
-                content = content.replace("Edit\nDelete", "").trim();
-            }
-        }
-
-        // D. DE-CLUMPING: Convert HTML <br> to Newlines \n for the Text Area
-        // This ensures it looks nice in the editor
-        if (content) {
-            content = content.replace(/<br\s*\/?>/gi, '\n');
-        }
-
-        // E. Populate and Show
-        document.getElementById('modal-title').value = title;
-        document.getElementById('modal-content').value = content;
+    window.toggleCollapse = (id) => { const el = document.getElementById(`content-${id}`); if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; } };
+    window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+    window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+    window.editNote = (id, tab) => {
+        const n = structuredNotes[tab].find(x => x.id === id); if(!n) return;
+        document.getElementById('modal-note-id').value = id; document.getElementById('modal-tab-name').value = tab;
+        document.getElementById('modal-title').value = n.title;
+        const tempDiv = document.createElement('div'); tempDiv.innerHTML = n.content;
+        document.getElementById('modal-content').value = tempDiv.textContent.trim();
         document.getElementById('edit-modal').classList.remove('hidden');
     };
-
-    // 2. SAVE NOTE (Rebuilds memory if missing)
-    window.saveEditedNote = async function() {
-        const id = document.getElementById('modal-note-id').value;
-        const tab = document.getElementById('modal-tab-name').value;
-        const newTitle = document.getElementById('modal-title').value;
-        const newContent = document.getElementById('modal-content').value;
-
-        // A. Update Screen INSTANTLY (Visual Feedback)
-        // This makes it feel fast and ensures the change happens visibly
-        const titleEl = document.querySelector(`#note-${id} .font-bold`);
-        if (titleEl) titleEl.innerText = newTitle;
-
-        const bodyEl = document.getElementById('note-body-' + id) || document.getElementById('content-' + id);
-        if (bodyEl) {
-            // We use 'innerText' so the newlines in the textarea become newlines on screen
-            bodyEl.innerText = newContent;
+    window.saveEditedNote = () => {
+        const id = document.getElementById('modal-note-id').value, tab = document.getElementById('modal-tab-name').value;
+        const idx = structuredNotes[tab].findIndex(x => x.id === id);
+        if(idx > -1) {
+            structuredNotes[tab][idx].title = document.getElementById('modal-title').value;
+            structuredNotes[tab][idx].content = document.getElementById('modal-content').value;
+            window.saveStructuredNotes(tab, structuredNotes[tab]);
         }
-
-        // B. Update Memory (The "Brain")
-        if (!window.structuredNotes) window.structuredNotes = {};
-        if (!window.structuredNotes[tab]) window.structuredNotes[tab] = [];
-
-        const idx = window.structuredNotes[tab].findIndex(x => x.id === id);
-        
-        if (idx > -1) {
-            // Update existing note
-            window.structuredNotes[tab][idx].title = newTitle;
-            window.structuredNotes[tab][idx].content = newContent;
-        } else {
-            // CRITICAL FIX: If note wasn't in memory, ADD IT NOW.
-            // This prevents "Not found" errors next time.
-            window.structuredNotes[tab].unshift({
-                id: id,
-                title: newTitle,
-                content: newContent,
-                campaign: window.currentCampaign || 'Default Campaign',
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // C. Save to Database
-        await window.saveStructuredNotes(tab, window.structuredNotes[tab]);
-
-        // D. Close Modal
-        window.closeEditModal();
-        
-        // Optional: Re-open the tab visually so you see the change
-        setTimeout(() => {
-            const contentBox = document.getElementById('content-' + id);
-            const arrow = document.getElementById('arrow-' + id);
-            if (contentBox) {
-                contentBox.classList.remove('hidden');
-                // Ensure animation classes are set if you use them
-                contentBox.classList.add('expanded');
-                contentBox.style.maxHeight = contentBox.scrollHeight + "px";
-                if(arrow) arrow.innerText = "▲";
-            }
-        }, 50);
+        document.getElementById('edit-modal').classList.add('hidden');
     };
-
-    // 5. DELETE NOTE (Now deletes INSTANTLY)
-    window.deleteNote = async function(id, tab) {
-        if(!confirm("Permanently delete this note?")) return;
-        
-        // 🟢 1. Visually remove it immediately (User feedback)
-        const card = document.getElementById(`note-${id}`);
-        if(card) card.remove();
-
-        // 🟢 2. Update Memory
-        if (window.structuredNotes[tab]) {
-            window.structuredNotes[tab] = window.structuredNotes[tab].filter(n => n.id !== id);
-            
-            // 🟢 3. Save to Database in background
-            await window.saveStructuredNotes(tab, window.structuredNotes[tab]);
-        }
-    };
-
-    // 6. HELPER
     window.closeEditModal = () => document.getElementById('edit-modal').classList.add('hidden');
 
     window.updateApiKey = function(val) { userApiKey = val.trim(); localStorage.setItem('dm_toolkit_api_key', userApiKey); const status = document.getElementById('api-key-status'); if(userApiKey.length > 5) { status.textContent = "Key saved!"; status.className="mt-2 text-xs text-green-400"; } else { status.textContent = "Key empty"; status.className="mt-2 text-xs text-red-400"; } };
@@ -1898,69 +1766,12 @@
         await window.addDoc(getCol('dm_toolkit_statblocks'), { name: lastGeneratedNpc.name, hp: lastGeneratedNpc.max_hit_points, ac: lastGeneratedNpc.armor_class_ac, toHit: toHit, initMod: lastGeneratedNpc.initiative_bonus, dmg: lastGeneratedNpc.main_attack || "Attack", timestamp: new Date().toISOString() });
     }
 
-    // ==========================================
-    // ⚔️ COMBAT NPC GENERATOR (Fixed Save Buttons)
-    // ==========================================
-    window.generateCombatNpc = async () => {
-        const btn = document.getElementById('generate-combat-button'); 
-        const outputDiv = document.getElementById('ai-output'); 
-        
-        btn.disabled = true;
-        outputDiv.innerHTML = '<div class="text-center text-green-400 animate-pulse">Forging NPC...</div>';
-
-        const names = ["Kaelen", "Tharok", "Elara", "Vorn", "Lyra", "Grommash", "Sylas", "Mara", "Dorian", "Isolde", "Ragnar", "Seraphina", "Malakai", "Theorgar", "Vesper", "Caelum", "Nyx", "Orion", "Thalia", "Bram", "Kael", "Jareth", "Lucius", "Soren", "Eyla", "Faelan", "Gorlag", "Zarathos", "Xylo", "Merrick", "Osric", "Rowan", "Lysandra", "Kaelith", "Varic", "Thorne", "Ash", "Raven", "Draven"];
-        const randomName = names[Math.floor(Math.random() * names.length)];
-
-        try {
-            const txt = document.getElementById('npc-type').value;
-            const lvl = document.getElementById('npc-level').value;
-            
-            const prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}) named "${randomName}". Return strictly JSON with keys: name, level_or_cr, armor_class_ac, max_hit_points, initiative_bonus, main_attack.`;
-
-            const data = await callAI(API_URL, { 
-                contents: [{ parts: [{ text: prompt }] }], 
-                generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } 
-            });
-            
-            window.lastGeneratedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
-            const n = window.lastGeneratedNpc;
-
-            outputDiv.innerHTML = `
-                <div class="text-2xl font-bold text-green-400 mb-2">${n.name}</div>
-                <div class="text-gray-300 text-sm mb-4">Level/CR: ${n.level_or_cr}</div>
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">AC</div>
-                        <div class="font-bold text-2xl text-blue-300">${n.armor_class_ac}</div>
-                    </div>
-                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">HP</div>
-                        <div class="font-bold text-2xl text-green-300">${n.max_hit_points}</div>
-                    </div>
-                    <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">Init</div>
-                        <div class="font-bold text-xl text-yellow-300">${n.initiative_bonus >= 0 ? '+' : ''}${n.initiative_bonus}</div>
-                    </div>
-                    <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">Attack</div>
-                        <div class="font-medium text-white mt-1">${n.main_attack}</div>
-                    </div>
-                </div>
-                <button onclick="window.addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button>
-                
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="window.saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 hover:bg-gray-500 py-2 rounded text-xs text-white font-bold">Note</button>
-                    <button onclick="window.saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 hover:bg-yellow-700 py-2 rounded text-xs text-white font-bold">Enemy</button>
-                    <button onclick="window.saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 hover:bg-blue-700 py-2 rounded text-xs text-white font-bold">NPC</button>
-                </div>`;
-
-        } catch(e) { 
-            outputDiv.textContent = "Error: " + e.message; 
-        } finally { 
-            document.getElementById('combat-loading-spinner').classList.add('hidden'); 
-            btn.disabled = false; 
-        }
-    };
+    window.saveCombatNpcToNotes = async function(tab) {
+        if (!window.isAuthReady || !lastGeneratedNpc) return;
+        const newNote = { id: crypto.randomUUID(), title: `${lastGeneratedNpc.name} (CR ${lastGeneratedNpc.level_or_cr})`, content: document.getElementById('ai-output').innerHTML, timestamp: new Date().toISOString() };
+        structuredNotes[tab].unshift(newNote); await window.saveStructuredNotes(tab, structuredNotes[tab]);
+        window.switchTab('notes'); window.switchSubTab(tab);
+    }
 
     // ==========================================
     // 🐉 ROBUST MONSTER GENERATOR (Fixes "Undefined" Bug)
@@ -3803,63 +3614,22 @@
         await window.finalizeSave(destinationTab, newNote, targetCampaign);
     };
 
-    // ==========================================
-    // 💾 SAVE NPC (With Campaign Selector)
-    // ==========================================
+    // 2. COMBAT NPC GENERATOR
     window.saveCombatNpcToNotes = async function(tab) {
-        console.log("Saving NPC to:", tab); // Debug check
+        if (!window.isAuthReady || !lastGeneratedNpc) return;
 
-        // 1. Basic Checks
-        if (!window.userId) { alert("Please log in to save."); return; }
-        if (!window.lastGeneratedNpc) { alert("Please generate an NPC first."); return; }
-
-        // 2. Ask for Campaign (Prevents losing the note in "Default")
+        // Ask for Campaign
         const targetCampaign = await window.promptForCampaign();
         if (!targetCampaign) return;
 
-        try {
-            // 3. Fetch latest data (Safety first!)
-            const docRef = window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'singles', 'shared_notes');
-            const snap = await window.getDoc(docRef);
-            
-            let currentList = [];
-            // Map 'prepNotes' -> 'structuredPrepNotes'
-            const fieldName = `structured${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: `${lastGeneratedNpc.name} (CR ${lastGeneratedNpc.level_or_cr})`, 
+            content: document.getElementById('ai-output').innerHTML, 
+            timestamp: new Date().toISOString() 
+        };
 
-            if (snap.exists()) {
-                const data = snap.data();
-                currentList = data[fieldName] || [];
-            }
-
-            // 4. Create Note
-            const npc = window.lastGeneratedNpc;
-            const newNote = {
-                id: crypto.randomUUID(),
-                title: `${npc.name} (CR ${npc.level_or_cr})`,
-                content: document.getElementById('ai-output').innerHTML,
-                campaign: targetCampaign, // 🟢 Saves to selected campaign
-                timestamp: new Date().toISOString()
-            };
-
-            // 5. Add & Save
-            currentList.unshift(newNote);
-            await window.setDoc(docRef, { [fieldName]: currentList }, { merge: true });
-
-            // 6. Update Local Memory & UI
-            if (!window.structuredNotes) window.structuredNotes = {};
-            window.structuredNotes[tab] = currentList;
-
-            // 7. Redirect to the note
-            if(confirm(`Saved to ${targetCampaign}! Go to notes?`)) {
-                window.switchCampaign(targetCampaign);
-                window.switchTab('notes');
-                window.switchSubTab(tab);
-            }
-
-        } catch (e) {
-            console.error("Save Error:", e);
-            alert("Error saving: " + e.message);
-        }
+        await window.finalizeSave(tab, newNote, targetCampaign);
     };
 
         // ==========================================
@@ -4528,3 +4298,4 @@
         </footer>
 
     </div>
+
