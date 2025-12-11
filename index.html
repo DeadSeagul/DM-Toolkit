@@ -1455,7 +1455,27 @@
 
     window.toggleCollapse = (id) => { const el = document.getElementById(`content-${id}`); if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; } };
     window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
-    window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
+    // --- CONFIRMATION ADDED: DELETE NOTE ---
+window.deleteNote = (id, tab) => {
+    
+    // 🟢 CRITICAL: Add Confirmation Dialog
+    const confirmed = confirm("⚠️ Are you sure you want to permanently delete this note? This action cannot be undone.");
+
+    if (!confirmed) {
+        // If the user clicks 'Cancel', stop the function here
+        return;
+    }
+    
+    // Proceed with deletion: filter out the note and save the new list
+    // We filter the array in the specified tab
+    structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id);
+    
+    // Save the updated list back to the database
+    window.saveStructuredNotes(tab, structuredNotes[tab]);
+    
+    // Re-render the notes list to reflect the change
+    window.renderStructuredNotes(tab);
+};
     window.editNote = function(id, tab) {
     // 1. SAFETY SHIELD: Initialize memory if it's undefined (Prevents the crash)
     if (!window.structuredNotes) {
