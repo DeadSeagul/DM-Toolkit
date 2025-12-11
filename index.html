@@ -1691,41 +1691,113 @@
         window.switchTab('notes'); window.switchSubTab(tab);
     }
 
-    // 🟢 FIXED: Monster Generator (Prevents 'STR undefined' crash)
-    window.generateMonsterStatblock = async () => {
-        const btn = document.getElementById('generate-monster-button'); 
-        const spinner = document.getElementById('monster-loading-spinner');
-        const output = document.getElementById('monster-output'); 
-        const status = document.getElementById('monster-status-message');
+    // ==========================================
+// 🐉 ROBUST MONSTER GENERATOR (STRICT PROMPTING)
+// ==========================================
+window.generateMonsterStatblock = async function() {
+    const btn = document.getElementById('generate-monster-button');  
+    const spinner = document.getElementById('monster-loading-spinner');
+    const output = document.getElementById('monster-output');  
+    const status = document.getElementById('monster-status-message');
 
-        btn.disabled = true;
-        spinner.classList.remove('hidden');
-        output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
-        if(status) status.classList.add('hidden');
+    // 1. Reset & UI Prep
+    window.lastGeneratedMonster = null;  // Crucial: Clear old data
+    btn.disabled = true;  
+    spinner.classList.remove('hidden');
+    output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
+    if(status) status.classList.add('hidden');
 
+    try {
+        const name = document.getElementById('monster-name').value;
+        const cr = document.getElementById('monster-cr').value;
+        
+        // 🟢 STRICTER PROMPT: Emphasize core values and expected format.
+        const prompt = `Generate a D&D 5e monster statblock for "${name}" (CR ${cr}). 
+        Ensure all ability scores (STR, DEX, CON, INT, WIS, CHA), AC, and HP are provided as NUMERIC values.
+        Return strictly JSON with these keys: name, size, type, alignment, ac, hp, speed, STR, DEX, CON, INT, WIS, CHA, traits (array of {name, description}), actions (array of {name, description}), legendary_actions (array of {name, description}).`;
+
+        // 2. Call AI
+        const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+        
+        // 3. Parse & Validate Core Data
+        let raw = {};
         try {
-            const name = document.getElementById('monster-name').value;
-            const cr = document.getElementById('monster-cr').value;
-            
-            // 1. Call AI
-            const data = await callAI(API_URL, { 
-                contents: [{ parts: [{ text: `Generate 5e monster statblock for "${name}" CR "${cr}". Return strictly JSON.` }] }], 
-                generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } 
-            });
-            
-            lastGeneratedMonster = JSON.parse(data.candidates[0].content.parts[0].text);
-            const stats = lastGeneratedMonster;
+            const cleanText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '');
+            raw = JSON.parse(cleanText);
+        } catch (e) {
+            // If JSON fails, throw a useful error
+            throw new Error("AI returned malformed data. Try generating a simpler creature or increasing the CR value.");
+        }
 
-            // 🟢 2. SAFETY FIX: Normalize Ability Scores
-            // If the AI forgot to nest them, or named them differently, we fix it here.
-            const scores = stats.ability_scores || {
-                STR: stats.STR || 10,
-                DEX: stats.DEX || 10,
-                CON: stats.CON || 10,
-                INT: stats.INT || 10,
-                WIS: stats.WIS || 10,
-                CHA: stats.CHA || 10
-            };
+        // 4. Map & Normalize Data (Ensures every field has a default value)
+        const m = {
+            name: raw.name || name,
+            size: raw.size || "Medium",
+            type: raw.type || "Monster",
+            align: raw.alignment || raw.align || "Unaligned",
+            ac: parseInt(raw.ac || raw.armor_class) || 10,  // GUARANTEED NUMBER
+            hp: parseInt(raw.hp || raw.hit_points) || 10,   // GUARANTEED NUMBER
+            speed: raw.speed || "30 ft.",
+            str: parseInt(raw.STR || raw.ability_scores?.STR) || 10,
+            dex: parseInt(raw.DEX || raw.ability_scores?.DEX) || 10,
+            con: parseInt(raw.CON || raw.ability_scores?.CON) || 10,
+            int: parseInt(raw.INT || raw.ability_scores?.INT) || 10,
+            wis: parseInt(raw.WIS || raw.ability_scores?.WIS) || 10,
+            cha: parseInt(raw.CHA || raw.ability_scores?.CHA) || 10,
+            cr: raw.cr || raw.challenge_rating || cr,
+            traits: raw.traits || raw.special_abilities || [],
+            actions: raw.actions || [],
+            legendary: raw.legendary_actions || []
+        };
+
+        // 5. Store the data globally
+        window.lastGeneratedMonster = m;
+
+        // 6. Build and Display HTML Statblock
+        const fmtMod = (score) => { const mod = Math.floor(((score || 10) - 10) / 2); return mod >= 0 ? `+${mod}` : mod; };
+        const fmtText = (arr) => arr.map(t => `<div><strong class="italic">${t.name}.</strong> ${t.description||t.desc}</div>`).join('');
+
+        let html = `
+            <div class="dnd-statblock text-left">
+                <div class="dnd-header">${m.name}</div>
+                <div class="italic text-black text-sm">${m.size} ${m.type}, ${m.align}</div>
+                <div class="tapered-rule"></div>
+                <div class="text-sm text-red-900 leading-relaxed">
+                    <p><strong>AC</strong> ${m.ac}</p>
+                    <p><strong>HP</strong> ${m.hp}</p>
+                    <p><strong>Speed</strong> ${m.speed}</p>
+                </div>
+                <div class="tapered-rule"></div>
+                <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
+                    <div>STR<br>${m.str} (${fmtMod(m.str)})</div>
+                    <div>DEX<br>${m.dex} (${fmtMod(m.dex)})</div>
+                    <div>CON<br>${m.con} (${fmtMod(m.con)})</div>
+                    <div>INT<br>${m.int} (${fmtMod(m.int)})</div>
+                    <div>WIS<br>${m.wis} (${fmtMod(m.wis)})</div>
+                    <div>CHA<br>${m.cha} (${fmtMod(m.cha)})</div>
+                </div>
+                <div class="tapered-rule"></div>
+                <div class="space-y-3 mt-3 text-sm text-black">`;
+        
+        if (m.traits.length) { html += fmtText(m.traits); }
+        if (m.actions.length) { html += `<div class="dnd-section-title mt-2">Actions</div>${fmtText(m.actions)}`; }
+        if (m.legendary.length) { html += `<div class="dnd-section-title mt-2">Legendary Actions</div>${fmtText(m.legendary)}`; }
+
+        html += `</div></div>`;
+        output.innerHTML = html;
+        
+        // 7. Reveal the Save Buttons
+        document.getElementById('save-options-monster').classList.remove('hidden');
+
+    } catch(e) {  
+        console.error(e);  
+        output.textContent = "Error during generation: " + e.message;
+        window.lastGeneratedMonster = null;
+    } finally {  
+        spinner.classList.add('hidden');  
+        btn.disabled = false;  
+    }
+};
             // Save the fixed version back to the global object so Save buttons work
             lastGeneratedMonster.ability_scores = scores;
 
