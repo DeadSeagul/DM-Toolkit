@@ -1476,8 +1476,11 @@ window.deleteNote = (id, tab) => {
     // Re-render the notes list to reflect the change
     window.renderStructuredNotes(tab);
 };
-    window.editNote = function(id, tab) {
-    // 1. SAFETY SHIELD: Initialize memory if it's undefined (Prevents the crash)
+    // ==========================================
+// 📝 FINAL FIX: EDIT NOTE (Surgically Scrapes ONLY Content)
+// ==========================================
+window.editNote = function(id, tab) {
+    // 1. SAFETY SHIELD: Initialize memory 
     if (!window.structuredNotes) {
         window.structuredNotes = {};
     }
@@ -1486,7 +1489,7 @@ window.deleteNote = (id, tab) => {
     let title = "Edit Note";
     let content = "";
     
-    // 2. Try to find the note data in memory.
+    // 2. Try to find the note data in memory (Preferred)
     if (window.structuredNotes[tab]) {
         n = window.structuredNotes[tab].find(x => x.id === id);
     }
@@ -1500,27 +1503,26 @@ window.deleteNote = (id, tab) => {
         console.warn(`Note ID ${id} not found in memory. Attempting visual scrape.`);
         
         const card = document.getElementById('note-' + id);
-        const contentDiv = document.getElementById('content-' + id);
         
         if (card) {
-            const titleEl = card.querySelector('.font-bold');
+            // Target the collapsible header span for the title
+            const titleEl = card.querySelector('.collapsible-header .font-bold');
             if (titleEl) title = titleEl.innerText;
         }
 
+        // 🟢 CRITICAL FIX: We directly target the specific content div inside the card.
+        const contentDiv = card ? card.querySelector('.whitespace-pre-wrap') : null;
+
         if (contentDiv) {
-            // Read innerText to preserve spacing from the visible note
+            // Read innerText which preserves spacing and ignores HTML
             content = contentDiv.innerText || contentDiv.textContent; 
-            // Strip button text that might be accidentally scraped
-            content = content.replace(/Edit\nDelete/g, "").trim(); 
         } else {
-            // Final fail point—should not happen if the note is visible
-            alert("Error: Note data could not be located on the screen. Please refresh.");
+            alert("Error: Note content element structure missing. Please refresh.");
             return;
         }
     }
 
     // 4. DE-CLUMPING FIX: Convert any HTML breaks (<br>) back to Newlines (\n)
-    // This makes the text look correctly spaced inside the <textarea>.
     content = content.replace(/<br\s*\/?>/gi, '\n');
     
     // 5. Populate and Show Modal
@@ -1528,7 +1530,7 @@ window.deleteNote = (id, tab) => {
     document.getElementById('modal-tab-name').value = tab;
     document.getElementById('modal-title').value = title;
     
-    // Set the content in the textarea
+    // Set the clean content in the textarea
     document.getElementById('modal-content').value = content;
     document.getElementById('edit-modal').classList.remove('hidden');
 };
@@ -1859,7 +1861,7 @@ window.addNpcToStatblocks = async function() {
     }
 
     // ==========================================
-// 🐉 ROBUST MONSTER GENERATOR (GUARANTEED GLOBAL ASSIGNMENT)
+// 🐉 ROBUST MONSTER GENERATOR (ENHANCED RELIABILITY)
 // ==========================================
 window.generateMonsterStatblock = async function() {
     const btn = document.getElementById('generate-monster-button');  
@@ -1868,7 +1870,7 @@ window.generateMonsterStatblock = async function() {
     const status = document.getElementById('monster-status-message');
 
     // 1. Reset & UI Prep
-    window.lastGeneratedMonster = null;  // Crucial: Clear old data
+    window.lastGeneratedMonster = null;  
     btn.disabled = true;  
     spinner.classList.remove('hidden');
     output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
@@ -1878,23 +1880,34 @@ window.generateMonsterStatblock = async function() {
         const name = document.getElementById('monster-name').value;
         const cr = document.getElementById('monster-cr').value;
         
+        // 🟢 IMPROVEMENT 1: STRICTOR PROMPT
         const prompt = `Generate a D&D 5e monster statblock for "${name}" (CR ${cr}). 
-        Ensure all ability scores (STR, DEX, CON, INT, WIS, CHA), AC, and HP are provided as NUMERIC values.
-        Return strictly JSON with these keys: name, size, type, alignment, ac, hp, speed, STR, DEX, CON, INT, WIS, CHA, traits (array of {name, description}), actions (array of {name, description}), legendary_actions (array of {name, description}).`;
+        The entire output MUST be a single, complete, valid JSON object following the schema provided. 
+        Ensure all required numeric values (AC, HP, STR, DEX, CON, INT, WIS, CHA) are present as integers.`;
 
         // 2. Call AI
-        const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } });
+        const data = await callAI(API_URL, { 
+            contents: [{ parts: [{ text: prompt }] }], 
+            generationConfig: { 
+                responseMimeType: "application/json", 
+                responseSchema: monsterSchema 
+            } 
+        });
         
-        // 3. Parse & Normalize Data
+        // 3. Robust Parsing & Cleanup (Handles markdown block errors)
         let raw = {};
         try {
-            const cleanText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '');
+            // 🟢 IMPROVEMENT 2: POST-PROCESSING
+            // Strip common markdown JSON wrappers (```json...```) before parsing.
+            let cleanText = data.candidates[0].content.parts[0].text;
+            cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
             raw = JSON.parse(cleanText);
         } catch (e) {
-            throw new Error("AI returned malformed data. Try generating a different creature.");
+            console.error("JSON Parsing Failed:", e);
+            throw new Error("AI returned malformed data. Try regenerating or simplifying the creature name/CR.");
         }
 
-        // Map AI variations to a standardized object (m) for reliable Statblock generation
+        // 4. Map & Normalize Data (Ensures numeric fallback if the model misses a key)
         const m = {
             name: raw.name || name,
             size: raw.size || "Medium",
@@ -1915,10 +1928,10 @@ window.generateMonsterStatblock = async function() {
             legendary: raw.legendary_actions || []
         };
 
-        // 4. CRITICAL: Store the cleaned data globally for the save buttons
+        // 5. CRITICAL: Store the cleaned data globally for the save buttons
         window.lastGeneratedMonster = m;
 
-        // 5. Build and Display HTML Statblock (Rendering logic snipped for brevity)
+        // 6. Build and Display HTML Statblock (Reusing your existing rendering logic)
         const fmtMod = (score) => { const mod = Math.floor(((parseInt(score) || 10) - 10) / 2); return mod >= 0 ? `+${mod}` : mod; };
         const fmtText = (arr) => arr.map(t => `<div><strong class="italic">${t.name}.</strong> ${t.description||t.desc}</div>`).join('');
         
@@ -1951,13 +1964,12 @@ window.generateMonsterStatblock = async function() {
         html += `</div></div>`;
         output.innerHTML = html;
         
-        // 6. Reveal the Save Buttons
+        // 7. Reveal the Save Buttons
         document.getElementById('save-options-monster').classList.remove('hidden');
 
     } catch(e) {  
         console.error(e);  
         output.textContent = "Error during generation: " + e.message;
-        // Ensure variable is nullified on error
         window.lastGeneratedMonster = null; 
     } finally {  
         spinner.classList.add('hidden');  
