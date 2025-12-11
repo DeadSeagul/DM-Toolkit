@@ -185,9 +185,6 @@
                     <div id="user-profile" class="hidden flex items-center gap-3">
                         <div class="text-right hidden sm:block"><div id="user-name" class="text-sm font-semibold text-white">Adventurer</div><div class="text-xs text-green-400">Online & Saving</div></div>
                         <img id="user-avatar" src="" alt="User" class="w-9 h-9 rounded-full border-2 border-indigo-500">
-                        <button onclick="window.exportContentLibrary()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-3 rounded-lg text-xs shadow-lg transition">
-                            📚 Save Library
-                        </button>
                         <button onclick="logoutUser()" class="bg-red-900/50 hover:bg-red-800 text-red-200 p-2 rounded-lg text-xs border border-red-800 transition duration-200">Sign Out</button>
                     </div>
                 </div>
@@ -1016,30 +1013,6 @@
                     </details>
                 </div>
 
-            <div class="card p-6 rounded-lg shadow-xl border border-red-500/30 mb-6 text-left">
-                <h3 class="text-lg font-bold text-red-300 mb-2 flex items-center gap-2">
-                    <span>⚠️</span> Getting a "Quota Exceeded" Error?
-                </h3>
-                
-                <div class="bg-black/50 p-3 rounded border border-gray-700 font-mono text-[10px] text-gray-400 mb-3 overflow-x-auto">
-                    Error: { "code": 429, "status": "RESOURCE_EXHAUSTED" ... }
-                </div>
-
-                <p class="text-sm text-gray-300 mb-4">
-                    This error means you have hit the daily limit for the Free Tier AI.
-                </p>
-
-                <div class="bg-gray-800 p-4 rounded-lg border-l-4 border-green-500">
-                    <p class="text-sm font-bold text-white">✅ The Fix:</p>
-                    <p class="text-xs text-gray-400 mt-1 leading-relaxed">
-                        Simply <strong>create a new API Key</strong> and paste it into the <strong>Prep Tab</strong>.
-                    </p>
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="inline-block mt-3 bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-2 px-4 rounded transition">
-                        Get New Key ➜
-                    </a>
-                </div>
-            </div>
-
                 <div class="card p-6 rounded-lg shadow-xl border border-yellow-500/30 text-center">
                     <h2 class="text-xl font-bold mb-2 text-yellow-300">⭐ Support the Project</h2>
                     <p class="text-gray-400 text-sm mb-6">If you enjoy using Aegis, please give it a Star on GitHub! It helps more DMs find it.</p>
@@ -1096,50 +1069,43 @@
     <canvas id="snow-canvas"></canvas>
 
     <script type="module">
-        // 1. IMPORT FIREBASE FUNCTIONS (Added getDoc & getDocs)
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, getDoc, getDocs, collection, query, onSnapshot, addDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
+    // 🟢 1. ANALYTICS IMPORT (Must be here)
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+
+    // --- 1. FIREBASE SETUP ---
+    const manualFirebaseConfig = {
+        apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
+        authDomain: "aegisdmtoolkit.firebaseapp.com",
+        projectId: "aegisdmtoolkit",
+        storageBucket: "aegisdmtoolkit.firebasestorage.app",
+        messagingSenderId: "654767294266",
+        appId: "1:654767294266:web:fbee20be7d458fb7d6f203",
         
-        // 2. ANALYTICS
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        // 🟢 2. MEASUREMENT ID (Must be here)
+        measurementId: "G-S0Y2NKNG7R"
+    };
+    const app = initializeApp(manualFirebaseConfig);
     
-        // 3. FIREBASE CONFIG
-        const manualFirebaseConfig = {
-            apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
-            authDomain: "aegisdmtoolkit.firebaseapp.com",
-            projectId: "aegisdmtoolkit",
-            storageBucket: "aegisdmtoolkit.firebasestorage.app",
-            messagingSenderId: "654767294266",
-            appId: "1:654767294266:web:fbee20be7d458fb7d6f203",
-            measurementId: "G-S0Y2NKNG7R"
-        };
-        const app = initializeApp(manualFirebaseConfig);
-        const analytics = getAnalytics(app);
+    // 🟢 3. START ANALYTICS (Must be here)
+    const analytics = getAnalytics(app);
+
+    window.db = getFirestore(app);
+    window.auth = getAuth(app);
+    window.userId = null; 
+    window.isAuthReady = false;
+
+    // Expose Functions (FIX: Added limit and orderBy here)
+    window.doc = doc; window.setDoc = setDoc; window.deleteDoc = deleteDoc; window.collection = collection;
+    window.query = query; window.onSnapshot = onSnapshot; window.addDoc = addDoc; window.updateDoc = updateDoc; window.writeBatch = writeBatch;
+    window.limit = limit; window.orderBy = orderBy;
     
-        window.db = getFirestore(app);
-        window.auth = getAuth(app);
-        window.userId = null; 
-        window.isAuthReady = false;
-    
-        // 🟢 4. EXPOSE FUNCTIONS TO WINDOW (Added getDoc & getDocs here)
-        window.doc = doc; 
-        window.setDoc = setDoc; 
-        window.deleteDoc = deleteDoc; 
-        window.getDoc = getDoc;       // <--- NEW: Required for Export
-        window.getDocs = getDocs;     // <--- NEW: Required for Export
-        window.collection = collection;
-        window.query = query; 
-        window.onSnapshot = onSnapshot; 
-        window.addDoc = addDoc; 
-        window.updateDoc = updateDoc; 
-        window.writeBatch = writeBatch;
-        window.limit = limit; 
-        window.orderBy = orderBy;
-        
-        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
-        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
-        window.signOut = signOut;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+    window.signOut = signOut;
 
     // --- 2. GLOBAL VARIABLES ---
     // We attach these to 'window' so the HTML buttons can see them!
@@ -1313,14 +1279,12 @@
 
     window.setupNotesListener = () => {
         if(!window.isAuthReady) return;
-        
         window.onSnapshot(getSharedDoc('shared_notes'), (doc) => {
             if(doc.exists()) {
                 const d = doc.data();
-                // 1. Save to the variable your App uses (Keeps Edit working)
                 structuredNotes = { 
                     prepNotes: d.structuredPrepNotes||[], 
-                    pcNotes: d.structuredPcNotes||[], 
+                    pcNotes: d.structuredPcNotes||[], // <--- NEW
                     enemyNotes: d.structuredEnemyNotes||[], 
                     npcNotes: d.structuredNpcNotes||[], 
                     lootNotes: d.structuredLootNotes||[] 
@@ -1328,11 +1292,6 @@
             } else {
                 structuredNotes = { prepNotes: [], pcNotes: [], enemyNotes: [], npcNotes: [], lootNotes: [] };
             }
-
-            // 🟢 2. THIS IS THE FIX: Share it so the Download Button can see it
-            window.structuredNotes = structuredNotes; 
-
-            // Refresh UI
             if(window.currentTab==='notes') window.renderStructuredNotes(window.currentSubTab);
         });
     };
@@ -1360,15 +1319,12 @@
 
     window.setupStatblocksListener = () => {
         if(!window.isAuthReady) return;
-        window.onSnapshot(window.query(getCol('dm_toolkit_statblocks')), (snap) => {
+        if (window.unsubStats) window.unsubStats();
+        window.unsubStats = window.onSnapshot(window.query(getCol('dm_toolkit_statblocks')), (snap) => {
             savedStatblocks = []; 
             snap.forEach(d => savedStatblocks.push({id: d.id, ...d.data()}));
             savedStatblocks.sort((a,b) => a.name.localeCompare(b.name));
-            
-            // 🟢 FIX: Share for Download
-            window.savedStatblocks = savedStatblocks;
-
-            if(typeof renderStatblocks === 'function') renderStatblocks();
+            renderStatblocks();
         });
     };
 
@@ -1685,78 +1641,16 @@
         return (shortTitle + (cleanLine.length > 50 ? '...' : '')) || 'Untitled Generated Note';
     }
 
-   // ==========================================
-    // ⚔️ COMBAT NPC GENERATOR (With Random Names)
-    // ==========================================
-
     window.generateCombatNpc = async () => {
-        const btn = document.getElementById('generate-combat-button'); 
-        const outputDiv = document.getElementById('ai-output'); 
-        
-        btn.disabled = true;
-        outputDiv.textContent = "Generating combat stats...";
-
-        // 1. RANDOM NAME LIST (To prevent repetitive names)
-        const names = [
-            "Kaelen", "Tharok", "Elara", "Vorn", "Lyra", "Grommash", "Sylas", "Mara", "Dorian", "Isolde",
-            "Ragnar", "Seraphina", "Malakai", "Theorgar", "Vesper", "Caelum", "Nyx", "Orion", "Thalia",
-            "Bram", "Kael", "Jareth", "Lucius", "Soren", "Eyla", "Faelan", "Gorlag", "Zarathos", "Xylo",
-            "Merrick", "Osric", "Rowan", "Lysandra", "Kaelith", "Varic", "Thorne", "Ash", "Raven", "Draven",
-            "Alaric", "Baelor", "Cedric", "Daeron", "Eamon", "Fenris", "Gareth", "Halian", "Ivar", "Jory"
-        ];
-        const randomName = names[Math.floor(Math.random() * names.length)];
-
+        const btn = document.getElementById('generate-combat-button'); btn.disabled = true;
+        const outputDiv = document.getElementById('ai-output'); outputDiv.textContent = "Generating combat stats...";
         try {
-            const txt = document.getElementById('npc-type').value;
-            const lvl = document.getElementById('npc-level').value;
-            
-            // 2. Updated Prompt: We force the AI to use our random name
-            const prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}) named "${randomName}". 
-            Return strictly JSON with keys: name, level_or_cr, armor_class_ac, max_hit_points, initiative_bonus, main_attack.`;
-
-            const data = await callAI(API_URL, { 
-                contents: [{ parts: [{ text: prompt }] }], 
-                generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } 
-            });
-            
-            window.lastGeneratedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
-            const n = window.lastGeneratedNpc;
-
-            // 3. Render
-            outputDiv.innerHTML = `
-                <div class="text-2xl font-bold text-green-400 mb-2">${n.name}</div>
-                <div class="text-gray-300 text-sm mb-4">Level/CR: ${n.level_or_cr}</div>
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">Armor Class</div>
-                        <div class="font-bold text-2xl text-blue-300">${n.armor_class_ac}</div>
-                    </div>
-                    <div class="p-3 bg-gray-700 rounded-lg border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">Hit Points</div>
-                        <div class="font-bold text-2xl text-green-300">${n.max_hit_points}</div>
-                    </div>
-                    <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">Initiative</div>
-                        <div class="font-bold text-xl text-yellow-300">${n.initiative_bonus >= 0 ? '+' : ''}${n.initiative_bonus}</div>
-                    </div>
-                    <div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600">
-                        <div class="text-xs text-gray-400 uppercase">Main Attack</div>
-                        <div class="font-medium text-white mt-1">${n.main_attack}</div>
-                    </div>
-                </div>
-                <button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button>
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button>
-                    <button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button>
-                    <button onclick="saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button>
-                </div>`;
-
-        } catch(e) { 
-            outputDiv.textContent = "Error: " + e.message; 
-        } finally { 
-            document.getElementById('combat-loading-spinner').classList.add('hidden'); 
-            btn.disabled = false; 
-        }
+            const txt = document.getElementById('npc-type').value, lvl = document.getElementById('npc-level').value;
+            const data = await callAI(API_URL, { contents: [{ parts: [{ text: `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } });
+            lastGeneratedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
+            outputDiv.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${lastGeneratedNpc.name}</div><div class="text-gray-300 text-sm mb-4">Level/CR: ${lastGeneratedNpc.level_or_cr}</div><div class="grid grid-cols-2 gap-3 mb-4"><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Armor Class</div><div class="font-bold text-2xl text-blue-300">${lastGeneratedNpc.armor_class_ac}</div></div><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Hit Points</div><div class="font-bold text-2xl text-green-300">${lastGeneratedNpc.max_hit_points}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Initiative</div><div class="font-bold text-xl text-yellow-300">${lastGeneratedNpc.initiative_bonus >= 0 ? '+' : ''}${lastGeneratedNpc.initiative_bonus}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Main Attack</div><div class="font-medium text-white mt-1">${lastGeneratedNpc.main_attack}</div></div></div><button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button><div class="grid grid-cols-3 gap-2"><button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button><button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button><button onclick="saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button></div>`;
+        } catch(e) { outputDiv.textContent = "Error: " + e.message; }
+        finally { document.getElementById('combat-loading-spinner').classList.add('hidden'); btn.disabled = false; }
     };
 
     window.addNpcToStatblocks = async function() {
@@ -1773,19 +1667,14 @@
         window.switchTab('notes'); window.switchSubTab(tab);
     }
 
-    // ==========================================
-    // 🐉 ROBUST MONSTER GENERATOR (Fixes "Undefined" Bug)
-    // ==========================================
-
-    window.generateMonsterStatblock = async function() {
+    // 🟢 FIXED: Monster Generator (Prevents 'STR undefined' crash)
+    window.generateMonsterStatblock = async () => {
         const btn = document.getElementById('generate-monster-button'); 
         const spinner = document.getElementById('monster-loading-spinner');
         const output = document.getElementById('monster-output'); 
         const status = document.getElementById('monster-status-message');
 
-        // 1. Reset & UI Prep
-        window.lastGeneratedMonster = null; 
-        btn.disabled = true; 
+        btn.disabled = true;
         spinner.classList.remove('hidden');
         output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
         if(status) status.classList.add('hidden');
@@ -1794,106 +1683,82 @@
             const name = document.getElementById('monster-name').value;
             const cr = document.getElementById('monster-cr').value;
             
-            // 2. Strict Prompt
-            const prompt = `Generate a D&D 5e monster statblock for "${name}" (CR ${cr}). 
-            Return strictly JSON with these keys: name, size, type, alignment, armor_class, hit_points, speed, 
-            STR, DEX, CON, INT, WIS, CHA, 
-            traits (array of {name, description}), 
-            actions (array of {name, description}), 
-            legendary_actions (array of {name, description}).`;
-
-            // 3. Call AI
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
+            // 1. Call AI
+            const data = await callAI(API_URL, { 
+                contents: [{ parts: [{ text: `Generate 5e monster statblock for "${name}" CR "${cr}". Return strictly JSON.` }] }], 
+                generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } 
+            });
             
-            // 4. Parse & Normalize Data (The Fix)
-            let raw = {};
-            try {
-                // Remove Markdown code blocks if present
-                const cleanText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '');
-                raw = JSON.parse(cleanText);
-            } catch (e) {
-                throw new Error("AI returned invalid JSON. Try again.");
-            }
+            lastGeneratedMonster = JSON.parse(data.candidates[0].content.parts[0].text);
+            const stats = lastGeneratedMonster;
 
-            // Map all possible AI variations to a standard format
-            const m = {
-                name: raw.name || name,
-                size: raw.size || "Medium",
-                type: raw.type || "Monster",
-                align: raw.alignment || raw.align || "Unaligned",
-                ac: raw.armor_class || raw.AC || raw.ac || 10,
-                hp: raw.hit_points || raw.HP || raw.hp || 10,
-                speed: raw.speed || "30 ft.",
-                // Stats: Check root level OR nested 'ability_scores'
-                str: raw.STR || (raw.ability_scores?.STR) || 10,
-                dex: raw.DEX || (raw.ability_scores?.DEX) || 10,
-                con: raw.CON || (raw.ability_scores?.CON) || 10,
-                int: raw.INT || (raw.ability_scores?.INT) || 10,
-                wis: raw.WIS || (raw.ability_scores?.WIS) || 10,
-                cha: raw.CHA || (raw.ability_scores?.CHA) || 10,
-                // Lists
-                traits: raw.traits || raw.special_abilities || [],
-                actions: raw.actions || [],
-                legendary: raw.legendary_actions || []
+            // 🟢 2. SAFETY FIX: Normalize Ability Scores
+            // If the AI forgot to nest them, or named them differently, we fix it here.
+            const scores = stats.ability_scores || {
+                STR: stats.STR || 10,
+                DEX: stats.DEX || 10,
+                CON: stats.CON || 10,
+                INT: stats.INT || 10,
+                WIS: stats.WIS || 10,
+                CHA: stats.CHA || 10
             };
+            // Save the fixed version back to the global object so Save buttons work
+            lastGeneratedMonster.ability_scores = scores;
 
-            // Save cleaned data for the Save Button
-            window.lastGeneratedMonster = m;
-
-            // 5. Helper for Modifiers
-            const fmtMod = (score) => { 
-                const mod = Math.floor((score - 10) / 2); 
-                return mod >= 0 ? `+${mod}` : mod; 
-            };
-
-            // 6. Build HTML
-            let html = `
+            // 3. Render HTML
+            output.innerHTML = `
                 <div class="dnd-statblock text-left">
-                    <div class="dnd-header">${m.name}</div>
-                    <div class="italic text-black text-sm">${m.size} ${m.type}, ${m.align}</div>
+                    <div class="dnd-header">${stats.name}</div>
+                    <div class="italic text-black text-sm">${stats.size || "Medium"} ${stats.type || "Monster"}, ${stats.alignment || "Unaligned"}</div>
                     <div class="tapered-rule"></div>
-                    <div class="text-sm text-red-900 leading-relaxed">
-                        <p><strong>AC</strong> ${m.ac}</p>
-                        <p><strong>HP</strong> ${m.hp}</p>
-                        <p><strong>Speed</strong> ${m.speed}</p>
+                    <div class="text-sm text-red-900">
+                        <p><strong>AC</strong> ${stats.armor_class}</p>
+                        <p><strong>HP</strong> ${stats.hit_points}</p>
+                        <p><strong>Spd</strong> ${stats.speed}</p>
                     </div>
                     <div class="tapered-rule"></div>
-                    <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
-                        <div>STR<br>${m.str} (${fmtMod(m.str)})</div>
-                        <div>DEX<br>${m.dex} (${fmtMod(m.dex)})</div>
-                        <div>CON<br>${m.con} (${fmtMod(m.con)})</div>
-                        <div>INT<br>${m.int} (${fmtMod(m.int)})</div>
-                        <div>WIS<br>${m.wis} (${fmtMod(m.wis)})</div>
-                        <div>CHA<br>${m.cha} (${fmtMod(m.cha)})</div>
+                    <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold">
+                        <div>STR<br>${scores.STR}</div>
+                        <div>DEX<br>${scores.DEX}</div>
+                        <div>CON<br>${scores.CON}</div>
+                        <div>INT<br>${scores.INT}</div>
+                        <div>WIS<br>${scores.WIS}</div>
+                        <div>CHA<br>${scores.CHA}</div>
                     </div>
                     <div class="tapered-rule"></div>
-                    <div class="space-y-3 mt-3 text-sm text-black">`;
-
-            if (m.traits.length) {
-                m.traits.forEach(t => html += `<div><strong class="italic">${t.name}.</strong> ${t.description||t.desc}</div>`);
-            }
-            if (m.actions.length) {
-                html += `<div class="dnd-section-title mt-2">Actions</div>`;
-                m.actions.forEach(a => html += `<div><strong class="italic">${a.name}.</strong> ${a.description||a.desc}</div>`);
-            }
-            if (m.legendary.length) {
-                html += `<div class="dnd-section-title mt-2">Legendary Actions</div>`;
-                m.legendary.forEach(a => html += `<div><strong class="italic">${a.name}.</strong> ${a.description||a.desc}</div>`);
-            }
-
-            html += `</div></div>`;
-            output.innerHTML = html;
+                    <div class="text-sm text-black space-y-2 mt-2">
+                        ${stats.actions ? stats.actions.map(a => `<div><strong>${a.name}.</strong> ${a.description}</div>`).join('') : '<em>No actions provided.</em>'}
+                    </div>
+                </div>`;
             
             document.getElementById('save-options-monster').classList.remove('hidden');
 
         } catch(e) { 
-            console.error(e); 
-            output.textContent = "Error: " + e.message;
+            console.error(e);
+            output.textContent = "Error generating monster. Please try again.";
+            if(status) {
+                status.textContent = "AI Error: " + e.message;
+                status.classList.remove('hidden');
+            }
         } finally { 
             spinner.classList.add('hidden'); 
             btn.disabled = false; 
         }
     };
+
+    window.addMonsterToStatblocks = async function() {
+        if (!window.isAuthReady || !lastGeneratedMonster) return;
+        const m = lastGeneratedMonster;
+        let toHit = 0; const atk = m.actions[0]; if(atk) { const h = atk.description.match(/\+(\d+)/); if(h) toHit = parseInt(h[1]); }
+        await window.addDoc(getCol('dm_toolkit_statblocks'), { name: m.name, hp: m.hit_points, ac: m.armor_class, toHit: toHit, initMod: Math.floor((m.ability_scores.DEX-10)/2), dmg: atk ? atk.name : "Attack", timestamp: new Date().toISOString() });
+    }
+
+    window.saveMonsterToNotes = async function() {
+        if (!window.isAuthReady || !lastGeneratedMonster) return;
+        const newNote = { id: crypto.randomUUID(), title: lastGeneratedMonster.name, content: document.getElementById('monster-output').innerHTML, timestamp: new Date().toISOString() };
+        structuredNotes['enemyNotes'].unshift(newNote); await window.saveStructuredNotes('enemyNotes', structuredNotes['enemyNotes']);
+        window.switchTab('notes'); window.switchSubTab('enemyNotes');
+    }
 
    // 🟢 FIXED: Loot Generator (Shows Errors & Formatting)
     window.generateLoot = async () => {
@@ -3145,15 +3010,9 @@
     // 🟢 STANDARD LISTENER (Monsters, Weapons, Items only)
     window.setupHomebrewListener = () => {
         if(!window.isAuthReady) return;
-
+        
         // Listen to the Homebrew Collection
         window.onSnapshot(window.query(getCol('dm_toolkit_homebrew_items')), (snap) => {
-            
-            // 1. 🟢 SAVE DATA GLOBALLY (Fixes the Empty Backup)
-            window.allHomebrewItems = []; 
-            snap.forEach(d => window.allHomebrewItems.push({id: d.id, ...d.data()}));
-
-            // 2. UPDATE THE UI (Standard Logic)
             const list = document.getElementById('homebrew-weapon-list'); 
             if(!list) return;
             
@@ -3162,20 +3021,26 @@
                 return; 
             }
 
-            // Sort A-Z
-            window.allHomebrewItems.sort((a,b) => a.name.localeCompare(b.name)); 
+            const items = []; 
+            snap.forEach(d => items.push({id: d.id, ...d.data()}));
+            items.sort((a,b) => a.name.localeCompare(b.name)); 
             
             list.innerHTML = '';
             list.className = "columns-1 md:columns-2 gap-4 space-y-4 pb-20";
 
-            window.allHomebrewItems.forEach(item => {
+            items.forEach(item => {
                 let visualHTML = "";
-                // Logic to display item (Monsters vs Weapons vs Items)
+                
+                // 1. Check for Monster
                 if (item.category === 'monster') {
                     visualHTML = `<div class="transform scale-90 origin-top-left">${generateMonsterHTML(item)}</div>`;
-                } else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
+                } 
+                // 2. Check for Parchment Items (Weapons/Magic Items)
+                else if (item.category === 'weapon' || item.category === 'item' || item.isParchment) {
                     visualHTML = generateWeaponHTML(item.name, item.imageData, item.dmg, item.type, item.props);
-                } else {
+                } 
+                // 3. Fallback / Generic
+                else {
                     visualHTML = `<div class="bg-gray-900 p-4 rounded text-center border border-gray-600"><div class="font-bold text-orange-300 text-lg">${item.name}</div><div class="text-xs text-gray-400 mt-1">${item.dmg || ""}</div></div>`;
                 }
                 
@@ -3632,141 +3497,22 @@
         await window.finalizeSave(tab, newNote, targetCampaign);
     };
 
-        // ==========================================
-    // 👹 SAVE MONSTER TO STATBLOCKS (Restored)
-    // ==========================================
-
-    window.addMonsterToStatblocks = async function() {
-        // 1. Validation
-        if (!window.userId) { alert("Please log in first."); return; }
-        
-        const m = window.lastGeneratedMonster;
-        if (!m) { alert("Please click 'Generate' first."); return; }
-
-        // Change button text briefly to show activity
-        const btn = document.querySelector('#save-options-monster button:first-child');
-        if(btn) btn.innerText = "Saving...";
-
-        try {
-            // 2. Calculate Derived Stats for the Tracker
-            // Initiative Modifier (Dex - 10 / 2)
-            const dex = parseInt(m.dex) || 10;
-            const initMod = Math.floor((dex - 10) / 2);
-
-            // Attack Bonus (Parse from the first action text)
-            let toHit = 0;
-            let mainAttack = "Attack";
-
-            if (m.actions && m.actions.length > 0) {
-                const act = m.actions[0];
-                mainAttack = act.name || "Attack";
-                
-                // Regex to find "+X to hit" in the description
-                const match = (act.description || act.desc || "").match(/\+(\d+)\s+to\s+hit/);
-                if (match) {
-                    toHit = parseInt(match[1]);
-                } else {
-                    toHit = initMod; // Fallback
-                }
-            }
-
-            // 3. Create Database Object
-            const statData = {
-                name: m.name || "Unnamed Monster",
-                hp: parseInt(m.hp) || 10,
-                ac: parseInt(m.ac) || 10,
-                toHit: toHit,
-                initMod: initMod,
-                dmg: mainAttack, // Shows as the main action in the tracker
-                timestamp: new Date().toISOString()
-            };
-
-            // 4. DIRECT DATABASE SAVE
-            await window.addDoc(
-                window.collection(window.db, 'artifacts', 'default', 'sessions', window.userId, 'dm_toolkit_statblocks'), 
-                statData
-            );
-
-            // 5. Success Feedback
-            // Add to local list immediately so it shows up if they switch tabs
-            if(window.savedStatblocks) window.savedStatblocks.push({id: "temp", ...statData});
-            
-            if(confirm(`✅ Saved "${m.name}" to Statblocks!\n\nDo you want to go to the Stats tab now?`)) {
-                window.switchTab('statblocks');
-            }
-
-        } catch (e) {
-            console.error("Stat Save Error:", e);
-            alert("Error saving statblock: " + e.message);
-        } finally {
-            if(btn) btn.innerText = "Save to Stats";
-        }
-    };
-
     // 3. MONSTER GENERATOR
-   // ==========================================
-    // 💾 ROBUST SAVE (Direct to Database)
-    // ==========================================
-
     window.saveMonsterToNotes = async function() {
-        // 1. Validation
-        if (!window.userId) { alert("Please log in first."); return; }
-        
-        // Grab the monster data we just generated
-        const m = window.lastGeneratedMonster;
-        if (!m) { alert("Please click 'Generate' first."); return; }
+        if (!window.isAuthReady || !lastGeneratedMonster) return;
 
-        const btn = document.querySelector('#save-options-monster button:nth-child(2)');
-        if(btn) btn.innerText = "Saving...";
+        // Ask for Campaign
+        const targetCampaign = await window.promptForCampaign();
+        if (!targetCampaign) return;
 
-        try {
-            // 2. Prepare the New Note
-            const content = document.getElementById('monster-output').innerHTML;
-            const newNote = { 
-                id: crypto.randomUUID(), 
-                title: m.name || "Monster", 
-                content: content, 
-                campaign: window.currentCampaign || "Default Campaign",
-                timestamp: new Date().toISOString() 
-            };
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: lastGeneratedMonster.name, 
+            content: document.getElementById('monster-output').innerHTML, 
+            timestamp: new Date().toISOString() 
+        };
 
-            // 3. FETCH CURRENT NOTES (Direct Read)
-            // We fetch the latest list from the DB to ensure we don't overwrite anything
-            const docRef = window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'singles', 'shared_notes');
-            const snap = await window.getDoc(docRef);
-            
-            let currentNotes = [];
-            if (snap.exists()) {
-                const data = snap.data();
-                // Grab existing Enemy notes, or empty list if none exist
-                currentNotes = data.structuredEnemyNotes || [];
-            }
-
-            // 4. ADD NEW NOTE TO FRONT
-            currentNotes.unshift(newNote);
-
-            // 5. SAVE BACK TO DB
-            await window.setDoc(docRef, { 
-                structuredEnemyNotes: currentNotes 
-            }, { merge: true });
-
-            // 6. UPDATE UI (Visual Confirmation)
-            // Update the global variable so the UI sees it immediately without a refresh
-            if (!window.structuredNotes) window.structuredNotes = {};
-            window.structuredNotes.enemyNotes = currentNotes;
-
-            // Switch tabs to show the user
-            window.switchTab('notes');
-            if (typeof window.switchSubTab === 'function') {
-                window.switchSubTab('enemyNotes');
-            }
-
-        } catch (e) {
-            console.error("Save Error:", e);
-            alert("Save failed: " + e.message);
-        } finally {
-            if(btn) btn.innerText = "Save to Notes";
-        }
+        await window.finalizeSave('enemyNotes', newNote, targetCampaign);
     };
 
     // 4. HOMEBREW (Weapons, Items, Monsters)
@@ -4084,136 +3830,7 @@
         });
     }; 
 
-    window.downloadSessionData = function() {
-        if (!window.userId) { alert("Please log in first."); return; }
-
-        console.log("Downloading...");
-
-        // Grab the data we just exposed in the listeners
-        const notes = window.structuredNotes || structuredNotes || {};
-        const stats = window.savedStatblocks || savedStatblocks || [];
-        const items = window.allHomebrewItems || [];
-
-        const data = {
-            metadata: { date: new Date().toLocaleString(), user: window.userId },
-            campaign: window.currentCampaign || "Default",
-            notes: notes,
-            statblocks: stats,
-            homebrew: items
-        };
-
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `Aegis_Backup_${new Date().toISOString().split('T')[0]}.json`;
-        link.href = url;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-// ==========================================
-    // 📚 FORCE EXPORT (Direct Database Fetch)
-    // ==========================================
-
-    window.exportContentLibrary = async function() {
-        console.log("Starting Force Export...");
-
-        if (!window.userId) { 
-            alert("Please log in to export your library."); 
-            return; 
-        }
-
-        const btn = document.querySelector('button[title="Export Sorted Library"]') || document.activeElement;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = "⏳ Downloading...";
-        btn.disabled = true;
-
-        try {
-            // 1. DIRECT DATABASE FETCH (Bypass local variables)
-            // We go straight to the 'shared_notes' document in Firebase
-            const notesRef = window.doc(window.db, 'artifacts', 'default', 'sessions', window.userId, 'singles', 'shared_notes');
-            const notesSnap = await window.getDoc(notesRef);
-            
-            // 2. FETCH LISTS (Stats & Homebrew)
-            const statsQ = window.query(window.collection(window.db, 'artifacts', 'default', 'sessions', window.userId, 'dm_toolkit_statblocks'));
-            const brewQ = window.query(window.collection(window.db, 'artifacts', 'default', 'sessions', window.userId, 'dm_toolkit_homebrew_items'));
-            
-            const statsSnap = await window.getDocs(statsQ); // Note: getDocs (plural) needs to be available
-            const brewSnap = await window.getDocs(brewQ);
-
-            // 3. Process Data
-            const notesData = notesSnap.exists() ? notesSnap.data() : {};
-            const statsData = [];
-            statsSnap.forEach(d => statsData.push(d.data()));
-            
-            const brewData = [];
-            brewSnap.forEach(d => {
-                const item = d.data();
-                delete item.imageData; // Remove images to save space
-                brewData.push(item);
-            });
-
-            // 4. Helper Sorter
-            const sorter = (a, b) => (a.title || a.name || "").toLowerCase().localeCompare((b.title || b.name || "").toLowerCase());
-
-            // 5. Build Object (Using the Fresh Data)
-            const library = {
-                metadata: {
-                    type: "Aegis Master Library (Direct Fetch)",
-                    date: new Date().toLocaleDateString(),
-                    exportedBy: window.userId
-                },
-                notes: {
-                    // We check both naming conventions just in case
-                    general: (notesData.structuredPrepNotes || notesData.prepNotes || []).sort(sorter),
-                    pcs:     (notesData.structuredPcNotes || notesData.pcNotes || []).sort(sorter),
-                    npcs:    (notesData.structuredNpcNotes || notesData.npcNotes || []).sort(sorter),
-                    enemies: (notesData.structuredEnemyNotes || notesData.enemyNotes || []).sort(sorter),
-                    loot:    (notesData.structuredLootNotes || notesData.lootNotes || []).sort(sorter)
-                },
-                statblocks: statsData.sort(sorter),
-                homebrew: brewData.sort(sorter)
-            };
-
-            // 6. Verify
-            const totalNotes = 
-                library.notes.general.length + 
-                library.notes.pcs.length + 
-                library.notes.npcs.length + 
-                library.notes.enemies.length + 
-                library.notes.loot.length;
-
-            console.log(`Exporting ${totalNotes} notes directly from DB.`);
-
-            if (totalNotes + library.statblocks.length + library.homebrew.length === 0) {
-                alert("⚠️ Database is empty. Are you logged into the correct session?");
-                return;
-            }
-
-            // 7. Download
-            const dataStr = JSON.stringify(library, null, 2);
-            const blob = new Blob([dataStr], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `Aegis_Library_FORCE_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-        } catch (e) {
-            console.error("Force Export Error:", e);
-            alert("Export Failed: " + e.message);
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-    };
-
-
+    
 </script>
 
     <!-- Login Modal -->
@@ -4284,10 +3901,6 @@
         </div>
     </div>
 </div>
-
-        <button onclick="window.switchTab('help')" class="fixed bottom-6 right-6 z-50 w-12 h-12 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl border-2 border-indigo-400 flex items-center justify-center transition transform hover:scale-110 active:scale-95 group" title="Go to Help">
-        <span class="text-xl font-bold group-hover:animate-bounce">?</span>
-    </button>
         
 </body>
 </html>
@@ -4298,4 +3911,8 @@
         </footer>
 
     </div>
+
+
+
+
 
