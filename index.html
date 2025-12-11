@@ -1422,7 +1422,7 @@
                     <button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold">Edit</button>
                     <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold">Delete</button>
                 </div>
-                <div class="p-3 whitespace-pre-wrap text-sm text-gray-300">${n.content}</div>
+                <div class="p-3 whitespace-pre-wrap text-sm text-gray-300 leading-relaxed font-sans">${n.content}</div>
             </div>`;
             
             list.appendChild(div);
@@ -1432,14 +1432,62 @@
     window.toggleCollapse = (id) => { const el = document.getElementById(`content-${id}`); if(el) { el.classList.toggle('expanded'); el.style.maxHeight = el.classList.contains('expanded') ? el.scrollHeight + "px" : null; } };
     window.addNewNote = (tab) => { structuredNotes[tab].unshift({ id: crypto.randomUUID(), title: 'New Note', content: 'Details...' }); window.saveStructuredNotes(tab, structuredNotes[tab]); };
     window.deleteNote = (id, tab) => { structuredNotes[tab] = structuredNotes[tab].filter(n => n.id !== id); window.saveStructuredNotes(tab, structuredNotes[tab]); };
-    window.editNote = (id, tab) => {
-        const n = structuredNotes[tab].find(x => x.id === id); if(!n) return;
-        document.getElementById('modal-note-id').value = id; document.getElementById('modal-tab-name').value = tab;
-        document.getElementById('modal-title').value = n.title;
-        const tempDiv = document.createElement('div'); tempDiv.innerHTML = n.content;
-        document.getElementById('modal-content').value = tempDiv.textContent.trim();
-        document.getElementById('edit-modal').classList.remove('hidden');
-    };
+    window.editNote = function(id, tab) {
+    // 1. SAFETY SHIELD: Initialize memory if it's undefined (Prevents the crash)
+    if (!window.structuredNotes) {
+        window.structuredNotes = {};
+    }
+
+    let n = null;
+    let title = "Edit Note";
+    let content = "";
+    
+    // 2. Try to find the note data in memory.
+    if (window.structuredNotes[tab]) {
+        n = window.structuredNotes[tab].find(x => x.id === id);
+    }
+    
+    if (n) {
+        // Data found in memory (Best Case)
+        title = n.title;
+        content = n.content || "";
+    } else {
+        // 3. FALLBACK: Data not found in memory, scrape from the screen
+        console.warn(`Note ID ${id} not found in memory. Attempting visual scrape.`);
+        
+        const card = document.getElementById('note-' + id);
+        const contentDiv = document.getElementById('content-' + id);
+        
+        if (card) {
+            const titleEl = card.querySelector('.font-bold');
+            if (titleEl) title = titleEl.innerText;
+        }
+
+        if (contentDiv) {
+            // Read innerText to preserve spacing from the visible note
+            content = contentDiv.innerText || contentDiv.textContent; 
+            // Strip button text that might be accidentally scraped
+            content = content.replace(/Edit\nDelete/g, "").trim(); 
+        } else {
+            // Final fail point—should not happen if the note is visible
+            alert("Error: Note data could not be located on the screen. Please refresh.");
+            return;
+        }
+    }
+
+    // 4. DE-CLUMPING FIX: Convert any HTML breaks (<br>) back to Newlines (\n)
+    // This makes the text look correctly spaced inside the <textarea>.
+    content = content.replace(/<br\s*\/?>/gi, '\n');
+    
+    // 5. Populate and Show Modal
+    document.getElementById('modal-note-id').value = id;
+    document.getElementById('modal-tab-name').value = tab;
+    document.getElementById('modal-title').value = title;
+    
+    // Set the content in the textarea
+    document.getElementById('modal-content').value = content;
+    document.getElementById('edit-modal').classList.remove('hidden');
+};
     window.saveEditedNote = () => {
         const id = document.getElementById('modal-note-id').value, tab = document.getElementById('modal-tab-name').value;
         const idx = structuredNotes[tab].findIndex(x => x.id === id);
