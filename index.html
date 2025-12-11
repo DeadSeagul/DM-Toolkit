@@ -1013,6 +1013,30 @@
                     </details>
                 </div>
 
+                <div class="card p-6 rounded-lg shadow-xl border border-red-500/30 mb-6 text-left">
+                    <h3 class="text-lg font-bold text-red-300 mb-2 flex items-center gap-2">
+                        <span>⚠️</span> Getting a "Quota Exceeded" Error?
+                    </h3>
+                    
+                    <div class="bg-black/50 p-3 rounded border border-gray-700 font-mono text-[10px] text-gray-400 mb-3 overflow-x-auto">
+                        Error: { "code": 429, "status": "RESOURCE_EXHAUSTED" ... }
+                    </div>
+
+                    <p class="text-sm text-gray-300 mb-4">
+                        This error means you have hit the daily limit for the Free Tier AI usage, or the key has expired.
+                    </p>
+
+                    <div class="bg-gray-800 p-4 rounded-lg border-l-4 border-green-500">
+                        <p class="text-sm font-bold text-white">✅ The Fix:</p>
+                        <p class="text-xs text-gray-400 mt-1 leading-relaxed">
+                            Simply <strong>create a new API Key</strong> and paste it into the <strong>Prep Tab</strong>. New keys reset your daily usage limit.
+                        </p>
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="inline-block mt-3 bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-2 px-4 rounded transition">
+                            Get New Key ➜
+                        </a>
+                    </div>
+                </div>
+
                 <div class="card p-6 rounded-lg shadow-xl border border-yellow-500/30 text-center">
                     <h2 class="text-xl font-bold mb-2 text-yellow-300">⭐ Support the Project</h2>
                     <p class="text-gray-400 text-sm mb-6">If you enjoy using Aegis, please give it a Star on GitHub! It helps more DMs find it.</p>
@@ -1689,24 +1713,123 @@
         return (shortTitle + (cleanLine.length > 50 ? '...' : '')) || 'Untitled Generated Note';
     }
 
-    window.generateCombatNpc = async () => {
-        const btn = document.getElementById('generate-combat-button'); btn.disabled = true;
-        const outputDiv = document.getElementById('ai-output'); outputDiv.textContent = "Generating combat stats...";
-        try {
-            const txt = document.getElementById('npc-type').value, lvl = document.getElementById('npc-level').value;
-            const data = await callAI(API_URL, { contents: [{ parts: [{ text: `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON.` }] }], generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } });
-            lastGeneratedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
-            outputDiv.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${lastGeneratedNpc.name}</div><div class="text-gray-300 text-sm mb-4">Level/CR: ${lastGeneratedNpc.level_or_cr}</div><div class="grid grid-cols-2 gap-3 mb-4"><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Armor Class</div><div class="font-bold text-2xl text-blue-300">${lastGeneratedNpc.armor_class_ac}</div></div><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Hit Points</div><div class="font-bold text-2xl text-green-300">${lastGeneratedNpc.max_hit_points}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Initiative</div><div class="font-bold text-xl text-yellow-300">${lastGeneratedNpc.initiative_bonus >= 0 ? '+' : ''}${lastGeneratedNpc.initiative_bonus}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Main Attack</div><div class="font-medium text-white mt-1">${lastGeneratedNpc.main_attack}</div></div></div><button onclick="addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button><div class="grid grid-cols-3 gap-2"><button onclick="saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button><button onclick="saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button><button onclick="saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button></div>`;
-        } catch(e) { outputDiv.textContent = "Error: " + e.message; }
-        finally { document.getElementById('combat-loading-spinner').classList.add('hidden'); btn.disabled = false; }
-    };
+    // ==========================================
+// ⚔️ FIX: COMBAT NPC GENERATOR (GUARANTEED GLOBAL ASSIGNMENT)
+// ==========================================
+window.generateCombatNpc = async () => {
+    const btn = document.getElementById('generate-combat-button'); 
+    const outputDiv = document.getElementById('ai-output'); 
+    
+    btn.disabled = true;
+    outputDiv.textContent = "Generating combat stats...";
+    
+    // 1. Reset Global Variable immediately
+    window.lastGeneratedNpc = null; 
 
-    window.addNpcToStatblocks = async function() {
-        if (!window.isAuthReady || !lastGeneratedNpc) return;
-        const match = lastGeneratedNpc.main_attack.match(/(\+|\-)\d+/);
-        const toHit = match ? parseInt(match[0], 10) : (lastGeneratedNpc.initiative_bonus || 0);
-        await window.addDoc(getCol('dm_toolkit_statblocks'), { name: lastGeneratedNpc.name, hp: lastGeneratedNpc.max_hit_points, ac: lastGeneratedNpc.armor_class_ac, toHit: toHit, initMod: lastGeneratedNpc.initiative_bonus, dmg: lastGeneratedNpc.main_attack || "Attack", timestamp: new Date().toISOString() });
+    try {
+        const txt = document.getElementById('npc-type').value, lvl = document.getElementById('npc-level').value;
+        const prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON.`;
+        
+        const data = await callAI(API_URL, { 
+            contents: [{ parts: [{ text: prompt }] }], 
+            generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } 
+        });
+        
+        // 2. Parse and Assign to Global Variable ONLY ONCE (CRITICAL)
+        const parsedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
+        
+        if (!parsedNpc || !parsedNpc.name) {
+             throw new Error("AI returned empty or invalid NPC data.");
+        }
+        
+        // 🟢 Guarantee the structured data is assigned globally.
+        window.lastGeneratedNpc = parsedNpc; 
+        const n = window.lastGeneratedNpc; // Use the global variable reference for rendering
+
+        // 3. Render HTML using the global variable (n)
+        outputDiv.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${n.name}</div><div class="text-gray-300 text-sm mb-4">Level/CR: ${n.level_or_cr}</div><div class="grid grid-cols-2 gap-3 mb-4"><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Armor Class</div><div class="font-bold text-2xl text-blue-300">${n.armor_class_ac}</div></div><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Hit Points</div><div class="font-bold text-2xl text-green-300">${n.max_hit_points}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Initiative</div><div class="font-bold text-xl text-yellow-300">${n.initiative_bonus >= 0 ? '+' : ''}${n.initiative_bonus}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Main Attack</div><div class="font-medium text-white mt-1">${n.main_attack}</div></div></div><button onclick="window.addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button><div class="grid grid-cols-3 gap-2"><button onclick="window.saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button><button onclick="window.saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button><button onclick="window.saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button></div>`;
+        
+        // 4. Reveal the generic save buttons
+        document.getElementById('save-options-creative').classList.remove('hidden');
+
+    } catch(e) { 
+        outputDiv.textContent = "Error: " + e.message; 
+        window.lastGeneratedNpc = null; // Clear on error
+    } finally { 
+        document.getElementById('combat-loading-spinner').classList.add('hidden'); 
+        btn.disabled = false; 
     }
+};
+
+    // ==========================================
+// 💾 FIX: ADD COMBAT NPC TO STATBLOCKS (ROBUST)
+// ==========================================
+window.addNpcToStatblocks = async function() {
+    // 1. CRITICAL VALIDATION
+    if (!window.userId) { 
+        alert("🔒 Please log in to a Session to save data."); 
+        window.openLoginModal(); 
+        return; 
+    }
+    
+    // Ensure the required NPC data object exists
+    const m = window.lastGeneratedNpc;
+    if (!m || !m.name) { 
+        alert("NPC data is missing. Please generate a Combat NPC first."); 
+        return; 
+    }
+
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = "Saving...";
+    btn.disabled = true;
+
+    try {
+        // 2. EXTRACT & CALC STATS (Guaranteed numbers using parseInt or 0)
+        
+        // Initiative Modifier: Directly from the AI output (guaranteed to be integer or 0)
+        const initModifier = parseInt(m.initiative_bonus) || 0;
+        
+        let toHit = initModifier; 
+        let mainAttack = m.main_attack || "Attack";
+
+        // Try to parse the actual attack bonus from the attack string, if available
+        const hitMatch = mainAttack.match(/(\+|\-)?\d+/);
+        if (hitMatch) {
+            // Extracts the leading sign and number (e.g., "+5" or "-1")
+            toHit = parseInt(hitMatch[0], 10);
+        }
+
+        // 3. Create Database Object
+        const statData = {
+            name: m.name || "Unnamed NPC",
+            hp: parseInt(m.max_hit_points) || 10,
+            ac: parseInt(m.armor_class_ac) || 10,
+            
+            // 🟢 CORRECTED VALUES
+            toHit: toHit || 0,        // Final To Hit Modifier
+            initMod: initModifier,    // Final Initiative Modifier
+            
+            dmg: mainAttack,           // Name of the main attack
+            timestamp: new Date().toISOString()
+        };
+
+        // 4. Save to Statblocks Collection
+        await window.addDoc(getCol('dm_toolkit_statblocks'), statData);
+
+        // 5. Success Feedback
+        if(confirm(`✅ Saved "${m.name}" to Statblocks!\n\nDo you want to go to the Stats tab now?`)) {
+            window.switchTab('statblocks');
+        }
+
+    } catch (e) {
+        console.error("Combat NPC Stat Save Error:", e);
+        alert("Error saving combat statblock: " + e.message);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+};
 
     window.saveCombatNpcToNotes = async function(tab) {
         if (!window.isAuthReady || !lastGeneratedNpc) return;
@@ -1715,98 +1838,242 @@
         window.switchTab('notes'); window.switchSubTab(tab);
     }
 
-    // 🟢 FIXED: Monster Generator (Prevents 'STR undefined' crash)
-    window.generateMonsterStatblock = async () => {
-        const btn = document.getElementById('generate-monster-button'); 
-        const spinner = document.getElementById('monster-loading-spinner');
-        const output = document.getElementById('monster-output'); 
-        const status = document.getElementById('monster-status-message');
+    // ==========================================
+// 🐉 ROBUST MONSTER GENERATOR (GUARANTEED GLOBAL ASSIGNMENT)
+// ==========================================
+window.generateMonsterStatblock = async function() {
+    const btn = document.getElementById('generate-monster-button');  
+    const spinner = document.getElementById('monster-loading-spinner');
+    const output = document.getElementById('monster-output');  
+    const status = document.getElementById('monster-status-message');
 
-        btn.disabled = true;
-        spinner.classList.remove('hidden');
-        output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
-        if(status) status.classList.add('hidden');
+    // 1. Reset & UI Prep
+    window.lastGeneratedMonster = null;  // Crucial: Clear old data
+    btn.disabled = true;  
+    spinner.classList.remove('hidden');
+    output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
+    if(status) status.classList.add('hidden');
 
+    try {
+        const name = document.getElementById('monster-name').value;
+        const cr = document.getElementById('monster-cr').value;
+        
+        const prompt = `Generate a D&D 5e monster statblock for "${name}" (CR ${cr}). 
+        Ensure all ability scores (STR, DEX, CON, INT, WIS, CHA), AC, and HP are provided as NUMERIC values.
+        Return strictly JSON with these keys: name, size, type, alignment, ac, hp, speed, STR, DEX, CON, INT, WIS, CHA, traits (array of {name, description}), actions (array of {name, description}), legendary_actions (array of {name, description}).`;
+
+        // 2. Call AI
+        const data = await callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } });
+        
+        // 3. Parse & Normalize Data
+        let raw = {};
         try {
-            const name = document.getElementById('monster-name').value;
-            const cr = document.getElementById('monster-cr').value;
-            
-            // 1. Call AI
-            const data = await callAI(API_URL, { 
-                contents: [{ parts: [{ text: `Generate 5e monster statblock for "${name}" CR "${cr}". Return strictly JSON.` }] }], 
-                generationConfig: { responseMimeType: "application/json", responseSchema: monsterSchema } 
-            });
-            
-            lastGeneratedMonster = JSON.parse(data.candidates[0].content.parts[0].text);
-            const stats = lastGeneratedMonster;
-
-            // 🟢 2. SAFETY FIX: Normalize Ability Scores
-            // If the AI forgot to nest them, or named them differently, we fix it here.
-            const scores = stats.ability_scores || {
-                STR: stats.STR || 10,
-                DEX: stats.DEX || 10,
-                CON: stats.CON || 10,
-                INT: stats.INT || 10,
-                WIS: stats.WIS || 10,
-                CHA: stats.CHA || 10
-            };
-            // Save the fixed version back to the global object so Save buttons work
-            lastGeneratedMonster.ability_scores = scores;
-
-            // 3. Render HTML
-            output.innerHTML = `
-                <div class="dnd-statblock text-left">
-                    <div class="dnd-header">${stats.name}</div>
-                    <div class="italic text-black text-sm">${stats.size || "Medium"} ${stats.type || "Monster"}, ${stats.alignment || "Unaligned"}</div>
-                    <div class="tapered-rule"></div>
-                    <div class="text-sm text-red-900">
-                        <p><strong>AC</strong> ${stats.armor_class}</p>
-                        <p><strong>HP</strong> ${stats.hit_points}</p>
-                        <p><strong>Spd</strong> ${stats.speed}</p>
-                    </div>
-                    <div class="tapered-rule"></div>
-                    <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold">
-                        <div>STR<br>${scores.STR}</div>
-                        <div>DEX<br>${scores.DEX}</div>
-                        <div>CON<br>${scores.CON}</div>
-                        <div>INT<br>${scores.INT}</div>
-                        <div>WIS<br>${scores.WIS}</div>
-                        <div>CHA<br>${scores.CHA}</div>
-                    </div>
-                    <div class="tapered-rule"></div>
-                    <div class="text-sm text-black space-y-2 mt-2">
-                        ${stats.actions ? stats.actions.map(a => `<div><strong>${a.name}.</strong> ${a.description}</div>`).join('') : '<em>No actions provided.</em>'}
-                    </div>
-                </div>`;
-            
-            document.getElementById('save-options-monster').classList.remove('hidden');
-
-        } catch(e) { 
-            console.error(e);
-            output.textContent = "Error generating monster. Please try again.";
-            if(status) {
-                status.textContent = "AI Error: " + e.message;
-                status.classList.remove('hidden');
-            }
-        } finally { 
-            spinner.classList.add('hidden'); 
-            btn.disabled = false; 
+            const cleanText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '');
+            raw = JSON.parse(cleanText);
+        } catch (e) {
+            throw new Error("AI returned malformed data. Try generating a different creature.");
         }
-    };
 
-    window.addMonsterToStatblocks = async function() {
-        if (!window.isAuthReady || !lastGeneratedMonster) return;
-        const m = lastGeneratedMonster;
-        let toHit = 0; const atk = m.actions[0]; if(atk) { const h = atk.description.match(/\+(\d+)/); if(h) toHit = parseInt(h[1]); }
-        await window.addDoc(getCol('dm_toolkit_statblocks'), { name: m.name, hp: m.hit_points, ac: m.armor_class, toHit: toHit, initMod: Math.floor((m.ability_scores.DEX-10)/2), dmg: atk ? atk.name : "Attack", timestamp: new Date().toISOString() });
+        // Map AI variations to a standardized object (m) for reliable Statblock generation
+        const m = {
+            name: raw.name || name,
+            size: raw.size || "Medium",
+            type: raw.type || "Monster",
+            align: raw.alignment || raw.align || "Unaligned",
+            ac: parseInt(raw.ac || raw.armor_class) || 10,  
+            hp: parseInt(raw.hp || raw.hit_points) || 10,   
+            speed: raw.speed || "30 ft.",
+            str: parseInt(raw.STR || raw.ability_scores?.STR) || 10,
+            dex: parseInt(raw.DEX || raw.ability_scores?.DEX) || 10,
+            con: parseInt(raw.CON || raw.ability_scores?.CON) || 10,
+            int: parseInt(raw.INT || raw.ability_scores?.INT) || 10,
+            wis: parseInt(raw.WIS || raw.ability_scores?.WIS) || 10,
+            cha: parseInt(raw.CHA || raw.ability_scores?.CHA) || 10,
+            cr: raw.cr || raw.challenge_rating || cr, 
+            traits: raw.traits || raw.special_abilities || [],
+            actions: raw.actions || [],
+            legendary: raw.legendary_actions || []
+        };
+
+        // 4. CRITICAL: Store the cleaned data globally for the save buttons
+        window.lastGeneratedMonster = m;
+
+        // 5. Build and Display HTML Statblock (Rendering logic snipped for brevity)
+        const fmtMod = (score) => { const mod = Math.floor(((parseInt(score) || 10) - 10) / 2); return mod >= 0 ? `+${mod}` : mod; };
+        const fmtText = (arr) => arr.map(t => `<div><strong class="italic">${t.name}.</strong> ${t.description||t.desc}</div>`).join('');
+        
+        let html = `
+            <div class="dnd-statblock text-left">
+                <div class="dnd-header">${m.name}</div>
+                <div class="italic text-black text-sm">${m.size} ${m.type}, ${m.align}</div>
+                <div class="tapered-rule"></div>
+                <div class="text-sm text-red-900 leading-relaxed">
+                    <p><strong>AC</strong> ${m.ac}</p>
+                    <p><strong>HP</strong> ${m.hp}</p>
+                    <p><strong>Speed</strong> ${m.speed}</p>
+                </div>
+                <div class="tapered-rule"></div>
+                <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
+                    <div>STR<br>${m.str} (${fmtMod(m.str)})</div>
+                    <div>DEX<br>${m.dex} (${fmtMod(m.dex)})</div>
+                    <div>CON<br>${m.con} (${fmtMod(m.con)})</div>
+                    <div>INT<br>${m.int} (${fmtMod(m.int)})</div>
+                    <div>WIS<br>${m.wis} (${fmtMod(m.wis)})</div>
+                    <div>CHA<br>${m.cha} (${fmtMod(m.cha)})</div>
+                </div>
+                <div class="tapered-rule"></div>
+                <div class="space-y-3 mt-3 text-sm text-black">`;
+
+        if (m.traits.length) { html += fmtText(m.traits); }
+        if (m.actions.length) { html += `<div class="dnd-section-title mt-2">Actions</div>${fmtText(m.actions)}`; }
+        if (m.legendary.length) { html += `<div class="dnd-section-title mt-2">Legendary Actions</div>${fmtText(m.legendary)}`; }
+
+        html += `</div></div>`;
+        output.innerHTML = html;
+        
+        // 6. Reveal the Save Buttons
+        document.getElementById('save-options-monster').classList.remove('hidden');
+
+    } catch(e) {  
+        console.error(e);  
+        output.textContent = "Error during generation: " + e.message;
+        // Ensure variable is nullified on error
+        window.lastGeneratedMonster = null; 
+    } finally {  
+        spinner.classList.add('hidden');  
+        btn.disabled = false;  
+    }
+};
+
+    // ==========================================
+// 💾 FIX: ADD MONSTER TO STATBLOCKS (ROBUST DATA EXTRACTION)
+// ==========================================
+window.addMonsterToStatblocks = async function() {
+    // 1. CRITICAL VALIDATION
+    if (!window.userId) { 
+        alert("🔒 Please log in to a Session to save data."); 
+        window.openLoginModal(); 
+        return; 
+    }
+    
+    const m = window.lastGeneratedMonster;
+    if (!m || !m.name) { 
+        alert("Monster data is missing. Please regenerate the monster."); 
+        return; 
     }
 
-    window.saveMonsterToNotes = async function() {
-        if (!window.isAuthReady || !lastGeneratedMonster) return;
-        const newNote = { id: crypto.randomUUID(), title: lastGeneratedMonster.name, content: document.getElementById('monster-output').innerHTML, timestamp: new Date().toISOString() };
-        structuredNotes['enemyNotes'].unshift(newNote); await window.saveStructuredNotes('enemyNotes', structuredNotes['enemyNotes']);
-        window.switchTab('notes'); window.switchSubTab('enemyNotes');
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = "Saving...";
+    btn.disabled = true;
+
+    try {
+        // 2. CORE STAT EXTRACTION (Guaranteed Numbers)
+        
+        // HP/AC: Use parsed values (m.hp, m.ac) which are guaranteed to be numbers by generateMonsterStatblock fix.
+        const monsterHP = parseInt(m.hp) || 10;
+        const monsterAC = parseInt(m.ac) || 10;
+        
+        // Initiative Modifier: Calculate from DEX score. Math.floor((DEX - 10) / 2)
+        const dexScore = parseInt(m.dex) || parseInt(m.DEX) || 10;
+        const initModifier = Math.floor((dexScore - 10) / 2);
+        
+        let toHit = initModifier; // Default To Hit to DEX Mod
+        let mainAttack = m.actions.length ? m.actions[0].name : "Attack";
+
+        // 3. GET ATTACK/TO HIT MODIFIER (Best Guess from the first Action)
+        if (m.actions && m.actions.length > 0 && m.actions[0].description) {
+            const desc = m.actions[0].description;
+            // Look for a pattern like "+5 to hit"
+            const hitMatch = desc.match(/(\+|\-)?\d+\s+to\s+hit/); 
+            if (hitMatch) {
+                // Extracts the number part (e.g., '+10 to hit' -> 10)
+                // Use .replace to strip text and ensure proper parsing
+                toHit = parseInt(hitMatch[0].replace(/[^0-9\-\+]/g, ''), 10);
+            }
+        }
+        
+        // 4. Create Database Object
+        const statData = {
+            name: m.name,
+            hp: monsterHP, 
+            ac: monsterAC, 
+            
+            toHit: toHit || 0,         // Final To Hit Modifier (now guaranteed number)
+            initMod: initModifier,     // Final Initiative Modifier
+            
+            dmg: mainAttack,           // Name of the main attack
+            timestamp: new Date().toISOString()
+        };
+
+        // 5. Save to Statblocks Collection
+        // NOTE: getCol is defined in your code to target the correct user session.
+        await window.addDoc(getCol('dm_toolkit_statblocks'), statData);
+
+        // 6. Success Feedback
+        if(confirm(`✅ Saved "${m.name}" to Statblocks!\n\nDo you want to go to the Stats tab now?`)) {
+            window.switchTab('statblocks');
+        }
+
+    } catch (e) {
+        console.error("Stat Save Error:", e);
+        alert("Error saving statblock. Check console for details.");
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
     }
+};
+
+    // ==========================================
+// 💾 FINAL ROBUST FIX: MONSTER SAVE TO NOTES 
+// ==========================================
+window.saveMonsterToNotes = async function() {
+    // 1. CRITICAL VALIDATION
+    if (!window.userId) { 
+        alert("🔒 Please log in to a Session to save data."); 
+        window.openLoginModal(); 
+        return; 
+    }
+    const m = window.lastGeneratedMonster;
+    if (!m || !m.name) { 
+        alert("Monster data is missing. Please regenerate the monster."); 
+        return; 
+    }
+
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = "Processing...";
+    btn.disabled = true; // Disable button immediately
+
+    try {
+        // 2. Ask for Campaign (The critical asynchronous step)
+        const targetCampaign = await window.promptForCampaign();
+        if (!targetCampaign) {
+            // User cancelled the modal, exit gracefully
+            return; 
+        }
+
+        // 3. Create Note Object (Content is pulled from the dedicated monster output div)
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: `${m.name} (CR ${m.cr || 'N/A'})`, 
+            // 🟢 Content MUST be pulled from the correct dedicated div:
+            content: document.getElementById('monster-output').innerHTML, 
+            timestamp: new Date().toISOString() 
+        };
+
+        // 4. Use the unified save and redirect helper
+        await window.finalizeSave('enemyNotes', newNote, targetCampaign);
+        
+    } catch (e) {
+        console.error("Save to Notes Error:", e);
+        alert("Error saving note: " + e.message + ". Check console for details.");
+    } finally {
+        // Re-enable button regardless of success or failure
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+};
 
    // 🟢 FIXED: Loot Generator (Shows Errors & Formatting)
     window.generateLoot = async () => {
@@ -3545,23 +3812,63 @@
         await window.finalizeSave(tab, newNote, targetCampaign);
     };
 
-    // 3. MONSTER GENERATOR
-    window.saveMonsterToNotes = async function() {
-        if (!window.isAuthReady || !lastGeneratedMonster) return;
+    // ==========================================
+// 💾 DIAGNOSTIC FIX: MONSTER SAVE TO NOTES (TRACING CONTENT)
+// ==========================================
+window.saveMonsterToNotes = async function() {
+    let btn, originalText;
+    try {
+        // 1. CRITICAL VALIDATION
+        if (!window.userId) { 
+            alert("🔒 Please log in to a Session to save data."); 
+            window.openLoginModal(); 
+            return; 
+        }
+        const m = window.lastGeneratedMonster;
+        if (!m || !m.name) { 
+            alert("Monster data is missing. Please regenerate the monster."); 
+            return; 
+        }
 
-        // Ask for Campaign
+        // 2. UI Prep (Ensure the button is correctly grabbed before the await call)
+        btn = event.target;
+        originalText = btn.innerText;
+        btn.innerText = "Processing...";
+        btn.disabled = true;
+
+        // 3. Ask for Campaign (The asynchronous step)
         const targetCampaign = await window.promptForCampaign();
-        if (!targetCampaign) return;
+        if (!targetCampaign) return; // User cancelled
 
+        // 4. Content Retrieval with Fallback
+        const monsterOutputElement = document.getElementById('monster-output');
+        let noteContent = monsterOutputElement ? monsterOutputElement.innerHTML : "Error: Monster output element not found.";
+        
+        // Final sanity check before passing the object
+        const noteTitle = `${m.name} (CR ${m.cr || 'N/A'})`;
+        
+        // 5. Create Note Object
         const newNote = { 
             id: crypto.randomUUID(), 
-            title: lastGeneratedMonster.name, 
-            content: document.getElementById('monster-output').innerHTML, 
+            title: noteTitle, 
+            content: noteContent, 
             timestamp: new Date().toISOString() 
         };
-
+        
+        // 6. Finalize Save
         await window.finalizeSave('enemyNotes', newNote, targetCampaign);
-    };
+        
+    } catch (e) {
+        console.error("FINAL SAVE TO NOTES CRASHED:", e);
+        alert("CRITICAL ERROR: Save failed. Check console for the full error message.");
+    } finally {
+        // Re-enable button
+        if (btn) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+};
 
     // 4. HOMEBREW (Weapons, Items, Monsters)
     window.saveHomebrewToNotes = async (type, createNote = true) => {
@@ -3949,6 +4256,10 @@
         </div>
     </div>
 </div>
+
+<button onclick="window.switchTab('help')" class="fixed bottom-6 right-6 z-50 w-12 h-12 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl border-2 border-indigo-400 flex items-center justify-center transition transform hover:scale-110 active:scale-95 group" title="Go to Help">
+    <span class="text-xl font-bold group-hover:animate-bounce">?</span>
+</button>
         
 </body>
 </html>
@@ -3959,8 +4270,3 @@
         </footer>
 
     </div>
-
-
-
-
-
