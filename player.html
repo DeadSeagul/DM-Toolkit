@@ -37,7 +37,6 @@
             padding-top: 5px;
         }
         .text-field-label { display: block; text-transform: uppercase; font-weight: bold; font-size: 10px; color: #94a3b8; }
-        /* Modal Backdrop */
         .modal-backdrop { position: fixed; inset: 0; z-index: 150; background-color: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
     </style>
 </head>
@@ -55,16 +54,19 @@
 
     <div id="init-form" class="tab-content bg-gray-800/50 p-4 rounded-xl border border-indigo-500/30 mb-6 shadow-lg">
         <h3 class="text-sm font-bold text-indigo-300 mb-3 uppercase tracking-wider">Join Initiative</h3>
-        <p class="text-xs text-gray-400 mb-3">Load your stats from the 'Character Sheet' tab and then submit your roll here.</p>
+        <p class="text-xs text-gray-400 mb-3">Manually enter your stats and initiative roll below to join the battle.</p>
 
         <div class="space-y-3 pb-4 border-b border-gray-700">
-            <p class="text-[10px] text-gray-400 uppercase font-bold">Character: <span id="combat-char-name" class="font-bold text-white">N/A</span></p>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Character Name</label>
+                <input type="text" id="p-name" class="input-dark" placeholder="e.g. Aragorn">
+            </div>
             <div class="grid grid-cols-3 gap-3">
                 <div><label class="text-[10px] text-gray-400 uppercase font-bold">Init Roll</label><input type="number" id="p-init" class="input-dark text-center" placeholder="d20+Mod"></div>
-                <div><label class="text-[10px] text-gray-400 uppercase font-bold">AC</label><input type="number" id="p-ac" class="input-dark text-center" placeholder="15" disabled></div>
-                <div><label class="text-[10px] text-gray-400 uppercase font-bold">Max HP</label><input type="number" id="p-hp" class="input-dark text-center" placeholder="Max" disabled></div>
+                <div><label class="text-[10px] text-gray-400 uppercase font-bold">AC</label><input type="number" id="p-ac" class="input-dark text-center" placeholder="15"></div>
+                <div><label class="text-[10px] text-gray-400 uppercase font-bold">Max HP</label><input type="number" id="p-hp" class="input-dark text-center" placeholder="Max"></div>
             </div>
-            <button onclick="window.sendCharacter()" id="btn-join" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg shadow-lg transition transform active:scale-95 flex justify-center items-center gap-2" disabled>
+            <button onclick="window.sendCharacter()" id="btn-join" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg shadow-lg transition transform active:scale-95 flex justify-center items-center gap-2">
                 <span>🚀</span> Send to DM
             </button>
         </div>
@@ -79,17 +81,17 @@
 
     <form id="data-form" class="tab-content hidden bg-gray-800/50 p-4 rounded-xl border border-indigo-500/30 mb-6 shadow-lg">
         <h3 class="text-sm font-bold text-indigo-300 mb-3 uppercase tracking-wider">Character Sheet Setup</h3>
-        <p class="text-xs text-gray-400 mb-4">Saves directly to your DM's campaign notes. You must enter your Name to save.</p>
+        <p class="text-xs text-gray-400 mb-4">Saves your full sheet permanently to your DM's campaign notes.</p>
         
         <div class="space-y-3 mb-4 p-3 bg-gray-900/50 rounded-lg border border-gray-700">
-    <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-field-label">DM Session ID</label><div id="campaign-display" class="text-sm font-bold text-green-400">Loading...</div></div>
-        <div><label class="text-field-label">Character Saved As</label><div id="saved-char-name" class="text-sm font-bold text-yellow-300">New Character</div></div>
-    </div>
-    <button type="button" onclick="loadCharacterFromDM()" id="btn-load-char" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition transform active:scale-95">
-        Load Saved Sheet (If Exists)
-    </button>
-</div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-field-label">DM Session ID</label><div id="campaign-display" class="text-sm font-bold text-green-400">Loading...</div></div>
+                <div><label class="text-field-label">Character Saved As</label><div id="saved-char-name" class="text-sm font-bold text-yellow-300">New Character</div></div>
+            </div>
+            <button type="button" onclick="loadCharacterFromDM()" id="btn-load-char" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition transform active:scale-95">
+                Load Saved Sheet (If Exists)
+            </button>
+        </div>
         
         <div id="sheet-content-scroll" class="space-y-4">
             <h4 class="text-xs text-gray-500 uppercase font-bold border-b border-gray-700 pb-1">Core Identity & Combat</h4>
@@ -167,16 +169,14 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, addDoc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, addDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global State
         let dmId = null;
         let combatants = [];
         let currentTurn = -1;
         let characterSheetCache = null; 
-        let currentCampaignList = ['Default Campaign']; // List of campaigns from DM
-        
-        // Promise Resolver for the Campaign Selection Modal
+        let currentCampaignList = ['Default Campaign']; 
         let campaignResolve = null;
 
         // Firebase Path Constants
@@ -186,7 +186,6 @@
             appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
         };
         
-        // All fields in the character sheet form
         const SHEET_INPUT_IDS = [
             'sheet-name', 'sheet-race', 'sheet-class', 'sheet-prof', 'sheet-maxhp', 
             'sheet-ac', 'sheet-stats-misc', 'sheet-features', 'sheet-attacks', 'sheet-str', 'sheet-dex', 
@@ -212,15 +211,12 @@
             }
 
             document.getElementById('status').textContent = "● Connected to Session";
-            document.getElementById('campaign-display').textContent = dmId; // Show DM's session ID
+            document.getElementById('campaign-display').textContent = dmId; // Show DM Session ID
             
-            // Start all listeners
             setupTurnOrderListener();
             setupCombatantsListener();
-            setupCampaignsListener(); // CRITICAL: Load campaign list
+            setupCampaignsListener(); 
             loadCharacterFromDM(); 
-            
-            document.getElementById('btn-join').disabled = false;
         }
 
         // --- Firebase Listeners ---
@@ -233,25 +229,17 @@
              return collection(db, 'artifacts', 'default', 'sessions', dmId, 'shared_combatants');
         }
 
-        // CRITICAL: Listener to pull Campaign List and all PC Notes from the DM session
         function setupCampaignsListener() {
             onSnapshot(getSharedDocRef('shared_notes'), (docSnapshot) => {
                 if (docSnapshot.exists()) {
                     const data = docSnapshot.data();
-                    
-                    // Update campaign list
                     if (data.campaignList && Array.isArray(data.campaignList)) {
                         currentCampaignList = data.campaignList;
                     }
-                    
-                    // Update the initial sheet load check if the user is in the data tab
-                    // This is less critical here since loadCharacterFromDM fetches once, but keeps logic ready
                 }
             });
         }
 
-
-        // LISTENER 1: TURN ORDER
         function setupTurnOrderListener() {
             onSnapshot(getSharedDocRef('shared_combat_state'), (docSnapshot) => {
                 currentTurn = docSnapshot.exists() ? (docSnapshot.data().currentTurnIndex || 0) : -1;
@@ -259,7 +247,6 @@
             });
         }
 
-        // LISTENER 2: COMBATANT DATA
         function setupCombatantsListener() {
             onSnapshot(getCombatantsColRef(), (snapshot) => {
                 combatants = [];
@@ -269,10 +256,14 @@
             });
         }
 
-        // --- Campaign Selection Modal Logic (Player Side) ---
+        // --- Campaign Selection Modal Logic ---
 
         window.promptForCampaign = () => {
-            return new Promise((resolve) => {
+            return new Promise(async (resolve) => {
+                const modal = document.getElementById('save-campaign-modal');
+                const select = document.getElementById('save-campaign-select');
+
+                // Ensure we have the latest list from the listener
                 if (currentCampaignList.length === 0) {
                      alert("The DM has not created any campaigns yet. Using 'Default Campaign'.");
                      resolve('Default Campaign');
@@ -280,14 +271,21 @@
                 }
                 
                 campaignResolve = resolve;
-                const modal = document.getElementById('save-campaign-modal');
-                const select = document.getElementById('save-campaign-select');
                 
-                // Populate list from the live-synced campaignList
+                // Populate list
                 select.innerHTML = currentCampaignList.map(c => 
                     `<option value="${c}">${c}</option>`
                 ).join('');
                 
+                // Try to pre-select the last saved campaign, if known
+                const lastCampaign = localStorage.getItem('player_last_campaign');
+                if (lastCampaign) {
+                    select.value = lastCampaign;
+                } else {
+                    // Default to 'Default Campaign' if it exists
+                    select.value = 'Default Campaign';
+                }
+
                 modal.classList.remove('hidden');
             });
         };
@@ -295,8 +293,13 @@
         window.confirmSaveCampaign = () => {
             const select = document.getElementById('save-campaign-select');
             const modal = document.getElementById('save-campaign-modal');
+            const campaignChoice = select.value;
+            
             modal.classList.add('hidden');
-            if (campaignResolve) campaignResolve(select.value);
+            // Save choice locally for next time
+            localStorage.setItem('player_last_campaign', campaignChoice);
+            
+            if (campaignResolve) campaignResolve(campaignChoice);
         };
 
         window.resolveSavePromise = (val) => {
@@ -306,7 +309,7 @@
         };
 
 
-        // --- Character Sheet Logic (Unified Save/Load) ---
+        // --- Character Sheet Logic (DM PC Notes) ---
 
         /** Loads the player's saved character sheet from the DM's PC Notes. */
         window.loadCharacterFromDM = async () => {
@@ -326,7 +329,7 @@
                 return;
             }
             
-            statusEl.textContent = `Searching for ${charName} across all campaigns...`;
+            statusEl.textContent = `Searching for ${charName}...`;
             const safeName = safeEncodeName(charName);
             const pcNotesRef = getSharedDocRef('shared_notes');
 
@@ -335,8 +338,6 @@
                 
                 if (docSnap.exists() && docSnap.data().structuredPcNotes) {
                     const notesArray = docSnap.data().structuredPcNotes;
-                    
-                    // We search for a sheet based on the safe name ID
                     const foundSheetNote = notesArray.find(n => n.id === safeName && n.sheetData);
                     
                     if (foundSheetNote) {
@@ -350,14 +351,11 @@
                             }
                         });
                         
-                        // Update Combat Tab fields
-                        document.getElementById('p-ac').value = characterSheetCache['sheet-ac'] || '';
-                        document.getElementById('p-hp').value = characterSheetCache['sheet-maxhp'] || '';
-                        document.getElementById('combat-char-name').textContent = characterSheetCache['sheet-name'];
+                        document.getElementById('sheet-name').value = characterSheetCache['sheet-name']; 
 
                         savedNameEl.textContent = `${characterSheetCache['sheet-name']} (in ${foundSheetNote.campaign || 'Default'})`;
                         statusEl.textContent = `Sheet for ${charName} loaded successfully!`;
-                        localStorage.setItem('player_last_char_name', charName); // Update last used name
+                        localStorage.setItem('player_last_char_name', charName);
                         
                         return;
                     }
@@ -391,7 +389,7 @@
                 const targetCampaign = await window.promptForCampaign();
                 if (!targetCampaign) {
                     statusEl.textContent = "Save cancelled.";
-                    return; // Player cancelled the modal
+                    return; 
                 }
                 
                 statusEl.textContent = `Saving to campaign: ${targetCampaign}...`;
@@ -428,7 +426,7 @@
                     title: noteTitle,
                     content: contentHTML, 
                     timestamp: new Date().toISOString(),
-                    campaign: targetCampaign, // <-- NEW: TAGGED WITH CAMPAIGN
+                    campaign: targetCampaign, 
                     sheetData: newSheetData 
                 };
                 
@@ -450,12 +448,7 @@
                 localStorage.setItem('player_last_char_name', name);
                 characterSheetCache = newSheetData;
                 
-                // Update Combat Tab fields
-                document.getElementById('p-ac').value = newSheetData['sheet-ac'] || '';
-                document.getElementById('p-hp').value = newSheetData['sheet-maxhp'] || '';
-                document.getElementById('combat-char-name').textContent = name;
                 document.getElementById('saved-char-name').textContent = `${name} (in ${targetCampaign})`;
-                document.getElementById('sheet-name').value = name;
                 
                 btn.innerHTML = "✅ Saved! Ready for Combat"; 
                 btn.classList.replace('bg-indigo-600', 'bg-green-600');
@@ -476,31 +469,26 @@
         };
 
 
-        // --- Combat Tab Logic ---
+        // --- Combat Tab Logic (Manual Submission Restored) ---
 
         window.sendCharacter = async () => {
             const btn = document.getElementById('btn-join');
+            const name = document.getElementById('p-name').value.trim();
             const initRoll = parseInt(document.getElementById('p-init').value) || 0;
+            const ac = parseInt(document.getElementById('p-ac').value) || 10;
+            const maxHp = parseInt(document.getElementById('p-hp').value) || 10;
             
-            if (!characterSheetCache || !characterSheetCache.name) { 
-                 alert("Please save your character sheet first in the 'Character Sheet' tab!");
-                 showTab('data');
-                 return; 
-            }
+            if (!name) { alert("Please enter your Character Name!"); return; }
             if (initRoll === 0) { alert("Please enter your Initiative Roll (d20 + Modifier)!"); return; }
 
             btn.disabled = true; btn.innerHTML = "Sending...";
             
-            // Get necessary data from cache/inputs
-            const name = characterSheetCache.name;
-            const ac = parseInt(document.getElementById('p-ac').value) || 10;
-            const maxHp = parseInt(document.getElementById('p-hp').value) || 10;
-            
-            // Try to pull Init Mod from DEX in the cache
-            const dex = parseInt(characterSheetCache['sheet-dex']) || 10;
-            const initModifier = Math.floor((dex - 10) / 2);
+            // For manual submission, we use the input fields directly.
+            // We set initModifier to 0 since the player submits the final rolled value.
+            const initModifier = 0; 
 
             try {
+                // Check if this specific name is already in combat (e.g. they re-rolled init)
                 const existing = combatants.find(c => c.name === name);
                 
                 const combatantData = {
@@ -508,25 +496,34 @@
                     init: initRoll, 
                     ac: ac, 
                     maxHp: maxHp, 
+                    // Assume current HP is max if adding fresh. If existing, keep current HP.
                     currentHp: existing ? existing.currentHp : maxHp,
                     initModifier: initModifier, 
                     conditions: existing ? existing.conditions : [],
-                    sheetRefPath: safeEncodeName(name) 
+                    sheetRefPath: safeEncodeName(name) // Still link if a full sheet exists
                 };
                 
                 if (existing) {
+                    // Update existing combatant's initiative and stats
                     await updateDoc(doc(getCombatantsColRef(), existing.id), combatantData);
                 } else {
+                    // Add new combatant
                     await addDoc(getCombatantsColRef(), combatantData);
                 }
 
                 btn.innerHTML = "✅ Sent!"; btn.classList.replace('bg-indigo-600', 'bg-green-600');
                 
+                // Clear the Name, AC, HP fields for next submission (common use case is adding different monsters/NPCs quickly)
+                document.getElementById('p-name').value = '';
+                document.getElementById('p-ac').value = '';
+                document.getElementById('p-hp').value = '';
+
                 setTimeout(() => {
                     btn.disabled = false; 
                     btn.innerHTML = "<span>🚀</span> Send to DM";
                     btn.classList.replace('bg-green-600', 'bg-indigo-600');
                 }, 2000);
+
             } catch (e) { 
                 console.error(e);
                 alert("Error: " + e.message); 
