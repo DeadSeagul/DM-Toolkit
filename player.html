@@ -24,45 +24,81 @@
             background-color: #1e293b; /* slate-800 */
         }
         .text-field-label { display: block; text-transform: uppercase; font-weight: bold; font-size: 10px; color: #94a3b8; }
-        #sheet-content-scroll {
-            max-height: 70vh;
-            overflow-y: auto;
-            padding-right: 8px;
-            padding-top: 5px;
-        }
         .modal-backdrop { position: fixed; inset: 0; z-index: 150; background-color: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
 
-        /* Custom Styles for Ability Score Boxes (Mimicking 5E Sheet) */
+        /* --- 5E Character Sheet Layout Styles --- */
+        #sheet-content-scroll {
+            max-height: 80vh;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        /* Containers */
+        .sheet-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr; /* 3 main columns */
+            gap: 12px;
+        }
+
+        /* Ability Scores */
         .ability-outer-frame {
             display: flex;
             flex-direction: column;
             align-items: center;
+            margin-bottom: 15px; /* Spacing between ability scores */
         }
         .ability-mod-display {
             width: 100%;
-            height: 48px;
-            border: 2px solid #34d399; /* Modifier frame */
+            height: 30px;
+            border: 2px solid #34d399; 
             border-radius: 4px;
-            margin-bottom: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: bold;
             color: #34d399;
             background-color: rgba(52, 211, 153, 0.1);
         }
         .ability-score-input {
-            font-size: 1.2rem;
+            font-size: 0.9rem;
             font-weight: bold;
             text-align: center;
-            width: 90%;
+            width: 100%;
             padding: 2px;
             background-color: #1e293b;
             border: 1px solid #334155;
             border-radius: 4px;
             color: #fff;
             outline: none;
+            margin-top: 4px;
+        }
+
+        /* Saving Throws and Skills */
+        .skills-section {
+            border: 1px solid #334155;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #1e293b;
+        }
+        .skill-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 2px;
+            font-size: 12px;
+        }
+        .skill-mod-input {
+            width: 35px;
+            padding: 0 4px;
+            text-align: center;
+            font-size: 12px;
+            background-color: #334155;
+            border-radius: 4px;
+        }
+        .skill-label {
+            flex-grow: 1;
+            color: #ccc;
         }
     </style>
 </head>
@@ -106,41 +142,24 @@
     </div>
 
     <form id="data-form" class="tab-content hidden bg-gray-800/50 p-4 rounded-xl border border-indigo-500/30 mb-6 shadow-lg">
-        <h3 class="text-sm font-bold text-indigo-300 mb-3 uppercase tracking-wider">Character Sheet Setup</h3>
-        <p class="text-xs text-gray-400 mb-4">Saves your full sheet permanently to your DM's campaign notes.</p>
+        <h3 class="text-sm font-bold text-indigo-300 mb-3 uppercase tracking-wider">D&D 5E Character Sheet</h3>
+        <p class="text-xs text-gray-400 mb-4">Your personal reference sheet, saved to your DM's PC Notes tab.</p>
         
-        <div class="space-y-3 mb-4 p-3 bg-gray-900/50 rounded-lg border border-gray-700">
-            <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-field-label">DM Session ID</label><div id="campaign-display" class="text-sm font-bold text-green-400">Loading...</div></div>
-                <div><label class="text-field-label">Character Saved As</label><div id="saved-char-name" class="text-sm font-bold text-yellow-300">New Character</div></div>
-            </div>
-            <button type="button" onclick="loadCharacterFromDM()" id="btn-load-char" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition transform active:scale-95">
-                Load Saved Sheet (If Exists)
-            </button>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div><label class="text-field-label">Character Name</label><input type="text" id="sheet-name" class="input-dark" placeholder="Character Name" required></div>
+            <div><label class="text-field-label">Class & Level</label><input type="text" id="sheet-class" class="input-dark" placeholder="e.g. Wizard 5"></div>
+            <div><label class="text-field-label">Race</label><input type="text" id="sheet-race" class="input-dark" placeholder="e.g. Elf"></div>
+            <div><label class="text-field-label">Background / Alignment</label><input type="text" id="sheet-stats-misc-header" class="input-dark" placeholder="Acolyte, Lawful Good"></div>
         </div>
         
-        <div id="sheet-content-scroll" class="space-y-4">
-            <h4 class="text-xs text-gray-500 uppercase font-bold border-b border-gray-700 pb-1">Core Identity & Combat</h4>
-            <div>
-                <label class="text-field-label">Character Name (Unique Key)</label>
-                <input type="text" id="sheet-name" class="input-dark" placeholder="Character Name" required>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-field-label">Race</label><input type="text" id="sheet-race" class="input-dark" placeholder="e.g. Elf"></div>
-                <div><label class="text-field-label">Class & Level</label><input type="text" id="sheet-class" class="input-dark" placeholder="e.g. Wizard 5"></div>
-            </div>
-            <div class="grid grid-cols-3 gap-3">
-                 <div><label class="text-field-label">Max HP</label><input type="number" id="sheet-maxhp" class="input-dark text-center" placeholder="45"></div>
-                 <div><label class="text-field-label">Base AC</label><input type="number" id="sheet-ac" class="input-dark text-center" placeholder="15"></div>
-                 <div><label class="text-field-label">Proficiency Bonus</label><input type="number" id="sheet-prof" class="input-dark text-center" placeholder="+3"></div>
-            </div>
+        <div id="sheet-content-scroll" class="sheet-container">
             
-            <div class="pt-2 border-t border-gray-700">
-                <h4 class="text-xs text-gray-500 uppercase font-bold mb-2">Ability Scores</h4>
-                <div class="grid grid-cols-6 gap-2">
+            <div class="col-span-1 flex flex-col items-center">
+
+                <div class="space-y-4 w-full">
                     ${['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => `
                         <div class="ability-outer-frame">
-                            <label class="text-[9px] uppercase block mb-1 text-indigo-300">${stat}</label>
+                            <label class="text-[10px] uppercase block mb-1 text-indigo-300">${stat.toUpperCase()}</label>
                             <div id="mod-${stat}" class="ability-mod-display">
                                 +0
                             </div>
@@ -155,21 +174,101 @@
                         </div>
                     `).join('')}
                 </div>
+
+                <div class="skills-section mt-4 w-full">
+                    <h5 class="text-xs font-bold text-yellow-300 mb-2 uppercase">Saving Throws</h5>
+                    <div class="space-y-1 text-xs text-gray-400">
+                        <p>Strength (Str) [Input your save modifier in the box below]</p>
+                        <p>Dexterity (Dex)</p>
+                        <p>Constitution (Con)</p>
+                        <p>Intelligence (Int)</p>
+                        <p>Wisdom (Wis)</p>
+                        <p>Charisma (Cha)</p>
+                        <input type="text" id="sheet-saves-note" class="input-dark mt-2 p-1 text-xs" placeholder="e.g. Wis Save +4">
+                    </div>
+                </div>
+
+                <div class="skills-section mt-4 w-full">
+                    <h5 class="text-xs font-bold text-yellow-300 mb-2 uppercase">Skills</h5>
+                    <div class="space-y-1">
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Acrobatics (Dex)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Animal Handling (Wis)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Athletics (Str)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Deception (Cha)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">History (Int)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Insight (Wis)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Intimidation (Cha)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Investigation (Int)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Medicine (Wis)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Nature (Int)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label text-green-400">Perception (Wis)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Performance (Cha)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Persuasion (Cha)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Religion (Int)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Sleight of Hand (Dex)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Stealth (Dex)</span></div>
+                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Survival (Wis)</span></div>
+                    </div>
+                </div>
+
+                <div class="skills-section mt-4 w-full">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Other Proficiencies & Languages</label>
+                    <textarea id="sheet-features" class="input-dark h-24 mt-1" placeholder=""></textarea>
+                </div>
+
             </div>
 
-            <div class="pt-2 border-t border-gray-700 space-y-3">
-                <h4 class="text-xs text-gray-500 uppercase font-bold mb-2">Reference Details</h4>
-                <div>
-                    <label class="text-field-label">Saves / Speed / Passive WIS / Spell DC</label>
-                    <input type="text" id="sheet-stats-misc" class="input-dark" placeholder="STR Save +5, Speed 30, Spell DC 14">
+            <div class="col-span-1 space-y-4">
+                
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="text-center"><label class="text-field-label">Proficiency Bonus</label><input type="number" id="sheet-prof" class="input-dark text-center" placeholder="+3"></div>
+                    <div class="text-center"><label class="text-field-label">Armor Class</label><input type="number" id="sheet-ac" class="input-dark text-center" placeholder="15"></div>
+                    <div class="text-center"><label class="text-field-label">Initiative</label><input type="text" id="sheet-init-mod-display" class="input-dark text-center" placeholder="+2" disabled></div>
                 </div>
-                <div>
-                    <label class="text-field-label">Attacks & Key Features</label>
-                    <textarea id="sheet-attacks" class="input-dark h-20" placeholder="e.g. Firebolt (+6, 1d10), Action Surge (1), Healing Word (BA)"></textarea>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="text-center"><label class="text-field-label">Speed</label><input type="text" id="sheet-stats-misc" class="input-dark text-center" placeholder="30 ft"></div>
+                    <div class="text-center"><label class="text-field-label">Passive Wisdom (Perception)</label><input type="number" id="sheet-passive-wis" class="input-dark text-center" placeholder="10"></div>
                 </div>
-                <div>
-                    <label class="text-field-label">Equipment & Inventory Notes</label>
-                    <textarea id="sheet-features" class="input-dark h-16" placeholder="e.g. Longsword, 3 Potions of Healing, 50 ft rope"></textarea>
+                
+                <div class="p-3 border border-red-500/30 rounded-lg">
+                    <div class="text-field-label text-red-300">Hit Point Maximum: <input type="number" id="sheet-maxhp" class="input-dark text-center inline-block w-16 p-0" placeholder="45"></div>
+                    <h5 class="text-2xl font-bold text-green-400 text-center my-2">Current HP</h5>
+                    <input type="text" class="input-dark text-center text-xl" placeholder="--">
+                </div>
+
+                <div class="p-3 border border-purple-500/30 rounded-lg">
+                    <h5 class="text-xs font-bold text-purple-300 mb-2 uppercase">Attacks & Spellcasting</h5>
+                    <textarea id="sheet-attacks" class="input-dark h-32" placeholder="e.g. Firebolt (+6, 1d10), Longsword (+4, 1d8+2)"></textarea>
+                </div>
+                
+                <div class="p-3 border border-yellow-500/30 rounded-lg">
+                    <h5 class="text-xs font-bold text-yellow-300 mb-2 uppercase">Equipment / Inventory</h5>
+                    <textarea id="sheet-inventory" class="input-dark h-40" placeholder="e.g. 3 Potions of Healing, 50 ft rope"></textarea>
+                </div>
+            </div>
+            
+            <div class="col-span-1 space-y-4">
+                
+                <div class="p-3 border border-blue-500/30 rounded-lg">
+                    <h5 class="text-xs font-bold text-blue-300 mb-2 uppercase">Personality Traits</h5>
+                    <textarea class="input-dark h-16" placeholder=""></textarea>
+                </div>
+                <div class="p-3 border border-blue-500/30 rounded-lg">
+                    <h5 class="text-xs font-bold text-blue-300 mb-2 uppercase">Ideals</h5>
+                    <textarea class="input-dark h-16" placeholder=""></textarea>
+                </div>
+                <div class="p-3 border border-blue-500/30 rounded-lg">
+                    <h5 class="text-xs font-bold text-blue-300 mb-2 uppercase">Bonds</h5>
+                    <textarea class="input-dark h-16" placeholder=""></textarea>
+                </div>
+                <div class="p-3 border border-blue-500/30 rounded-lg">
+                    <h5 class="text-xs font-bold text-blue-300 mb-2 uppercase">Flaws / Features & Traits</h5>
+                    <textarea id="sheet-features" class="input-dark h-32" placeholder=""></textarea>
+                </div>
+
+                <div class="p-3 border border-gray-700 rounded-lg">
+                    <label class="text-field-label">Current Campaign</label><div id="dm-session-id-display" class="text-sm font-bold text-green-400">${dmId}</div>
+                    <label class="text-field-label mt-2">Saved Character</label><div id="saved-char-name-footer" class="text-sm font-bold text-yellow-300">New Character</div>
                 </div>
             </div>
         </div>
@@ -225,7 +324,7 @@
         const ABILITY_STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
         const SHEET_INPUT_IDS = [
             'sheet-name', 'sheet-race', 'sheet-class', 'sheet-prof', 'sheet-maxhp', 
-            'sheet-ac', 'sheet-stats-misc', 'sheet-features', 'sheet-attacks', ...ABILITY_STATS
+            'sheet-ac', 'sheet-stats-misc', 'sheet-stats-misc-header', 'sheet-saves-note', 'sheet-passive-wis', 'sheet-inventory', 'sheet-attacks', 'sheet-features', ...ABILITY_STATS
         ];
 
         // --- Initialization ---
@@ -253,15 +352,12 @@
                 const displayEl = document.getElementById(displayId);
 
                 if (inputEl && displayEl) {
-                    // This uses the 'input' event for real-time updating
                     const updateDisplay = () => {
                         displayEl.textContent = calculateModifier(inputEl.value);
                     };
 
                     inputEl.addEventListener('input', updateDisplay);
-                    
-                    // Initial calculation on load/setup
-                    updateDisplay();
+                    updateDisplay(); // Initial calculation
                 }
             });
         }
@@ -279,6 +375,12 @@
             document.getElementById('status').textContent = "● Connected to Session";
             document.getElementById('campaign-display').textContent = dmId; 
             
+            // Set DM ID in the footer as well, for redundancy
+            const dmSessionIdDisplay = document.getElementById('dm-session-id-display');
+            if (dmSessionIdDisplay) {
+                dmSessionIdDisplay.textContent = dmId;
+            }
+
             setupTurnOrderListener();
             setupCombatantsListener();
             setupCampaignsListener(); 
@@ -378,6 +480,7 @@
             const statusEl = document.getElementById('sheet-save-status');
             const sheetNameEl = document.getElementById('sheet-name');
             const savedNameEl = document.getElementById('saved-char-name');
+            const savedNameFooterEl = document.getElementById('saved-char-name-footer');
             
             let charName = sheetNameEl.value.trim();
             if (!charName) {
@@ -388,6 +491,7 @@
             if (!charName) {
                 statusEl.textContent = "Enter a name and Save to start.";
                 savedNameEl.textContent = "New Character";
+                if(savedNameFooterEl) savedNameFooterEl.textContent = "New Character";
                 return;
             }
             
@@ -413,12 +517,14 @@
                             }
                         });
 
-                        // Trigger modifier recalculation after populating scores
                         setupAbilityScoreListeners();
                         
                         document.getElementById('sheet-name').value = characterSheetCache['sheet-name']; 
 
-                        savedNameEl.textContent = `${characterSheetCache['sheet-name']} (in ${foundSheetNote.campaign || 'Default'})`;
+                        const displayTxt = `${characterSheetCache['sheet-name']} (in ${foundSheetNote.campaign || 'Default'})`;
+                        savedNameEl.textContent = displayTxt;
+                        if(savedNameFooterEl) savedNameFooterEl.textContent = displayTxt;
+
                         statusEl.textContent = `Sheet for ${charName} loaded successfully!`;
                         localStorage.setItem('player_last_char_name', charName);
                         
@@ -428,6 +534,7 @@
                 
                 characterSheetCache = null;
                 savedNameEl.textContent = "New Character";
+                if(savedNameFooterEl) savedNameFooterEl.textContent = "New Character";
                 statusEl.textContent = `Character sheet not found. Fill and Save.`;
 
             } catch (e) {
@@ -513,8 +620,11 @@
                 localStorage.setItem('player_last_char_name', name);
                 characterSheetCache = newSheetData;
                 
-                document.getElementById('saved-char-name').textContent = `${name} (in ${targetCampaign})`;
-                
+                const displayTxt = `${name} (in ${targetCampaign})`;
+                document.getElementById('saved-char-name').textContent = displayTxt;
+                const savedNameFooterEl = document.getElementById('saved-char-name-footer');
+                if(savedNameFooterEl) savedNameFooterEl.textContent = displayTxt;
+
                 btn.innerHTML = "✅ Saved! Ready for Combat"; 
                 btn.classList.replace('bg-indigo-600', 'bg-green-600');
                 statusEl.textContent = `Sheet updated in "${targetCampaign}" at ${new Date().toLocaleTimeString()}.`;
