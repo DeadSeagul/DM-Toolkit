@@ -37,6 +37,8 @@
             padding-top: 5px;
         }
         .text-field-label { display: block; text-transform: uppercase; font-weight: bold; font-size: 10px; color: #94a3b8; }
+        /* Modal Backdrop */
+        .modal-backdrop { position: fixed; inset: 0; z-index: 150; background-color: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
     </style>
 </head>
 <body class="p-4 max-w-md mx-auto">
@@ -81,7 +83,7 @@
         
         <div class="space-y-3 mb-4 p-3 bg-gray-900/50 rounded-lg border border-gray-700">
             <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-field-label">Current Campaign</label><div id="campaign-display" class="text-sm font-bold text-green-400">Loading...</div></div>
+                <div><label class="text-field-label">DM Session</label><div id="campaign-display" class="text-sm font-bold text-green-400">Loading...</div></div>
                 <div><label class="text-field-label">Character Saved As</label><div id="saved-char-name" class="text-sm font-bold text-yellow-300">New Character</div></div>
             </div>
             <button type="button" onclick="loadCharacterFromDM()" id="btn-load-char" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition transform active:scale-95">
@@ -141,6 +143,26 @@
             <p id="sheet-save-status" class="text-center text-xs mt-2 text-gray-500">Not saved yet.</p>
         </div>
     </form>
+    
+    <div id="save-campaign-modal" class="modal-backdrop hidden">
+        <div class="bg-gray-900 w-full max-w-sm p-6 rounded-xl shadow-2xl border border-indigo-500/50">
+            <h3 class="text-xl font-bold text-indigo-300 mb-2">Save to Campaign</h3>
+            <p class="text-gray-400 text-xs mb-4">Choose the campaign folder where your DM keeps their notes.</p>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Select Campaign</label>
+                    <select id="save-campaign-select" class="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 text-sm focus:border-indigo-500 outline-none">
+                        </select>
+                </div>
+                
+                <div class="flex gap-2 pt-2">
+                    <button onclick="window.resolveSavePromise(null)" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded transition">Cancel</button>
+                    <button onclick="window.confirmSaveCampaign()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 rounded transition shadow-lg">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 
     <script type="module">
@@ -151,7 +173,11 @@
         let dmId = null;
         let combatants = [];
         let currentTurn = -1;
-        let characterSheetCache = {}; // Cache of the player's own sheet data (or null if new)
+        let characterSheetCache = null; 
+        let currentCampaignList = ['Default Campaign']; // List of campaigns from DM
+        
+        // Promise Resolver for the Campaign Selection Modal
+        let campaignResolve = null;
 
         // Firebase Path Constants
         const FIREBASE_CONFIG = {
@@ -159,9 +185,7 @@
             projectId: "aegisdmtoolkit",
             appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
         };
-        // Path to the DM's shared notes document
-        const PC_NOTES_DOC_PATH = 'artifacts/default/sessions/{dmId}/singles/shared_notes';
-
+        
         // All fields in the character sheet form
         const SHEET_INPUT_IDS = [
             'sheet-name', 'sheet-race', 'sheet-class', 'sheet-prof', 'sheet-maxhp', 
@@ -188,14 +212,14 @@
             }
 
             document.getElementById('status').textContent = "● Connected to Session";
-            document.getElementById('campaign-display').textContent = dmId;
-
+            document.getElementById('campaign-display').textContent = dmId; // Show DM's session ID
+            
             // Start all listeners
             setupTurnOrderListener();
             setupCombatantsListener();
-            loadCharacterFromDM(); // Try to load saved sheet on start
+            setupCampaignsListener(); // CRITICAL: Load campaign list
+            loadCharacterFromDM(); 
             
-            // Re-enable Join button after initialization
             document.getElementById('btn-join').disabled = false;
         }
 
@@ -207,6 +231,23 @@
         
         function getCombatantsColRef() {
              return collection(db, 'artifacts', 'default', 'sessions', dmId, 'shared_combatants');
+        }
+
+        // CRITICAL: Listener to pull Campaign List and all PC Notes from the DM session
+        function setupCampaignsListener() {
+            onSnapshot(getSharedDocRef('shared_notes'), (docSnapshot) => {
+                if (docSnapshot.exists()) {
+                    const data = docSnapshot.data();
+                    
+                    // Update campaign list
+                    if (data.campaignList && Array.isArray(data.campaignList)) {
+                        currentCampaignList = data.campaignList;
+                    }
+                    
+                    // Update the initial sheet load check if the user is in the data tab
+                    // This is less critical here since loadCharacterFromDM fetches once, but keeps logic ready
+                }
+            });
         }
 
 
@@ -228,6 +269,43 @@
             });
         }
 
+        // --- Campaign Selection Modal Logic (Player Side) ---
+
+        window.promptForCampaign = () => {
+            return new Promise((resolve) => {
+                if (currentCampaignList.length === 0) {
+                     alert("The DM has not created any campaigns yet. Using 'Default Campaign'.");
+                     resolve('Default Campaign');
+                     return;
+                }
+                
+                campaignResolve = resolve;
+                const modal = document.getElementById('save-campaign-modal');
+                const select = document.getElementById('save-campaign-select');
+                
+                // Populate list from the live-synced campaignList
+                select.innerHTML = currentCampaignList.map(c => 
+                    `<option value="${c}">${c}</option>`
+                ).join('');
+                
+                modal.classList.remove('hidden');
+            });
+        };
+
+        window.confirmSaveCampaign = () => {
+            const select = document.getElementById('save-campaign-select');
+            const modal = document.getElementById('save-campaign-modal');
+            modal.classList.add('hidden');
+            if (campaignResolve) campaignResolve(select.value);
+        };
+
+        window.resolveSavePromise = (val) => {
+            const modal = document.getElementById('save-campaign-modal');
+            modal.classList.add('hidden');
+            if (campaignResolve) campaignResolve(val);
+        };
+
+
         // --- Character Sheet Logic (Unified Save/Load) ---
 
         /** Loads the player's saved character sheet from the DM's PC Notes. */
@@ -238,18 +316,18 @@
             
             let charName = sheetNameEl.value.trim();
             if (!charName) {
-                charName = localStorage.getItem('player_last_char_name') || 'New Character';
-                sheetNameEl.value = charName === 'New Character' ? '' : charName;
+                charName = localStorage.getItem('player_last_char_name') || '';
+                sheetNameEl.value = charName;
             }
 
-            if (!charName || charName === 'New Character') {
+            if (!charName) {
                 statusEl.textContent = "Enter a name and Save to start.";
+                savedNameEl.textContent = "New Character";
                 return;
             }
             
-            statusEl.textContent = `Searching for ${charName}...`;
+            statusEl.textContent = `Searching for ${charName} across all campaigns...`;
             const safeName = safeEncodeName(charName);
-            
             const pcNotesRef = getSharedDocRef('shared_notes');
 
             try {
@@ -258,10 +336,10 @@
                 if (docSnap.exists() && docSnap.data().structuredPcNotes) {
                     const notesArray = docSnap.data().structuredPcNotes;
                     
-                    // The PC sheet is stored as a note object within the array
-                    const foundSheetNote = notesArray.find(n => safeEncodeName(n.title) === safeName);
+                    // We search for a sheet based on the safe name ID
+                    const foundSheetNote = notesArray.find(n => n.id === safeName && n.sheetData);
                     
-                    if (foundSheetNote && foundSheetNote.sheetData) {
+                    if (foundSheetNote) {
                         characterSheetCache = foundSheetNote.sheetData;
                         
                         // Populate forms with loaded data
@@ -277,17 +355,18 @@
                         document.getElementById('p-hp').value = characterSheetCache['sheet-maxhp'] || '';
                         document.getElementById('combat-char-name').textContent = characterSheetCache['sheet-name'];
 
-                        savedNameEl.textContent = characterSheetCache['sheet-name'];
+                        savedNameEl.textContent = `${characterSheetCache['sheet-name']} (in ${foundSheetNote.campaign || 'Default'})`;
                         statusEl.textContent = `Sheet for ${charName} loaded successfully!`;
+                        localStorage.setItem('player_last_char_name', charName); // Update last used name
                         
                         return;
                     }
                 }
                 
-                // If character not found in DM's list (even if name was entered)
+                // If character not found 
                 characterSheetCache = null;
                 savedNameEl.textContent = "New Character";
-                statusEl.textContent = `Character ${charName} not found in DM's sheets. Fill and Save.`;
+                statusEl.textContent = `Character sheet not found. Fill and Save.`;
 
             } catch (e) {
                 console.error("Error loading sheet:", e);
@@ -304,27 +383,33 @@
             
             if (!name) { alert("Please enter your Character Name!"); return; }
             
-            btn.disabled = true; btn.innerHTML = "Saving to Campaign...";
-            statusEl.textContent = "Uploading data...";
+            btn.disabled = true; btn.innerHTML = "Processing...";
+            statusEl.textContent = "Awaiting campaign selection...";
 
-            // 1. Collect all data
-            const newSheetData = { name };
-            SHEET_INPUT_IDS.forEach(id => {
-                const input = document.getElementById(id);
-                if (input) {
-                    const isNum = ['sheet-prof', 'sheet-maxhp', 'sheet-ac', 'sheet-str', 'sheet-dex', 'sheet-con', 'sheet-int', 'sheet-wis', 'sheet-cha'].includes(id);
-                    newSheetData[id] = isNum ? (parseInt(input.value) || 0) : input.value.trim();
-                }
-            });
-            
-            const safeName = safeEncodeName(name);
-            const pcNotesRef = getSharedDocRef('shared_notes');
-            
             try {
-                const docSnap = await getDoc(pcNotesRef);
-                let notesArray = docSnap.exists() ? docSnap.data().structuredPcNotes || [] : [];
+                // 1. Ask the player which campaign to save to
+                const targetCampaign = await window.promptForCampaign();
+                if (!targetCampaign) {
+                    statusEl.textContent = "Save cancelled.";
+                    return; // Player cancelled the modal
+                }
                 
-                // 2. Format the Note content (HTML for DM's easy viewing)
+                statusEl.textContent = `Saving to campaign: ${targetCampaign}...`;
+                
+                // 2. Collect all data
+                const newSheetData = { name };
+                SHEET_INPUT_IDS.forEach(id => {
+                    const input = document.getElementById(id);
+                    if (input) {
+                        const isNum = ['sheet-prof', 'sheet-maxhp', 'sheet-ac', 'sheet-str', 'sheet-dex', 'sheet-con', 'sheet-int', 'sheet-wis', 'sheet-cha'].includes(id);
+                        newSheetData[id] = isNum ? (parseInt(input.value) || 0) : input.value.trim();
+                    }
+                });
+                
+                const safeName = safeEncodeName(name);
+                const pcNotesRef = getSharedDocRef('shared_notes');
+                
+                // 3. Format the Note content (HTML for DM's easy viewing)
                 const noteTitle = `${name} | ${newSheetData['sheet-class']} (${newSheetData['sheet-race']})`;
                 
                 let contentHTML = `
@@ -339,16 +424,18 @@
                 `;
 
                 const newNote = {
-                    // CRITICAL: We use a stable, encoded name as the ID/Title key for finding it later
                     id: safeName, 
                     title: noteTitle,
                     content: contentHTML, 
                     timestamp: new Date().toISOString(),
-                    campaign: dmId, // Tag with DM's ID for potential multi-DM use
-                    sheetData: newSheetData // Full data object embedded
+                    campaign: targetCampaign, // <-- NEW: TAGGED WITH CAMPAIGN
+                    sheetData: newSheetData 
                 };
                 
-                // 3. Find and replace old sheet, or add new sheet
+                // 4. Load current notes array, update it, and save it back
+                const docSnap = await getDoc(pcNotesRef);
+                let notesArray = docSnap.exists() ? docSnap.data().structuredPcNotes || [] : [];
+                
                 const existingIndex = notesArray.findIndex(n => n.id === safeName);
 
                 if (existingIndex > -1) {
@@ -357,7 +444,6 @@
                     notesArray.unshift(newNote); // Add new
                 }
 
-                // 4. Update Firebase document
                 await updateDoc(pcNotesRef, { structuredPcNotes: notesArray }, { merge: true });
 
                 // 5. Success Feedback & Local State Update
@@ -368,12 +454,12 @@
                 document.getElementById('p-ac').value = newSheetData['sheet-ac'] || '';
                 document.getElementById('p-hp').value = newSheetData['sheet-maxhp'] || '';
                 document.getElementById('combat-char-name').textContent = name;
-                document.getElementById('saved-char-name').textContent = name;
-                document.getElementById('sheet-name').value = name; // Ensure case is consistent
+                document.getElementById('saved-char-name').textContent = `${name} (in ${targetCampaign})`;
+                document.getElementById('sheet-name').value = name;
                 
                 btn.innerHTML = "✅ Saved! Ready for Combat"; 
                 btn.classList.replace('bg-indigo-600', 'bg-green-600');
-                statusEl.textContent = `Sheet updated on DM's screen at ${new Date().toLocaleTimeString()}.`;
+                statusEl.textContent = `Sheet updated in "${targetCampaign}" at ${new Date().toLocaleTimeString()}.`;
                 
                 setTimeout(() => {
                     btn.disabled = false; 
@@ -396,14 +482,18 @@
             const btn = document.getElementById('btn-join');
             const initRoll = parseInt(document.getElementById('p-init').value) || 0;
             
-            if (!characterSheetCache || !characterSheetCache.name) { alert("Please save your character sheet first!"); return; }
+            if (!characterSheetCache || !characterSheetCache.name) { 
+                 alert("Please save your character sheet first in the 'Character Sheet' tab!");
+                 showTab('data');
+                 return; 
+            }
             if (initRoll === 0) { alert("Please enter your Initiative Roll (d20 + Modifier)!"); return; }
 
             btn.disabled = true; btn.innerHTML = "Sending...";
             
             // Get necessary data from cache/inputs
             const name = characterSheetCache.name;
-            const ac = parseInt(document.getElementById('p-ac').value) || 10; // Use disabled field for current AC
+            const ac = parseInt(document.getElementById('p-ac').value) || 10;
             const maxHp = parseInt(document.getElementById('p-hp').value) || 10;
             
             // Try to pull Init Mod from DEX in the cache
@@ -411,7 +501,6 @@
             const initModifier = Math.floor((dex - 10) / 2);
 
             try {
-                // Find existing combatant for this name to update HP, if combat is already running
                 const existing = combatants.find(c => c.name === name);
                 
                 const combatantData = {
@@ -419,23 +508,20 @@
                     init: initRoll, 
                     ac: ac, 
                     maxHp: maxHp, 
-                    currentHp: existing ? existing.currentHp : maxHp, // Keep current HP if updating
+                    currentHp: existing ? existing.currentHp : maxHp,
                     initModifier: initModifier, 
                     conditions: existing ? existing.conditions : [],
-                    sheetRefPath: safeEncodeName(name) // Link back to the full sheet in PC Notes
+                    sheetRefPath: safeEncodeName(name) 
                 };
                 
                 if (existing) {
-                    // Update existing combatant's stats and initiative
                     await updateDoc(doc(getCombatantsColRef(), existing.id), combatantData);
                 } else {
-                    // Add new combatant
                     await addDoc(getCombatantsColRef(), combatantData);
                 }
 
                 btn.innerHTML = "✅ Sent!"; btn.classList.replace('bg-indigo-600', 'bg-green-600');
                 
-                // Keep the Initiative roll in the box for quick re-rolls/re-submission
                 setTimeout(() => {
                     btn.disabled = false; 
                     btn.innerHTML = "<span>🚀</span> Send to DM";
@@ -460,11 +546,12 @@
                 return;
             }
 
+            const currentPlayerName = characterSheetCache ? characterSheetCache.name : null;
+
             combatants.forEach((c, index) => {
                 const isActive = index === currentTurn;
-                const isPlayer = characterSheetCache && c.name === characterSheetCache.name;
+                const isPlayer = currentPlayerName && c.name === currentPlayerName;
                 
-                // Color change if it's the player's turn
                 const baseClass = isPlayer ? 'bg-indigo-800/50' : 'bg-gray-800';
                 
                 const div = document.createElement('div');
@@ -499,7 +586,6 @@
             document.getElementById(`${tabName}-form`).classList.remove('hidden');
             document.getElementById(`tab-btn-${tabName}`).classList.add('active', 'bg-slate-800');
             
-            // Optional: If switching to data tab, attempt to load last used sheet
             if (tabName === 'data' && !characterSheetCache) {
                  loadCharacterFromDM();
             }
