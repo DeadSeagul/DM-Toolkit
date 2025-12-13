@@ -10,96 +10,6 @@
         .active-turn { border: 2px solid #34d399; background-color: rgba(52, 211, 153, 0.1); transform: scale(1.02); z-index: 10; }
         .input-dark { background-color: #1e293b; border: 1px solid #334155; color: white; padding: 8px; border-radius: 6px; outline: none; width: 100%; }
         .input-dark:focus { border-color: #6366f1; }
-        .tab-button {
-            padding: 8px 12px;
-            font-weight: bold;
-            transition: all 0.2s;
-            cursor: pointer;
-            border-radius: 8px 8px 0 0;
-            border-bottom: 2px solid transparent;
-        }
-        .tab-button.active {
-            color: #818cf8; /* indigo-400 */
-            border-bottom-color: #6366f1; /* indigo-500 */
-            background-color: #1e293b; /* slate-800 */
-        }
-        .text-field-label { display: block; text-transform: uppercase; font-weight: bold; font-size: 10px; color: #94a3b8; }
-        .modal-backdrop { position: fixed; inset: 0; z-index: 150; background-color: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
-
-        /* --- 5E Character Sheet Layout Styles --- */
-        #sheet-content-scroll {
-            max-height: 80vh;
-            overflow-y: auto;
-            padding-right: 8px;
-        }
-        
-        /* Containers */
-        .sheet-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr; /* 3 main columns */
-            gap: 12px;
-        }
-
-        /* Ability Scores */
-        .ability-outer-frame {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 15px; /* Spacing between ability scores */
-        }
-        .ability-mod-display {
-            width: 100%;
-            height: 30px;
-            border: 2px solid #34d399; 
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            font-weight: bold;
-            color: #34d399;
-            background-color: rgba(52, 211, 153, 0.1);
-        }
-        .ability-score-input {
-            font-size: 0.9rem;
-            font-weight: bold;
-            text-align: center;
-            width: 100%;
-            padding: 2px;
-            background-color: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 4px;
-            color: #fff;
-            outline: none;
-            margin-top: 4px;
-        }
-
-        /* Saving Throws and Skills */
-        .skills-section {
-            border: 1px solid #334155;
-            padding: 10px;
-            border-radius: 8px;
-            background-color: #1e293b;
-        }
-        .skill-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-bottom: 2px;
-            font-size: 12px;
-        }
-        .skill-mod-input {
-            width: 35px;
-            padding: 0 4px;
-            text-align: center;
-            font-size: 12px;
-            background-color: #334155;
-            border-radius: 4px;
-        }
-        .skill-label {
-            flex-grow: 1;
-            color: #ccc;
-        }
     </style>
 </head>
 <body class="p-4 max-w-md mx-auto">
@@ -109,655 +19,139 @@
         <div id="status" class="text-xs text-gray-500">Connecting...</div>
     </div>
 
-    <div class="flex border-b border-gray-700 mb-4">
-        <div id="tab-btn-init" class="tab-button active text-gray-400 hover:text-indigo-400" onclick="showTab('init')">Combat & Initiative</div>
-        <div id="tab-btn-data" class="tab-button text-gray-400 hover:text-indigo-400" onclick="showTab('data')">Character Sheet</div>
-    </div>
-
-    <div id="init-form" class="tab-content bg-gray-800/50 p-4 rounded-xl border border-indigo-500/30 mb-6 shadow-lg">
+    <div id="join-form" class="bg-gray-800/50 p-4 rounded-xl border border-indigo-500/30 mb-6 shadow-lg">
         <h3 class="text-sm font-bold text-indigo-300 mb-3 uppercase tracking-wider">Join Initiative</h3>
-        <p class="text-xs text-gray-400 mb-3">Manually enter your stats and initiative roll below to join the battle.</p>
-
-        <div class="space-y-3 pb-4 border-b border-gray-700">
+        <div class="space-y-3">
             <div>
                 <label class="text-[10px] text-gray-400 uppercase font-bold">Character Name</label>
                 <input type="text" id="p-name" class="input-dark" placeholder="e.g. Aragorn">
             </div>
             <div class="grid grid-cols-3 gap-3">
-                <div><label class="text-[10px] text-gray-400 uppercase font-bold">Init Roll</label><input type="number" id="p-init" class="input-dark text-center" placeholder="d20+Mod"></div>
+                <div><label class="text-[10px] text-gray-400 uppercase font-bold">Init</label><input type="number" id="p-init" class="input-dark text-center" placeholder="d20"></div>
                 <div><label class="text-[10px] text-gray-400 uppercase font-bold">AC</label><input type="number" id="p-ac" class="input-dark text-center" placeholder="15"></div>
-                <div><label class="text-[10px] text-gray-400 uppercase font-bold">Max HP</label><input type="number" id="p-hp" class="input-dark text-center" placeholder="Max"></div>
+                <div><label class="text-[10px] text-gray-400 uppercase font-bold">HP</label><input type="number" id="p-hp" class="input-dark text-center" placeholder="Max"></div>
             </div>
             <button onclick="window.sendCharacter()" id="btn-join" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg shadow-lg transition transform active:scale-95 flex justify-center items-center gap-2">
                 <span>🚀</span> Send to DM
             </button>
         </div>
-
-        <div class="pt-4">
-            <h3 class="text-xs font-bold text-gray-500 uppercase mb-3 text-center">Live Turn Order</h3>
-            <div id="combat-list" class="space-y-3 pb-10">
-                <div class="text-center text-gray-600 italic text-sm">Waiting for data...</div>
-            </div>
-        </div>
     </div>
 
-    <form id="data-form" class="tab-content hidden bg-gray-800/50 p-4 rounded-xl border border-indigo-500/30 mb-6 shadow-lg">
-        <h3 class="text-sm font-bold text-indigo-300 mb-3 uppercase tracking-wider">D&D 5E Character Sheet</h3>
-        <p class="text-xs text-gray-400 mb-4">Your personal reference sheet, saved to your DM's PC Notes tab.</p>
-        
-        <div class="grid grid-cols-2 gap-3 mb-4">
-            <div><label class="text-field-label">Character Name</label><input type="text" id="sheet-name" class="input-dark" placeholder="Character Name" required></div>
-            <div><label class="text-field-label">Class & Level</label><input type="text" id="sheet-class" class="input-dark" placeholder="e.g. Wizard 5"></div>
-            <div><label class="text-field-label">Race</label><input type="text" id="sheet-race" class="input-dark" placeholder="e.g. Elf"></div>
-            <div><label class="text-field-label">Background / Alignment</label><input type="text" id="sheet-stats-misc-header" class="input-dark" placeholder="Acolyte, Lawful Good"></div>
-        </div>
-        
-        <div id="sheet-content-scroll" class="sheet-container">
-            
-            <div class="col-span-1 flex flex-col items-center">
-
-                <div class="space-y-4 w-full">
-                    ${['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => `
-                        <div class="ability-outer-frame">
-                            <label class="text-[10px] uppercase block mb-1 text-indigo-300">${stat.toUpperCase()}</label>
-                            <div id="mod-${stat}" class="ability-mod-display">
-                                +0
-                            </div>
-                            <input 
-                                type="number" 
-                                id="sheet-${stat}" 
-                                class="ability-score-input" 
-                                placeholder="10"
-                                min="1"
-                                max="30"
-                            >
-                        </div>
-                    `).join('')}
-                </div>
-
-                <div class="skills-section mt-4 w-full">
-                    <h5 class="text-xs font-bold text-yellow-300 mb-2 uppercase">Saving Throws</h5>
-                    <div class="space-y-1 text-xs text-gray-400">
-                        <p>Strength (Str) [Input your save modifier in the box below]</p>
-                        <p>Dexterity (Dex)</p>
-                        <p>Constitution (Con)</p>
-                        <p>Intelligence (Int)</p>
-                        <p>Wisdom (Wis)</p>
-                        <p>Charisma (Cha)</p>
-                        <input type="text" id="sheet-saves-note" class="input-dark mt-2 p-1 text-xs" placeholder="e.g. Wis Save +4">
-                    </div>
-                </div>
-
-                <div class="skills-section mt-4 w-full">
-                    <h5 class="text-xs font-bold text-yellow-300 mb-2 uppercase">Skills</h5>
-                    <div class="space-y-1">
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Acrobatics (Dex)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Animal Handling (Wis)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Athletics (Str)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Deception (Cha)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">History (Int)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Insight (Wis)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Intimidation (Cha)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Investigation (Int)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Medicine (Wis)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Nature (Int)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label text-green-400">Perception (Wis)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Performance (Cha)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Persuasion (Cha)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Religion (Int)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Sleight of Hand (Dex)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Stealth (Dex)</span></div>
-                        <div class="skill-item"><input type="text" class="skill-mod-input" placeholder="+0" disabled><span class="skill-label">Survival (Wis)</span></div>
-                    </div>
-                </div>
-
-                <div class="skills-section mt-4 w-full">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase">Other Proficiencies & Languages</label>
-                    <textarea id="sheet-features" class="input-dark h-24 mt-1" placeholder=""></textarea>
-                </div>
-
-            </div>
-
-            <div class="col-span-1 space-y-4">
-                
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="text-center"><label class="text-field-label">Proficiency Bonus</label><input type="number" id="sheet-prof" class="input-dark text-center" placeholder="+3"></div>
-                    <div class="text-center"><label class="text-field-label">Armor Class</label><input type="number" id="sheet-ac" class="input-dark text-center" placeholder="15"></div>
-                    <div class="text-center"><label class="text-field-label">Initiative</label><input type="text" id="sheet-init-mod-display" class="input-dark text-center" placeholder="+2" disabled></div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="text-center"><label class="text-field-label">Speed</label><input type="text" id="sheet-stats-misc" class="input-dark text-center" placeholder="30 ft"></div>
-                    <div class="text-center"><label class="text-field-label">Passive Wisdom (Perception)</label><input type="number" id="sheet-passive-wis" class="input-dark text-center" placeholder="10"></div>
-                </div>
-                
-                <div class="p-3 border border-red-500/30 rounded-lg">
-                    <div class="text-field-label text-red-300">Hit Point Maximum: <input type="number" id="sheet-maxhp" class="input-dark text-center inline-block w-16 p-0" placeholder="45"></div>
-                    <h5 class="text-2xl font-bold text-green-400 text-center my-2">Current HP</h5>
-                    <input type="text" class="input-dark text-center text-xl" placeholder="--">
-                </div>
-
-                <div class="p-3 border border-purple-500/30 rounded-lg">
-                    <h5 class="text-xs font-bold text-purple-300 mb-2 uppercase">Attacks & Spellcasting</h5>
-                    <textarea id="sheet-attacks" class="input-dark h-32" placeholder="e.g. Firebolt (+6, 1d10), Longsword (+4, 1d8+2)"></textarea>
-                </div>
-                
-                <div class="p-3 border border-yellow-500/30 rounded-lg">
-                    <h5 class="text-xs font-bold text-yellow-300 mb-2 uppercase">Equipment / Inventory</h5>
-                    <textarea id="sheet-inventory" class="input-dark h-40" placeholder="e.g. 3 Potions of Healing, 50 ft rope"></textarea>
-                </div>
-            </div>
-            
-            <div class="col-span-1 space-y-4">
-                
-                <div class="p-3 border border-blue-500/30 rounded-lg">
-                    <h5 class="text-xs font-bold text-blue-300 mb-2 uppercase">Personality Traits</h5>
-                    <textarea class="input-dark h-16" placeholder=""></textarea>
-                </div>
-                <div class="p-3 border border-blue-500/30 rounded-lg">
-                    <h5 class="text-xs font-bold text-blue-300 mb-2 uppercase">Ideals</h5>
-                    <textarea class="input-dark h-16" placeholder=""></textarea>
-                </div>
-                <div class="p-3 border border-blue-500/30 rounded-lg">
-                    <h5 class="text-xs font-bold text-blue-300 mb-2 uppercase">Bonds</h5>
-                    <textarea class="input-dark h-16" placeholder=""></textarea>
-                </div>
-                <div class="p-3 border border-blue-500/30 rounded-lg">
-                    <h5 class="text-xs font-bold text-blue-300 mb-2 uppercase">Flaws / Features & Traits</h5>
-                    <textarea id="sheet-features" class="input-dark h-32" placeholder=""></textarea>
-                </div>
-
-                <div class="p-3 border border-gray-700 rounded-lg">
-                    <label class="text-field-label">Current Campaign</label><div id="dm-session-id-display" class="text-sm font-bold text-green-400">${dmId}</div>
-                    <label class="text-field-label mt-2">Saved Character</label><div id="saved-char-name-footer" class="text-sm font-bold text-yellow-300">New Character</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="pt-4 border-t border-gray-700 mt-4">
-            <button type="button" onclick="submitPlayerSheet()" id="btn-sheet-save" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg shadow-lg transition transform active:scale-95 flex justify-center items-center gap-2">
-                <span>💾</span> Save/Update Sheet to DM
-            </button>
-            <p id="sheet-save-status" class="text-center text-xs mt-2 text-gray-500">Not saved yet.</p>
-        </div>
-    </form>
-    
-    <div id="save-campaign-modal" class="modal-backdrop hidden">
-        <div class="bg-gray-900 w-full max-w-sm p-6 rounded-xl shadow-2xl border border-indigo-500/50">
-            <h3 class="text-xl font-bold text-indigo-300 mb-2">Save to Campaign</h3>
-            <p class="text-gray-400 text-xs mb-4">Choose the campaign folder where your DM keeps their notes.</p>
-            
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Select Campaign</label>
-                    <select id="save-campaign-select" class="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 text-sm focus:border-indigo-500 outline-none">
-                        </select>
-                </div>
-                
-                <div class="flex gap-2 pt-2">
-                    <button onclick="window.resolveSavePromise(null)" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded transition">Cancel</button>
-                    <button onclick="window.confirmSaveCampaign()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 rounded transition shadow-lg">Save</button>
-                </div>
-            </div>
+    <div class="border-t border-gray-700 pt-4">
+        <h3 class="text-xs font-bold text-gray-500 uppercase mb-3 text-center">Live Turn Order</h3>
+        <div id="combat-list" class="space-y-3 pb-10">
+            <div class="text-center text-gray-600 italic text-sm">Waiting for data...</div>
         </div>
     </div>
-
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, addDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global State
-        let dmId = null;
-        let combatants = [];
-        let currentTurn = -1;
-        let characterSheetCache = null; 
-        let currentCampaignList = ['Default Campaign']; 
-        let campaignResolve = null;
-
-        // Firebase Path Constants
-        const FIREBASE_CONFIG = {
+        // 1. SETUP
+        const app = initializeApp({
             apiKey: "AIzaSyB6lyGYJzk70t1OJvzBn5uyJN_k2_5NKYg",
             projectId: "aegisdmtoolkit",
             appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
-        };
-        
-        const ABILITY_STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
-        const SHEET_INPUT_IDS = [
-            'sheet-name', 'sheet-race', 'sheet-class', 'sheet-prof', 'sheet-maxhp', 
-            'sheet-ac', 'sheet-stats-misc', 'sheet-stats-misc-header', 'sheet-saves-note', 'sheet-passive-wis', 'sheet-inventory', 'sheet-attacks', 'sheet-features', ...ABILITY_STATS
-        ];
-
-        // --- Initialization ---
-
-        const app = initializeApp(FIREBASE_CONFIG);
+        });
         const db = getFirestore(app);
-        
-        function safeEncodeName(name) {
-            return encodeURIComponent(name.trim()).replace(/\./g, '_');
-        }
-        
-        /** Calculates the D&D 5e modifier from an ability score. */
-        function calculateModifier(score) {
-            const num = parseInt(score) || 10;
-            const mod = Math.floor((num - 10) / 2);
-            return (mod >= 0 ? '+' : '') + mod;
-        }
 
-        /** Sets up event listeners to update the modifier display dynamically. */
-        function setupAbilityScoreListeners() {
-            ABILITY_STATS.forEach(stat => {
-                const inputId = `sheet-${stat}`;
-                const displayId = `mod-${stat}`;
-                const inputEl = document.getElementById(inputId);
-                const displayEl = document.getElementById(displayId);
+        // 2. GET DM ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const dmId = urlParams.get('dm');
 
-                if (inputEl && displayEl) {
-                    const updateDisplay = () => {
-                        displayEl.textContent = calculateModifier(inputEl.value);
-                    };
-
-                    inputEl.addEventListener('input', updateDisplay);
-                    updateDisplay(); // Initial calculation
-                }
-            });
+        if (!dmId) {
+            document.body.innerHTML = "<div class='text-center text-red-400 mt-10 p-4'>🚫 Error: Invalid Link.<br>Ask your DM for the Broadcast Link.</div>";
+        } else {
+            initPlayerView(dmId);
         }
 
-
-        function initPlayerView() {
-            const urlParams = new URLSearchParams(window.location.search);
-            dmId = urlParams.get('dm');
-
-            if (!dmId) {
-                document.body.innerHTML = "<div class='text-center text-red-400 mt-10 p-4'>🚫 Error: Invalid Link.<br>Ask your DM for the Broadcast Link.</div>";
-                return;
-            }
-
-            document.getElementById('status').textContent = "● Connected to Session";
-            document.getElementById('campaign-display').textContent = dmId; 
-            
-            // Set DM ID in the footer as well, for redundancy
-            const dmSessionIdDisplay = document.getElementById('dm-session-id-display');
-            if (dmSessionIdDisplay) {
-                dmSessionIdDisplay.textContent = dmId;
-            }
-
-            setupTurnOrderListener();
-            setupCombatantsListener();
-            setupCampaignsListener(); 
-            loadCharacterFromDM(); 
-            setupAbilityScoreListeners(); 
-        }
-
-        // --- Firebase Listeners ---
-
-        function getSharedDocRef(docName) {
-            return doc(db, 'artifacts', 'default', 'sessions', dmId, 'singles', docName);
-        }
-        
-        function getCombatantsColRef() {
-             return collection(db, 'artifacts', 'default', 'sessions', dmId, 'shared_combatants');
-        }
-
-        function setupCampaignsListener() {
-            onSnapshot(getSharedDocRef('shared_notes'), (docSnapshot) => {
-                if (docSnapshot.exists()) {
-                    const data = docSnapshot.data();
-                    if (data.campaignList && Array.isArray(data.campaignList)) {
-                        currentCampaignList = data.campaignList;
-                    }
-                }
-            });
-        }
-
-        function setupTurnOrderListener() {
-            onSnapshot(getSharedDocRef('shared_combat_state'), (docSnapshot) => {
-                currentTurn = docSnapshot.exists() ? (docSnapshot.data().currentTurnIndex || 0) : -1;
-                renderCombatants();
-            });
-        }
-
-        function setupCombatantsListener() {
-            onSnapshot(getCombatantsColRef(), (snapshot) => {
-                combatants = [];
-                snapshot.forEach(doc => combatants.push({ id: doc.id, ...doc.data() }));
-                combatants.sort((a, b) => (b.init || 0) - (a.init || 0));
-                renderCombatants();
-            });
-        }
-
-        // --- Campaign Selection Modal Logic ---
-
-        window.promptForCampaign = () => {
-            return new Promise(async (resolve) => {
-                const modal = document.getElementById('save-campaign-modal');
-                const select = document.getElementById('save-campaign-select');
-
-                if (currentCampaignList.length === 0) {
-                     alert("The DM has not created any campaigns yet. Using 'Default Campaign'.");
-                     resolve('Default Campaign');
-                     return;
-                }
-                
-                campaignResolve = resolve;
-                
-                select.innerHTML = currentCampaignList.map(c => 
-                    `<option value="${c}">${c}</option>`
-                ).join('');
-                
-                const lastCampaign = localStorage.getItem('player_last_campaign');
-                if (lastCampaign) {
-                    select.value = lastCampaign;
-                } else {
-                    select.value = 'Default Campaign';
-                }
-
-                modal.classList.remove('hidden');
-            });
-        };
-
-        window.confirmSaveCampaign = () => {
-            const select = document.getElementById('save-campaign-select');
-            const modal = document.getElementById('save-campaign-modal');
-            const campaignChoice = select.value;
-            
-            modal.classList.add('hidden');
-            localStorage.setItem('player_last_campaign', campaignChoice);
-            
-            if (campaignResolve) campaignResolve(campaignChoice);
-        };
-
-        window.resolveSavePromise = (val) => {
-            const modal = document.getElementById('save-campaign-modal');
-            modal.classList.add('hidden');
-            if (campaignResolve) campaignResolve(val);
-        };
-
-
-        // --- Character Sheet Logic (DM PC Notes) ---
-
-        /** Loads the player's saved character sheet from the DM's PC Notes. */
-        window.loadCharacterFromDM = async () => {
-            const statusEl = document.getElementById('sheet-save-status');
-            const sheetNameEl = document.getElementById('sheet-name');
-            const savedNameEl = document.getElementById('saved-char-name');
-            const savedNameFooterEl = document.getElementById('saved-char-name-footer');
-            
-            let charName = sheetNameEl.value.trim();
-            if (!charName) {
-                charName = localStorage.getItem('player_last_char_name') || '';
-                sheetNameEl.value = charName;
-            }
-
-            if (!charName) {
-                statusEl.textContent = "Enter a name and Save to start.";
-                savedNameEl.textContent = "New Character";
-                if(savedNameFooterEl) savedNameFooterEl.textContent = "New Character";
-                return;
-            }
-            
-            statusEl.textContent = `Searching for ${charName}...`;
-            const safeName = safeEncodeName(charName);
-            const pcNotesRef = getSharedDocRef('shared_notes');
-
-            try {
-                const docSnap = await getDoc(pcNotesRef);
-                
-                if (docSnap.exists() && docSnap.data().structuredPcNotes) {
-                    const notesArray = docSnap.data().structuredPcNotes;
-                    const foundSheetNote = notesArray.find(n => n.id === safeName && n.sheetData);
-                    
-                    if (foundSheetNote) {
-                        characterSheetCache = foundSheetNote.sheetData;
-                        
-                        // Populate forms with loaded data
-                        SHEET_INPUT_IDS.forEach(id => {
-                            const input = document.getElementById(id);
-                            if (input && characterSheetCache[id] !== undefined) {
-                                input.value = characterSheetCache[id];
-                            }
-                        });
-
-                        setupAbilityScoreListeners();
-                        
-                        document.getElementById('sheet-name').value = characterSheetCache['sheet-name']; 
-
-                        const displayTxt = `${characterSheetCache['sheet-name']} (in ${foundSheetNote.campaign || 'Default'})`;
-                        savedNameEl.textContent = displayTxt;
-                        if(savedNameFooterEl) savedNameFooterEl.textContent = displayTxt;
-
-                        statusEl.textContent = `Sheet for ${charName} loaded successfully!`;
-                        localStorage.setItem('player_last_char_name', charName);
-                        
-                        return;
-                    }
-                }
-                
-                characterSheetCache = null;
-                savedNameEl.textContent = "New Character";
-                if(savedNameFooterEl) savedNameFooterEl.textContent = "New Character";
-                statusEl.textContent = `Character sheet not found. Fill and Save.`;
-
-            } catch (e) {
-                console.error("Error loading sheet:", e);
-                statusEl.textContent = "Error communicating with DM session.";
-            }
-        };
-
-
-        /** Collects sheet data and sends it as a new/updated PC Note to the DM. */
-        window.submitPlayerSheet = async () => {
-            const btn = document.getElementById('btn-sheet-save');
-            const statusEl = document.getElementById('sheet-save-status');
-            const name = document.getElementById('sheet-name').value.trim();
-            
-            if (!name) { alert("Please enter your Character Name!"); return; }
-            
-            btn.disabled = true; btn.innerHTML = "Processing...";
-            statusEl.textContent = "Awaiting campaign selection...";
-
-            try {
-                const targetCampaign = await window.promptForCampaign();
-                if (!targetCampaign) {
-                    statusEl.textContent = "Save cancelled.";
-                    return; 
-                }
-                
-                statusEl.textContent = `Saving to campaign: ${targetCampaign}...`;
-                
-                const newSheetData = { name };
-                SHEET_INPUT_IDS.forEach(id => {
-                    const input = document.getElementById(id);
-                    if (input) {
-                        const isNum = ['sheet-prof', 'sheet-maxhp', 'sheet-ac', ...ABILITY_STATS].includes(id);
-                        newSheetData[id] = isNum ? (parseInt(input.value) || 0) : input.value.trim();
-                    }
-                });
-                
-                const safeName = safeEncodeName(name);
-                const pcNotesRef = getSharedDocRef('shared_notes');
-                
-                // 3. Format the Note content (HTML for DM's easy viewing)
-                const noteTitle = `${name} | ${newSheetData['sheet-class']} (${newSheetData['sheet-race']})`;
-                
-                const abilityDisplay = ABILITY_STATS.map(stat => {
-                    const score = newSheetData[`sheet-${stat}`];
-                    return `${stat.toUpperCase()} ${score} (${calculateModifier(score)})`;
-                }).join(', ');
-
-                let contentHTML = `
-                    <p class="text-sm font-bold text-indigo-400">Combat Stats:</p>
-                    <p class="text-xs">AC: ${newSheetData['sheet-ac']}, Max HP: ${newSheetData['sheet-maxhp']}, Prof: ${newSheetData['sheet-prof']}</p>
-                    <p class="text-sm font-bold text-indigo-400 mt-2">Ability Scores:</p>
-                    <p class="text-xs">${abilityDisplay}</p>
-                    <p class="text-sm font-bold text-indigo-400 mt-2">Notes:</p>
-                    <p class="text-xs">${newSheetData['sheet-stats-misc'] || 'N/A'}</p>
-                    <p class="text-xs mt-1">Attacks: ${newSheetData['sheet-attacks'] || 'N/A'}</p>
-                    <p class="text-xs mt-1">Features/Inventory: ${newSheetData['sheet-features'] || 'N/A'}</p>
-                `;
-
-                const newNote = {
-                    id: safeName, 
-                    title: noteTitle,
-                    content: contentHTML, 
-                    timestamp: new Date().toISOString(),
-                    campaign: targetCampaign, 
-                    sheetData: newSheetData 
-                };
-                
-                const docSnap = await getDoc(pcNotesRef);
-                let notesArray = docSnap.exists() ? docSnap.data().structuredPcNotes || [] : [];
-                
-                const existingIndex = notesArray.findIndex(n => n.id === safeName);
-
-                if (existingIndex > -1) {
-                    notesArray[existingIndex] = newNote;
-                } else {
-                    notesArray.unshift(newNote);
-                }
-
-                await updateDoc(pcNotesRef, { structuredPcNotes: notesArray }, { merge: true });
-
-                localStorage.setItem('player_last_char_name', name);
-                characterSheetCache = newSheetData;
-                
-                const displayTxt = `${name} (in ${targetCampaign})`;
-                document.getElementById('saved-char-name').textContent = displayTxt;
-                const savedNameFooterEl = document.getElementById('saved-char-name-footer');
-                if(savedNameFooterEl) savedNameFooterEl.textContent = displayTxt;
-
-                btn.innerHTML = "✅ Saved! Ready for Combat"; 
-                btn.classList.replace('bg-indigo-600', 'bg-green-600');
-                statusEl.textContent = `Sheet updated in "${targetCampaign}" at ${new Date().toLocaleTimeString()}.`;
-                
-                setTimeout(() => {
-                    btn.disabled = false; 
-                    btn.innerHTML = "<span>💾</span> Save/Update Sheet to DM";
-                    btn.classList.replace('bg-green-600', 'bg-indigo-600');
-                }, 2000);
-
-            } catch (e) { 
-                console.error("Save Sheet Error:", e);
-                statusEl.textContent = "Error: Failed to save. Check console.";
-                btn.disabled = false; 
-                btn.innerHTML = "Try Again"; 
-            }
-        };
-
-
-        // --- Combat Tab Logic (Manual Submission Restored) ---
-
+        // 3. SEND LOGIC
         window.sendCharacter = async () => {
             const btn = document.getElementById('btn-join');
             const name = document.getElementById('p-name').value.trim();
-            const initRoll = parseInt(document.getElementById('p-init').value) || 0;
+            const init = parseInt(document.getElementById('p-init').value) || 0;
             const ac = parseInt(document.getElementById('p-ac').value) || 10;
-            const maxHp = parseInt(document.getElementById('p-hp').value) || 10;
-            
-            if (!name) { alert("Please enter your Character Name!"); return; }
-            if (initRoll === 0) { alert("Please enter your Initiative Roll (d20 + Modifier)!"); return; }
+            const hp = parseInt(document.getElementById('p-hp').value) || 10;
+
+            if (!name) { alert("Please enter a name!"); return; }
 
             btn.disabled = true; btn.innerHTML = "Sending...";
-            
-            const initModifier = 0; 
 
             try {
-                const existing = combatants.find(c => c.name === name);
-                
-                const combatantData = {
-                    name, 
-                    init: initRoll, 
-                    ac: ac, 
-                    maxHp: maxHp, 
-                    currentHp: existing ? existing.currentHp : maxHp,
-                    initModifier: initModifier, 
-                    conditions: existing ? existing.conditions : [],
-                    sheetRefPath: safeEncodeName(name) 
-                };
-                
-                if (existing) {
-                    await updateDoc(doc(getCombatantsColRef(), existing.id), combatantData);
-                } else {
-                    await addDoc(getCombatantsColRef(), combatantData);
-                }
-
-                btn.innerHTML = "✅ Sent!"; btn.classList.replace('bg-indigo-600', 'bg-green-600');
-                
-                document.getElementById('p-name').value = '';
-                document.getElementById('p-ac').value = '';
-                document.getElementById('p-hp').value = '';
-
+                await addDoc(collection(db, 'artifacts', 'default', 'sessions', dmId, 'shared_combatants'), {
+                    name, init, ac, maxHp: hp, currentHp: hp, initModifier: 0, conditions: []
+                });
+                btn.innerHTML = "✅ Added!"; btn.classList.replace('bg-indigo-600', 'bg-green-600');
+                document.getElementById('p-name').value = ""; document.getElementById('p-init').value = "";
                 setTimeout(() => {
-                    btn.disabled = false; 
-                    btn.innerHTML = "<span>🚀</span> Send to DM";
+                    btn.disabled = false; btn.innerHTML = "<span>🚀</span> Send Another";
                     btn.classList.replace('bg-green-600', 'bg-indigo-600');
                 }, 2000);
-
-            } catch (e) { 
-                console.error(e);
-                alert("Error: " + e.message); 
-                btn.disabled = false; btn.innerHTML = "Try Again"; 
-            }
+            } catch (e) { alert("Error: " + e.message); btn.disabled = false; btn.innerHTML = "Try Again"; }
         };
 
-        // --- UI Renders ---
-
-        function renderCombatants() {
+        // 4. LISTEN LOGIC (Fixed)
+        function initPlayerView(dmId) {
+            document.getElementById('status').textContent = "● Connected to Session";
             const list = document.getElementById('combat-list');
-            if(!list) return;
             
-            list.innerHTML = "";
-            if (combatants.length === 0) {
-                list.innerHTML = "<div class='text-center text-gray-600 mt-4'>Combat has not started...</div>";
-                return;
+            // Shared State Variables
+            let currentTurn = -1;
+            let combatants = [];
+
+            // 🟢 SHARED RENDER FUNCTION
+            function render() {
+                list.innerHTML = "";
+                if (combatants.length === 0) {
+                    list.innerHTML = "<div class='text-center text-gray-600 mt-4'>Combat has not started...</div>";
+                    return;
+                }
+
+                combatants.forEach((c, index) => {
+                    const isActive = index === currentTurn;
+                    // Removed healthPercent calculation as it's not rendered
+                    
+                    const div = document.createElement('div');
+                    div.className = `bg-gray-800 rounded-lg p-3 shadow-lg transition-all duration-300 ${isActive ? 'active-turn shadow-green-900/40' : 'border border-gray-700 opacity-80'}`;
+                    
+                    const badges = (c.conditions || []).map(cond => `<span class="text-[9px] bg-red-900 text-red-200 px-1 rounded border border-red-700">${cond}</span>`).join(' ');
+
+                    div.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-gray-900 w-9 h-9 flex items-center justify-center rounded-lg font-bold text-indigo-400 border border-gray-700 text-lg">
+                                    ${c.init}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-base ${isActive ? 'text-white' : 'text-gray-300'}">${c.name}</div>
+                                    <div class="flex gap-1 mt-0.5">${badges}</div>
+                                </div>
+                            </div>
+                            ${isActive ? '<span class="text-[10px] bg-green-900 text-green-300 px-2 py-1 rounded uppercase tracking-wider font-bold animate-pulse">Active Turn</span>' : ''}
+                        </div>
+                        
+                    `; // Health bar HTML removed, and outer div class fixed.
+                    list.appendChild(div);
+                });
             }
 
-            const currentPlayerName = characterSheetCache ? characterSheetCache.name : null;
+            // LISTENER 1: TURN ORDER
+            onSnapshot(doc(db, 'artifacts', 'default', 'sessions', dmId, 'singles', 'shared_combat_state'), (doc) => {
+                if(doc.exists()) {
+                    currentTurn = doc.data().currentTurnIndex || 0;
+                    render(); // <--- Re-render when DM clicks Next
+                }
+            });
 
-            combatants.forEach((c, index) => {
-                const isActive = index === currentTurn;
-                const isPlayer = currentPlayerName && c.name === currentPlayerName;
-                
-                const baseClass = isPlayer ? 'bg-indigo-800/50' : 'bg-gray-800';
-                
-                const div = document.createElement('div');
-                div.className = `${baseClass} rounded-lg p-3 shadow-lg transition-all duration-300 ${isActive ? 'active-turn shadow-green-900/40' : 'border border-gray-700 opacity-80'}`;
-                
-                const badges = (c.conditions || []).map(cond => `<span class="text-[9px] bg-red-900 text-red-200 px-1 rounded border border-red-700">${cond}</span>`).join(' ');
-
-                div.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-gray-900 w-9 h-9 flex items-center justify-center rounded-lg font-bold text-indigo-400 border border-gray-700 text-lg">
-                                ${c.init}
-                            </div>
-                            <div>
-                                <div class="font-bold text-base ${isActive ? 'text-white' : 'text-gray-300'}">${c.name} ${isPlayer ? '(You)' : ''}</div>
-                                <div class="flex gap-1 mt-0.5">${badges}</div>
-                            </div>
-                        </div>
-                        ${isActive ? '<span class="text-[10px] bg-green-900 text-green-300 px-2 py-1 rounded uppercase tracking-wider font-bold animate-pulse">Active Turn</span>' : ''}
-                    </div>
-                `; 
-                list.appendChild(div);
+            // LISTENER 2: COMBATANT DATA
+            onSnapshot(collection(db, 'artifacts', 'default', 'sessions', dmId, 'shared_combatants'), (snapshot) => {
+                combatants = [];
+                snapshot.forEach(doc => combatants.push({ id: doc.id, ...doc.data() }));
+                combatants.sort((a, b) => (b.init || 0) - (a.init || 0));
+                render(); // <--- Re-render when HP changes or new player joins
             });
         }
-        
-        // --- Tab Control ---
-
-        window.showTab = (tabName) => {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active', 'bg-slate-800'));
-            
-            document.getElementById(`${tabName}-form`).classList.remove('hidden');
-            document.getElementById(`tab-btn-${tabName}`).classList.add('active', 'bg-slate-800');
-            
-            if (tabName === 'data' && !characterSheetCache) {
-                 loadCharacterFromDM();
-            }
-        }
-
-        // --- Startup ---
-        document.addEventListener('DOMContentLoaded', initPlayerView);
     </script>
 </body>
 </html>
