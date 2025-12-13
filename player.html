@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aegis | Player Uplink</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,7 +13,8 @@
     </style>
 </head>
 <body class="p-4 max-w-md mx-auto">
-<div class="mb-6 text-center">
+
+    <div class="mb-6 text-center">
         <h1 class="text-2xl font-bold text-indigo-400 tracking-widest">BATTLE LINK</h1>
         <div id="status" class="text-xs text-gray-500">Connecting...</div>
     </div>
@@ -109,12 +110,7 @@
 
                 combatants.forEach((c, index) => {
                     const isActive = index === currentTurn;
-                    const healthPercent = Math.min(100, Math.max(0, (c.currentHp / c.maxHp) * 100));
-                    
-                    let hpColor = "bg-green-500";
-                    if (healthPercent < 50) hpColor = "bg-yellow-500";
-                    if (healthPercent < 20) hpColor = "bg-red-500";
-
+                    // Health logic is now unnecessary since it's not rendered
                     const div = document.createElement('div');
                     div.className = `bg-gray-800 rounded-lg p-3 shadow-lg transition-all duration-300 ${isActive ? 'active-turn shadow-green-900/40' : 'border border-gray-700 opacity-80'}`;
                     
@@ -133,11 +129,8 @@
                             </div>
                             ${isActive ? '<span class="text-[10px] bg-green-900 text-green-300 px-2 py-1 rounded uppercase tracking-wider font-bold animate-pulse">Active Turn</span>' : ''}
                         </div>
-
-<div class="w-full bg-gray-900 rounded-full h-1.5 overflow-hidden border border-gray-700/50">
-                            <div class="${hpColor} h-full transition-all duration-500" style="width: ${healthPercent}%"></div>
-                        </div>
-                    `;
+                        
+                    `; // The health bar and HP logic were removed from here.
                     list.appendChild(div);
                 });
             }
