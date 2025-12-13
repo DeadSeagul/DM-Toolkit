@@ -23,51 +23,46 @@
             border-bottom-color: #6366f1; /* indigo-500 */
             background-color: #1e293b; /* slate-800 */
         }
-        .stat-input {
-            width: 45px;
-            height: 45px;
-            padding: 2px;
-            text-align: center;
-            font-size: 1.1rem;
-        }
+        .text-field-label { display: block; text-transform: uppercase; font-weight: bold; font-size: 10px; color: #94a3b8; }
         #sheet-content-scroll {
             max-height: 70vh;
             overflow-y: auto;
             padding-right: 8px;
             padding-top: 5px;
         }
-        .text-field-label { display: block; text-transform: uppercase; font-weight: bold; font-size: 10px; color: #94a3b8; }
+        .modal-backdrop { position: fixed; inset: 0; z-index: 150; background-color: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
 
-        /* Custom Styles for Ability Score Boxes */
-        .ability-box {
+        /* Custom Styles for Ability Score Boxes (Mimicking 5E Sheet) */
+        .ability-outer-frame {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 4px;
-            border: 1px solid #334155;
-            border-radius: 6px;
-            background-color: #1e293b;
+        }
+        .ability-mod-display {
+            width: 100%;
+            height: 48px;
+            border: 2px solid #34d399; /* Modifier frame */
+            border-radius: 4px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #34d399;
+            background-color: rgba(52, 211, 153, 0.1);
         }
         .ability-score-input {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
             font-weight: bold;
             text-align: center;
-            width: 100%;
-            padding: 2px 0;
-            background-color: transparent;
-            border: none;
+            width: 90%;
+            padding: 2px;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
             color: #fff;
             outline: none;
-            margin-bottom: 4px;
-        }
-        .ability-modifier-display {
-            font-size: 1rem;
-            font-weight: bold;
-            color: #34d399; /* Green color for modifiers */
-            border-top: 1px dashed #334155;
-            width: 100%;
-            text-align: center;
-            padding-top: 4px;
         }
     </style>
 </head>
@@ -144,21 +139,19 @@
                 <h4 class="text-xs text-gray-500 uppercase font-bold mb-2">Ability Scores</h4>
                 <div class="grid grid-cols-6 gap-2">
                     ${['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => `
-                        <div class="text-center">
-                            <label class="text-[9px] uppercase block mb-1">${stat}</label>
-                            <div class="ability-box">
-                                <input 
-                                    type="number" 
-                                    id="sheet-${stat}" 
-                                    class="ability-score-input" 
-                                    placeholder="10"
-                                    min="1"
-                                    max="30"
-                                >
-                                <div id="mod-${stat}" class="ability-modifier-display">
-                                    +0
-                                </div>
+                        <div class="ability-outer-frame">
+                            <label class="text-[9px] uppercase block mb-1 text-indigo-300">${stat}</label>
+                            <div id="mod-${stat}" class="ability-mod-display">
+                                +0
                             </div>
+                            <input 
+                                type="number" 
+                                id="sheet-${stat}" 
+                                class="ability-score-input" 
+                                placeholder="10"
+                                min="1"
+                                max="30"
+                            >
                         </div>
                     `).join('')}
                 </div>
@@ -260,13 +253,15 @@
                 const displayEl = document.getElementById(displayId);
 
                 if (inputEl && displayEl) {
-                    // Update the display when the input value changes
-                    inputEl.addEventListener('input', () => {
+                    // This uses the 'input' event for real-time updating
+                    const updateDisplay = () => {
                         displayEl.textContent = calculateModifier(inputEl.value);
-                    });
+                    };
+
+                    inputEl.addEventListener('input', updateDisplay);
                     
-                    // Initial calculation on load
-                    displayEl.textContent = calculateModifier(inputEl.value);
+                    // Initial calculation on load/setup
+                    updateDisplay();
                 }
             });
         }
@@ -288,7 +283,7 @@
             setupCombatantsListener();
             setupCampaignsListener(); 
             loadCharacterFromDM(); 
-            setupAbilityScoreListeners(); // Initialize the dynamic modifier calculation
+            setupAbilityScoreListeners(); 
         }
 
         // --- Firebase Listeners ---
@@ -477,7 +472,6 @@
                 // 3. Format the Note content (HTML for DM's easy viewing)
                 const noteTitle = `${name} | ${newSheetData['sheet-class']} (${newSheetData['sheet-race']})`;
                 
-                // Helper to generate ability score display for DM notes
                 const abilityDisplay = ABILITY_STATS.map(stat => {
                     const score = newSheetData[`sheet-${stat}`];
                     return `${stat.toUpperCase()} ${score} (${calculateModifier(score)})`;
