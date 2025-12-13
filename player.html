@@ -117,7 +117,7 @@
                     const badges = (c.conditions || []).map(cond => `<span class="text-[9px] bg-red-900 text-red-200 px-1 rounded border border-red-700">${cond}</span>`).join(' ');
 
                     div.innerHTML = `
-                        <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="bg-gray-900 w-9 h-9 flex items-center justify-center rounded-lg font-bold text-indigo-400 border border-gray-700 text-lg">
                                     ${c.init}
@@ -130,7 +130,7 @@
                             ${isActive ? '<span class="text-[10px] bg-green-900 text-green-300 px-2 py-1 rounded uppercase tracking-wider font-bold animate-pulse">Active Turn</span>' : ''}
                         </div>
                         
-                    `; // The health bar and HP logic were removed from here.
+                    `; // The health bar HTML was removed, and the outer div class was fixed.
                     list.appendChild(div);
                 });
             }
