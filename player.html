@@ -37,7 +37,38 @@
             padding-top: 5px;
         }
         .text-field-label { display: block; text-transform: uppercase; font-weight: bold; font-size: 10px; color: #94a3b8; }
-        .modal-backdrop { position: fixed; inset: 0; z-index: 150; background-color: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+
+        /* Custom Styles for Ability Score Boxes */
+        .ability-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4px;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            background-color: #1e293b;
+        }
+        .ability-score-input {
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            width: 100%;
+            padding: 2px 0;
+            background-color: transparent;
+            border: none;
+            color: #fff;
+            outline: none;
+            margin-bottom: 4px;
+        }
+        .ability-modifier-display {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #34d399; /* Green color for modifiers */
+            border-top: 1px dashed #334155;
+            width: 100%;
+            text-align: center;
+            padding-top: 4px;
+        }
     </style>
 </head>
 <body class="p-4 max-w-md mx-auto">
@@ -111,11 +142,23 @@
             
             <div class="pt-2 border-t border-gray-700">
                 <h4 class="text-xs text-gray-500 uppercase font-bold mb-2">Ability Scores</h4>
-                <div class="flex justify-between gap-1">
+                <div class="grid grid-cols-6 gap-2">
                     ${['str', 'dex', 'con', 'int', 'wis', 'cha'].map(stat => `
                         <div class="text-center">
-                            <label class="text-[9px] uppercase block">${stat}</label>
-                            <input type="number" id="sheet-${stat}" class="input-dark stat-input" placeholder="10">
+                            <label class="text-[9px] uppercase block mb-1">${stat}</label>
+                            <div class="ability-box">
+                                <input 
+                                    type="number" 
+                                    id="sheet-${stat}" 
+                                    class="ability-score-input" 
+                                    placeholder="10"
+                                    min="1"
+                                    max="30"
+                                >
+                                <div id="mod-${stat}" class="ability-modifier-display">
+                                    +0
+                                </div>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -186,10 +229,10 @@
             appId: "1:654767294266:web:fbee20be7d458fb7d6f203"
         };
         
+        const ABILITY_STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
         const SHEET_INPUT_IDS = [
             'sheet-name', 'sheet-race', 'sheet-class', 'sheet-prof', 'sheet-maxhp', 
-            'sheet-ac', 'sheet-stats-misc', 'sheet-features', 'sheet-attacks', 'sheet-str', 'sheet-dex', 
-            'sheet-con', 'sheet-int', 'sheet-wis', 'sheet-cha'
+            'sheet-ac', 'sheet-stats-misc', 'sheet-features', 'sheet-attacks', ...ABILITY_STATS
         ];
 
         // --- Initialization ---
@@ -200,6 +243,34 @@
         function safeEncodeName(name) {
             return encodeURIComponent(name.trim()).replace(/\./g, '_');
         }
+        
+        /** Calculates the D&D 5e modifier from an ability score. */
+        function calculateModifier(score) {
+            const num = parseInt(score) || 10;
+            const mod = Math.floor((num - 10) / 2);
+            return (mod >= 0 ? '+' : '') + mod;
+        }
+
+        /** Sets up event listeners to update the modifier display dynamically. */
+        function setupAbilityScoreListeners() {
+            ABILITY_STATS.forEach(stat => {
+                const inputId = `sheet-${stat}`;
+                const displayId = `mod-${stat}`;
+                const inputEl = document.getElementById(inputId);
+                const displayEl = document.getElementById(displayId);
+
+                if (inputEl && displayEl) {
+                    // Update the display when the input value changes
+                    inputEl.addEventListener('input', () => {
+                        displayEl.textContent = calculateModifier(inputEl.value);
+                    });
+                    
+                    // Initial calculation on load
+                    displayEl.textContent = calculateModifier(inputEl.value);
+                }
+            });
+        }
+
 
         function initPlayerView() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -211,12 +282,13 @@
             }
 
             document.getElementById('status').textContent = "● Connected to Session";
-            document.getElementById('campaign-display').textContent = dmId; // Show DM Session ID
+            document.getElementById('campaign-display').textContent = dmId; 
             
             setupTurnOrderListener();
             setupCombatantsListener();
             setupCampaignsListener(); 
             loadCharacterFromDM(); 
+            setupAbilityScoreListeners(); // Initialize the dynamic modifier calculation
         }
 
         // --- Firebase Listeners ---
@@ -263,7 +335,6 @@
                 const modal = document.getElementById('save-campaign-modal');
                 const select = document.getElementById('save-campaign-select');
 
-                // Ensure we have the latest list from the listener
                 if (currentCampaignList.length === 0) {
                      alert("The DM has not created any campaigns yet. Using 'Default Campaign'.");
                      resolve('Default Campaign');
@@ -272,17 +343,14 @@
                 
                 campaignResolve = resolve;
                 
-                // Populate list
                 select.innerHTML = currentCampaignList.map(c => 
                     `<option value="${c}">${c}</option>`
                 ).join('');
                 
-                // Try to pre-select the last saved campaign, if known
                 const lastCampaign = localStorage.getItem('player_last_campaign');
                 if (lastCampaign) {
                     select.value = lastCampaign;
                 } else {
-                    // Default to 'Default Campaign' if it exists
                     select.value = 'Default Campaign';
                 }
 
@@ -296,7 +364,6 @@
             const campaignChoice = select.value;
             
             modal.classList.add('hidden');
-            // Save choice locally for next time
             localStorage.setItem('player_last_campaign', campaignChoice);
             
             if (campaignResolve) campaignResolve(campaignChoice);
@@ -350,6 +417,9 @@
                                 input.value = characterSheetCache[id];
                             }
                         });
+
+                        // Trigger modifier recalculation after populating scores
+                        setupAbilityScoreListeners();
                         
                         document.getElementById('sheet-name').value = characterSheetCache['sheet-name']; 
 
@@ -361,7 +431,6 @@
                     }
                 }
                 
-                // If character not found 
                 characterSheetCache = null;
                 savedNameEl.textContent = "New Character";
                 statusEl.textContent = `Character sheet not found. Fill and Save.`;
@@ -385,7 +454,6 @@
             statusEl.textContent = "Awaiting campaign selection...";
 
             try {
-                // 1. Ask the player which campaign to save to
                 const targetCampaign = await window.promptForCampaign();
                 if (!targetCampaign) {
                     statusEl.textContent = "Save cancelled.";
@@ -394,12 +462,11 @@
                 
                 statusEl.textContent = `Saving to campaign: ${targetCampaign}...`;
                 
-                // 2. Collect all data
                 const newSheetData = { name };
                 SHEET_INPUT_IDS.forEach(id => {
                     const input = document.getElementById(id);
                     if (input) {
-                        const isNum = ['sheet-prof', 'sheet-maxhp', 'sheet-ac', 'sheet-str', 'sheet-dex', 'sheet-con', 'sheet-int', 'sheet-wis', 'sheet-cha'].includes(id);
+                        const isNum = ['sheet-prof', 'sheet-maxhp', 'sheet-ac', ...ABILITY_STATS].includes(id);
                         newSheetData[id] = isNum ? (parseInt(input.value) || 0) : input.value.trim();
                     }
                 });
@@ -410,11 +477,17 @@
                 // 3. Format the Note content (HTML for DM's easy viewing)
                 const noteTitle = `${name} | ${newSheetData['sheet-class']} (${newSheetData['sheet-race']})`;
                 
+                // Helper to generate ability score display for DM notes
+                const abilityDisplay = ABILITY_STATS.map(stat => {
+                    const score = newSheetData[`sheet-${stat}`];
+                    return `${stat.toUpperCase()} ${score} (${calculateModifier(score)})`;
+                }).join(', ');
+
                 let contentHTML = `
                     <p class="text-sm font-bold text-indigo-400">Combat Stats:</p>
                     <p class="text-xs">AC: ${newSheetData['sheet-ac']}, Max HP: ${newSheetData['sheet-maxhp']}, Prof: ${newSheetData['sheet-prof']}</p>
                     <p class="text-sm font-bold text-indigo-400 mt-2">Ability Scores:</p>
-                    <p class="text-xs">STR ${newSheetData['sheet-str']}, DEX ${newSheetData['sheet-dex']}, CON ${newSheetData['sheet-con']}, INT ${newSheetData['sheet-int']}, WIS ${newSheetData['sheet-wis']}, CHA ${newSheetData['sheet-cha']}</p>
+                    <p class="text-xs">${abilityDisplay}</p>
                     <p class="text-sm font-bold text-indigo-400 mt-2">Notes:</p>
                     <p class="text-xs">${newSheetData['sheet-stats-misc'] || 'N/A'}</p>
                     <p class="text-xs mt-1">Attacks: ${newSheetData['sheet-attacks'] || 'N/A'}</p>
@@ -430,21 +503,19 @@
                     sheetData: newSheetData 
                 };
                 
-                // 4. Load current notes array, update it, and save it back
                 const docSnap = await getDoc(pcNotesRef);
                 let notesArray = docSnap.exists() ? docSnap.data().structuredPcNotes || [] : [];
                 
                 const existingIndex = notesArray.findIndex(n => n.id === safeName);
 
                 if (existingIndex > -1) {
-                    notesArray[existingIndex] = newNote; // Update existing
+                    notesArray[existingIndex] = newNote;
                 } else {
-                    notesArray.unshift(newNote); // Add new
+                    notesArray.unshift(newNote);
                 }
 
                 await updateDoc(pcNotesRef, { structuredPcNotes: notesArray }, { merge: true });
 
-                // 5. Success Feedback & Local State Update
                 localStorage.setItem('player_last_char_name', name);
                 characterSheetCache = newSheetData;
                 
@@ -483,12 +554,9 @@
 
             btn.disabled = true; btn.innerHTML = "Sending...";
             
-            // For manual submission, we use the input fields directly.
-            // We set initModifier to 0 since the player submits the final rolled value.
             const initModifier = 0; 
 
             try {
-                // Check if this specific name is already in combat (e.g. they re-rolled init)
                 const existing = combatants.find(c => c.name === name);
                 
                 const combatantData = {
@@ -496,24 +564,20 @@
                     init: initRoll, 
                     ac: ac, 
                     maxHp: maxHp, 
-                    // Assume current HP is max if adding fresh. If existing, keep current HP.
                     currentHp: existing ? existing.currentHp : maxHp,
                     initModifier: initModifier, 
                     conditions: existing ? existing.conditions : [],
-                    sheetRefPath: safeEncodeName(name) // Still link if a full sheet exists
+                    sheetRefPath: safeEncodeName(name) 
                 };
                 
                 if (existing) {
-                    // Update existing combatant's initiative and stats
                     await updateDoc(doc(getCombatantsColRef(), existing.id), combatantData);
                 } else {
-                    // Add new combatant
                     await addDoc(getCombatantsColRef(), combatantData);
                 }
 
                 btn.innerHTML = "✅ Sent!"; btn.classList.replace('bg-indigo-600', 'bg-green-600');
                 
-                // Clear the Name, AC, HP fields for next submission (common use case is adding different monsters/NPCs quickly)
                 document.getElementById('p-name').value = '';
                 document.getElementById('p-ac').value = '';
                 document.getElementById('p-hp').value = '';
