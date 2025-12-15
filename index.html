@@ -5312,23 +5312,35 @@ window.saveCombatNpcToNotes = async function(tab) {
 };
 
   // ==========================================
-// 🛠️ MONSTER FIX: Dark Mode & Standard Model
+// 🛠️ MONSTER FIX: Gemini 1.0 Pro (Standard)
 // ==========================================
 
 // 1. GLOBAL AI CONNECTOR (Required for the generator to work)
 window.callAI = async function(url, payload) {
     let key = document.getElementById('user-api-key')?.value.trim();
     if (!key) key = localStorage.getItem('dm_toolkit_api_key');
-    if (!key) throw new Error("Missing API Key.");
+    
+    // Safety: If no key, stop here.
+    if (!key) throw new Error("Missing API Key. Please enter it in the Prep Tab.");
 
     const maxRetries = 3;
     for (let i = 0; i < maxRetries; i++) {
         try {
             const res = await fetch(`${url}?key=${key}`, { 
-                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload) 
             });
+
             if (res.ok) return await res.json();
-            if (res.status === 503) { await new Promise(r => setTimeout(r, 2000)); continue; }
+            
+            // Handle "Server Busy" (503) by waiting
+            if (res.status === 503) { 
+                await new Promise(r => setTimeout(r, 2000)); 
+                continue; 
+            }
+            
+            // Show actual error text
             throw new Error(await res.text());
         } catch (e) {
             if (i === maxRetries - 1) throw e;
@@ -5354,10 +5366,10 @@ window.generateMonsterStatblock = async function() {
         const name = document.getElementById('monster-name').value;
         const cr = document.getElementById('monster-cr').value;
         
-        // 🟢 USING STANDARD MODEL (Gemini Pro)
-        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+        // 🟢 FIX: Updated to specific version "gemini-1.0-pro" to fix 404
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent';
 
-        // 🟢 STRICT PROMPT (Forces correct data format without strict_schema which Pro doesn't support well)
+        // Strict Prompt to ensure JSON format
         const prompt = `
         Generate a JSON statblock for D&D 5e: "${name}" (CR ${cr}).
         Return ONLY valid JSON. No markdown formatting.
@@ -5373,14 +5385,15 @@ window.generateMonsterStatblock = async function() {
             "legendary": [{"name": "String", "desc": "String"}]
         }`;
 
+        // Call the Global AI function
         const data = await window.callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
         
-        // Clean and Parse
+        // Parse Result
         let rawText = data.candidates[0].content.parts[0].text;
         rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim(); 
         const raw = JSON.parse(rawText);
 
-        // Normalize Data
+        // Normalize Data (Safety defaults)
         const m = {
             name: raw.name || name, size: raw.size || "Medium", type: raw.type || "Monster", align: raw.align || "Unaligned",
             ac: parseInt(raw.ac)||10, hp: parseInt(raw.hp)||10, hitDice: raw.hitDice||"1d8", speed: raw.speed||"30 ft.",
@@ -5391,7 +5404,7 @@ window.generateMonsterStatblock = async function() {
 
         window.lastGeneratedMonster = m;
 
-        // 🟢 RENDER DARK MODE CARD (Matches your Notes style)
+        // 🟢 RENDER DARK MODE CARD (Matches Notes Style)
         const getMod = (s) => Math.floor(((parseInt(s)||10)-10)/2);
         const fmtMod = (s) => { const m = getMod(s); return m>=0?`+${m}`:m; };
         
@@ -5436,9 +5449,14 @@ window.generateMonsterStatblock = async function() {
 
     } catch(e) {   
         console.error(e);
-        output.innerHTML = `<div class="p-3 bg-red-900/50 rounded border border-red-500 text-red-200 text-xs"><strong>Generation Failed:</strong> ${e.message}<br>Check API Key.</div>`;
+        // Error Feedback
+        output.innerHTML = `<div class="p-3 bg-red-900/50 rounded border border-red-500 text-red-200 text-xs">
+            <strong>Generation Failed:</strong> ${e.message}
+        </div>`;
+        window.lastGeneratedMonster = null; 
     } finally {   
-        spinner.classList.add('hidden'); btn.disabled = false;   
+        spinner.classList.add('hidden');   
+        btn.disabled = false;   
     }
 };      
 
