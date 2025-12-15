@@ -5529,6 +5529,91 @@ window.saveMonsterToNotes = async function() {
     }
 };
         
+// ==========================================
+// 🎲 LINKING FIX: Auto-Link Dice on Save
+// ==========================================
+
+// 1. IMPROVED LINKIFY HELPER (Finds dice, strips spaces, adds brackets)
+window.linkifyDice = (text) => {
+    if (!text) return "";
+    // Regex finds: "1d6", "2d8 + 3", "1d20 - 1" (Case insensitive)
+    return text.replace(/\b(\d+d\d+)(?:\s?([+\-])\s?(\d+))?\b/gi, (match, dice, sign, mod) => {
+        // Construct clean string: "2d6+3"
+        const modStr = (sign && mod) ? `${sign}${mod}` : '';
+        return `[[${dice}${modStr}]]`; 
+    });
+};
+
+// 2. SAVE MONSTER TO NOTES (With Dice Links)
+window.saveMonsterToNotes = async function() {
+    // A. Validation
+    if (!window.userId) { alert("🔒 Please log in."); window.openLoginModal(); return; }
+    const m = window.lastGeneratedMonster;
+    if (!m) { alert("⚠️ No monster generated."); return; }
+
+    // B. Campaign Select
+    const targetCampaign = await window.promptForCampaign();
+    if (!targetCampaign) return;
+
+    // C. Helper for modifiers
+    const getMod = (s) => Math.floor(((parseInt(s)||10) - 10) / 2);
+    const fmtStat = (val) => { const v = parseInt(val)||10; const mod = getMod(v); return `${v} (${mod>=0?'+':''}${mod})`; };
+
+    // D. BUILD MARKDOWN (Applying Dice Links)
+    let md = `# ${m.name}\n`;
+    md += `*${m.size} ${m.type}, ${m.align}*\n`;
+    md += `---\n`;
+    md += `**AC:** ${m.ac}\n`;
+    // Linkify HP (e.g. "[[10d8+20]]")
+    md += `**HP:** ${m.hp} (${window.linkifyDice(m.hitDice)})\n`;
+    md += `**Speed:** ${m.speed}\n`;
+    md += `---\n`;
+    md += `**STR:** ${fmtStat(m.str)} | **DEX:** ${fmtStat(m.dex)} | **CON:** ${fmtStat(m.con)}\n`;
+    md += `**INT:** ${fmtStat(m.int)} | **WIS:** ${fmtStat(m.wis)} | **CHA:** ${fmtStat(m.cha)}\n`;
+    md += `---\n`;
+    md += `**Saves:** ${m.saves}\n`;
+    md += `**Skills:** ${m.skills}\n`;
+    md += `**Senses:** ${m.senses}\n`;
+    md += `**CR:** ${m.cr} (${m.xp} XP)\n`;
+    md += `---\n`;
+
+    // Traits
+    if (m.traits && m.traits.length) {
+        md += `### Traits\n`;
+        m.traits.forEach(t => {
+            // Linkify content inside traits
+            md += `**${t.name}.** ${window.linkifyDice(t.desc || t.description)}\n\n`;
+        });
+    }
+
+    // Actions (The important part for rolling)
+    if (m.actions && m.actions.length) {
+        md += `### Actions\n`;
+        m.actions.forEach(a => {
+            // Linkify content inside actions
+            md += `**${a.name}.** ${window.linkifyDice(a.desc || a.description)}\n\n`;
+        });
+    }
+
+    // Legendary Actions
+    if (m.legendary && m.legendary.length) {
+        md += `### Legendary Actions\n`;
+        m.legendary.forEach(l => {
+            md += `**${l.name}.** ${window.linkifyDice(l.desc || l.description)}\n\n`;
+        });
+    }
+
+    // E. SAVE NOTE
+    const newNote = { 
+        id: crypto.randomUUID(), 
+        title: `${m.name} (CR ${m.cr})`, 
+        content: md, 
+        campaign: targetCampaign,
+        timestamp: new Date().toISOString() 
+    };
+
+    await window.finalizeSave('enemyNotes', newNote, targetCampaign);
+};
         
 
 </script>
