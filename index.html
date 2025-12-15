@@ -5317,6 +5317,50 @@ window.saveCombatNpcToNotes = async function(tab) {
     await window.finalizeSave(tab, newNote, targetCampaign);
 };
 
+   // ==========================================
+// 🔌 THE MISSING LINK: Global AI Connector
+// ==========================================
+
+window.callAI = async function(url, payload) {
+    // 1. Get Key (Check Input box first, then Local Storage)
+    let key = document.getElementById('user-api-key')?.value.trim();
+    if (!key) key = localStorage.getItem('dm_toolkit_api_key');
+    
+    if (!key) throw new Error("Missing API Key. Please enter it in the Prep Tab.");
+
+    // 2. Retry Logic (Handles Google 503 Overloads)
+    const maxRetries = 3;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            // Append Key to URL
+            const finalUrl = `${url}?key=${key}`;
+            
+            const res = await fetch(finalUrl, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload) 
+            });
+
+            if (res.ok) return await res.json();
+
+            // If Server Overloaded, wait and retry
+            if (res.status === 503) {
+                console.warn(`AI Busy (503). Retrying... (${i + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s
+                continue; 
+            }
+
+            // Other errors (400, 403, etc)
+            const errText = await res.text();
+            throw new Error(`API Error (${res.status}): ${errText}`);
+
+        } catch (e) {
+            if (i === maxRetries - 1) throw e; // Fail on last try
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s
+        }
+    }
+};     
+
 
 </script>
 
