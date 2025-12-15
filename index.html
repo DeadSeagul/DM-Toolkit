@@ -5450,7 +5450,86 @@ window.generateMonsterStatblock = async function() {
         spinner.classList.add('hidden');   
         btn.disabled = false;   
     }
-};      
+};
+
+// ==========================================
+// 💾 FORCE FIX: SAVE MONSTER TO ENEMIES TAB
+// ==========================================
+
+window.saveMonsterToNotes = async function() {
+    // 1. Validation
+    if (!window.userId) { 
+        alert("🔒 Please log in to save data."); 
+        window.openLoginModal(); 
+        return; 
+    }
+
+    const m = window.lastGeneratedMonster;
+    if (!m) { 
+        alert("⚠️ No monster data found. Please generate a monster first."); 
+        return; 
+    }
+
+    // 2. Visual Feedback
+    const btn = event.target || document.querySelector('#save-options-monster button:nth-child(2)');
+    if(btn) btn.innerText = "Saving...";
+
+    try {
+        // 3. Select Campaign
+        const targetCampaign = await window.promptForCampaign();
+        if (!targetCampaign) {
+            if(btn) btn.innerText = "Save to Notes";
+            return;
+        }
+
+        // 4. Capture Content (The dark card we just generated)
+        const outputEl = document.getElementById('monster-output');
+        const content = outputEl ? outputEl.innerHTML : "Error: No content";
+
+        // 5. Create Note Object
+        const newNote = { 
+            id: crypto.randomUUID(), 
+            title: `${m.name} (CR ${m.cr || '?'})`, 
+            content: content, 
+            campaign: targetCampaign,
+            timestamp: new Date().toISOString() 
+        };
+
+        // 6. FORCE SAVE to 'enemyNotes' Array
+        // Ensure the array exists
+        if (!window.structuredNotes) window.structuredNotes = {};
+        if (!window.structuredNotes.enemyNotes) window.structuredNotes.enemyNotes = [];
+
+        // Add to local memory
+        window.structuredNotes.enemyNotes.unshift(newNote);
+
+        // Save to Database
+        await window.saveStructuredNotes('enemyNotes', window.structuredNotes.enemyNotes);
+
+        // 7. SUCCESS & REDIRECT
+        if(btn) btn.innerText = "Saved!";
+        
+        // Force switch to the Enemies tab so you see it immediately
+        window.switchTab('notes'); 
+        window.switchSubTab('enemyNotes');
+        
+        // Highlight the new note
+        setTimeout(() => {
+            const noteEl = document.getElementById(`note-${newNote.id}`);
+            if (noteEl) {
+                noteEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                noteEl.classList.add('ring-2', 'ring-green-400');
+            }
+        }, 300);
+
+    } catch (e) {
+        console.error(e);
+        alert("Save Failed: " + e.message);
+        if(btn) btn.innerText = "Save to Notes";
+    }
+};
+        
+        
 
 </script>
 
