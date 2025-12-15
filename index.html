@@ -5312,7 +5312,7 @@ window.saveCombatNpcToNotes = async function(tab) {
 };
 
   // ==========================================
-// 🛠️ MONSTER FIX: Gemini 1.0 Pro (Standard)
+// 🛠️ MONSTER FIX: Gemini Pro (Legacy Compatibility)
 // ==========================================
 
 // 1. GLOBAL AI CONNECTOR (Required for the generator to work)
@@ -5366,14 +5366,14 @@ window.generateMonsterStatblock = async function() {
         const name = document.getElementById('monster-name').value;
         const cr = document.getElementById('monster-cr').value;
         
-        // 🟢 FIX: Updated to specific version "gemini-1.0-pro" to fix 404
-        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent';
+        // 🟢 FIX: Use standard 'gemini-pro'
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
-        // Strict Prompt to ensure JSON format
+        // 🟢 LEGACY PROMPT: Strong instructions (No Schema config, as Pro doesn't support it)
         const prompt = `
         Generate a JSON statblock for D&D 5e: "${name}" (CR ${cr}).
         Return ONLY valid JSON. No markdown formatting.
-        Required JSON Structure:
+        Structure:
         {
             "name": "String", "size": "String", "type": "String", "align": "String",
             "ac": Integer, "hp": Integer, "hitDice": "String", "speed": "String",
@@ -5385,15 +5385,15 @@ window.generateMonsterStatblock = async function() {
             "legendary": [{"name": "String", "desc": "String"}]
         }`;
 
-        // Call the Global AI function
+        // Call AI (No generationConfig)
         const data = await window.callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
         
-        // Parse Result
+        // Clean Parsing
         let rawText = data.candidates[0].content.parts[0].text;
         rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim(); 
         const raw = JSON.parse(rawText);
 
-        // Normalize Data (Safety defaults)
+        // Normalize Data
         const m = {
             name: raw.name || name, size: raw.size || "Medium", type: raw.type || "Monster", align: raw.align || "Unaligned",
             ac: parseInt(raw.ac)||10, hp: parseInt(raw.hp)||10, hitDice: raw.hitDice||"1d8", speed: raw.speed||"30 ft.",
@@ -5436,11 +5436,11 @@ window.generateMonsterStatblock = async function() {
                 </div>
 
                 <div class="space-y-3">
-                    ${m.traits.map(t => `<div><strong class="text-indigo-200">${t.name}.</strong> ${t.desc}</div>`).join('')}
-                    ${m.actions.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Actions</div>` : ''}
-                    ${m.actions.map(a => `<div><strong class="text-white">${a.name}.</strong> ${a.desc}</div>`).join('')}
-                    ${m.legendary.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Legendary Actions</div>` : ''}
-                    ${m.legendary.map(l => `<div><strong class="text-white">${l.name}.</strong> ${l.desc}</div>`).join('')}
+                    ${m.traits && m.traits.map(t => `<div><strong class="text-indigo-200">${t.name}.</strong> ${t.desc}</div>`).join('')}
+                    ${m.actions && m.actions.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Actions</div>` : ''}
+                    ${m.actions && m.actions.map(a => `<div><strong class="text-white">${a.name}.</strong> ${a.desc}</div>`).join('')}
+                    ${m.legendary && m.legendary.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Legendary Actions</div>` : ''}
+                    ${m.legendary && m.legendary.map(l => `<div><strong class="text-white">${l.name}.</strong> ${l.desc}</div>`).join('')}
                 </div>
             </div>`;
 
@@ -5449,14 +5449,9 @@ window.generateMonsterStatblock = async function() {
 
     } catch(e) {   
         console.error(e);
-        // Error Feedback
-        output.innerHTML = `<div class="p-3 bg-red-900/50 rounded border border-red-500 text-red-200 text-xs">
-            <strong>Generation Failed:</strong> ${e.message}
-        </div>`;
-        window.lastGeneratedMonster = null; 
+        output.innerHTML = `<div class="p-3 bg-red-900/50 rounded border border-red-500 text-red-200 text-xs"><strong>Generation Failed:</strong> ${e.message}<br>Check API Key.</div>`;
     } finally {   
-        spinner.classList.add('hidden');   
-        btn.disabled = false;   
+        spinner.classList.add('hidden'); btn.disabled = false;   
     }
 };      
 
