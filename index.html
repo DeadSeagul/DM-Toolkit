@@ -2033,17 +2033,18 @@ window.addNpcToStatblocks = async function() {
     }
 
     // ==========================================
-// 🐉 ROBUST MONSTER GENERATOR (ENHANCED RELIABILITY)
+// 🐉 MONSTER GENERATOR (Dark Mode & Reliable)
 // ==========================================
+
 window.generateMonsterStatblock = async function() {
-    const btn = document.getElementById('generate-monster-button');  
+    const btn = document.getElementById('generate-monster-button');   
     const spinner = document.getElementById('monster-loading-spinner');
-    const output = document.getElementById('monster-output');  
+    const output = document.getElementById('monster-output');   
     const status = document.getElementById('monster-status-message');
 
-    // 1. Reset & UI Prep
-    window.lastGeneratedMonster = null;  
-    btn.disabled = true;  
+    // 1. Reset UI
+    window.lastGeneratedMonster = null;   
+    btn.disabled = true;   
     spinner.classList.remove('hidden');
     output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
     if(status) status.classList.add('hidden');
@@ -2052,100 +2053,105 @@ window.generateMonsterStatblock = async function() {
         const name = document.getElementById('monster-name').value;
         const cr = document.getElementById('monster-cr').value;
         
-        // 🟢 IMPROVEMENT 1: STRICTOR PROMPT
-        const prompt = `Generate a D&D 5e monster statblock for "${name}" (CR ${cr}). 
-        The entire output MUST be a single, complete, valid JSON object following the schema provided. 
-        Ensure all required numeric values (AC, HP, STR, DEX, CON, INT, WIS, CHA) are present as integers.`;
+        // 2. Safe URL (Hardcoded to ensure stability)
+        const GEN_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-        // 2. Call AI
-        const data = await callAI(API_URL, { 
-            contents: [{ parts: [{ text: prompt }] }], 
-            generationConfig: { 
-                responseMimeType: "application/json", 
-                responseSchema: monsterSchema 
-            } 
-        });
-        
-        // 3. Robust Parsing & Cleanup (Handles markdown block errors)
-        let raw = {};
-        try {
-            // 🟢 IMPROVEMENT 2: POST-PROCESSING
-            // Strip common markdown JSON wrappers (```json...```) before parsing.
-            let cleanText = data.candidates[0].content.parts[0].text;
-            cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
-            raw = JSON.parse(cleanText);
-        } catch (e) {
-            console.error("JSON Parsing Failed:", e);
-            throw new Error("AI returned malformed data. Try regenerating or simplifying the creature name/CR.");
-        }
-
-        // 4. Map & Normalize Data (Ensures numeric fallback if the model misses a key)
-        const m = {
-            name: raw.name || name,
-            size: raw.size || "Medium",
-            type: raw.type || "Monster",
-            align: raw.alignment || raw.align || "Unaligned",
-            ac: parseInt(raw.ac || raw.armor_class) || 10,  
-            hp: parseInt(raw.hp || raw.hit_points) || 10,   
-            speed: raw.speed || "30 ft.",
-            str: parseInt(raw.STR || raw.ability_scores?.STR) || 10,
-            dex: parseInt(raw.DEX || raw.ability_scores?.DEX) || 10,
-            con: parseInt(raw.CON || raw.ability_scores?.CON) || 10,
-            int: parseInt(raw.INT || raw.ability_scores?.INT) || 10,
-            wis: parseInt(raw.WIS || raw.ability_scores?.WIS) || 10,
-            cha: parseInt(raw.CHA || raw.ability_scores?.CHA) || 10,
-            cr: raw.cr || raw.challenge_rating || cr, 
-            traits: raw.traits || raw.special_abilities || [],
-            actions: raw.actions || [],
-            legendary: raw.legendary_actions || []
+        // 3. Strict JSON Schema (Ensures the AI doesn't improvise the format)
+        const strictSchema = {
+            type: "OBJECT",
+            properties: {
+                name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" },
+                ac: { type: "INTEGER" }, hp: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" },
+                str: { type: "INTEGER" }, dex: { type: "INTEGER" }, con: { type: "INTEGER" }, int: { type: "INTEGER" }, wis: { type: "INTEGER" }, cha: { type: "INTEGER" },
+                saves: { type: "STRING" }, skills: { type: "STRING" }, senses: { type: "STRING" }, languages: { type: "STRING" },
+                cr: { type: "STRING" }, xp: { type: "INTEGER" },
+                traits: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, desc: { type: "STRING" } } } },
+                actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, desc: { type: "STRING" } } } },
+                legendary: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, desc: { type: "STRING" } } } }
+            },
+            required: ["name", "ac", "hp", "str", "dex", "con", "int", "wis", "cha", "actions"]
         };
 
-        // 5. CRITICAL: Store the cleaned data globally for the save buttons
+        const prompt = `Create a D&D 5e statblock for "${name}" (CR ${cr}). Return JSON only.`;
+
+        // 4. Call AI
+        const data = await window.callAI(GEN_URL, { 
+            contents: [{ parts: [{ text: prompt }] }], 
+            generationConfig: { responseMimeType: "application/json", responseSchema: strictSchema } 
+        });
+        
+        // 5. Parse Data
+        const raw = JSON.parse(data.candidates[0].content.parts[0].text);
+
+        // 6. Normalize Data (Safety Fallbacks)
+        const m = {
+            name: raw.name || name, size: raw.size || "Medium", type: raw.type || "Monster", align: raw.alignment || "Unaligned",
+            ac: parseInt(raw.ac)||10, hp: parseInt(raw.hp)||10, hitDice: raw.hit_dice||"1d8", speed: raw.speed||"30 ft.",
+            str: parseInt(raw.str)||10, dex: parseInt(raw.dex)||10, con: parseInt(raw.con)||10, int: parseInt(raw.int)||10, wis: parseInt(raw.wis)||10, cha: parseInt(raw.cha)||10,
+            saves: raw.saves||"-", skills: raw.skills||"-", senses: raw.senses||"-", langs: raw.languages||"-",
+            cr: raw.cr||cr, xp: raw.xp||0, traits: raw.traits||[], actions: raw.actions||[], legendary: raw.legendary||[]
+        };
+
         window.lastGeneratedMonster = m;
 
-        // 6. Build and Display HTML Statblock (Reusing your existing rendering logic)
-        const fmtMod = (score) => { const mod = Math.floor(((parseInt(score) || 10) - 10) / 2); return mod >= 0 ? `+${mod}` : mod; };
-        const fmtText = (arr) => arr.map(t => `<div><strong class="italic">${t.name}.</strong> ${t.description||t.desc}</div>`).join('');
+        // 7. Render (Aegis Dark Mode Style)
+        const getMod = (s) => Math.floor(((parseInt(s)||10)-10)/2);
+        const fmtMod = (s) => { const m = getMod(s); return m>=0?`+${m}`:m; };
+        // Helper to make bold text white and body text gray
+        const fmtText = (arr) => arr.map(t => `<div class="mb-3 text-sm text-gray-300"><strong class="text-white">${t.name}.</strong> ${t.desc}</div>`).join('');
         
         let html = `
-            <div class="dnd-statblock text-left">
-                <div class="dnd-header">${m.name}</div>
-                <div class="italic text-black text-sm">${m.size} ${m.type}, ${m.align}</div>
-                <div class="tapered-rule"></div>
-                <div class="text-sm text-red-900 leading-relaxed">
-                    <p><strong>AC</strong> ${m.ac}</p>
-                    <p><strong>HP</strong> ${m.hp}</p>
-                    <p><strong>Speed</strong> ${m.speed}</p>
-                </div>
-                <div class="tapered-rule"></div>
-                <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
-                    <div>STR<br>${m.str} (${fmtMod(m.str)})</div>
-                    <div>DEX<br>${m.dex} (${fmtMod(m.dex)})</div>
-                    <div>CON<br>${m.con} (${fmtMod(m.con)})</div>
-                    <div>INT<br>${m.int} (${fmtMod(m.int)})</div>
-                    <div>WIS<br>${m.wis} (${fmtMod(m.wis)})</div>
-                    <div>CHA<br>${m.cha} (${fmtMod(m.cha)})</div>
-                </div>
-                <div class="tapered-rule"></div>
-                <div class="space-y-3 mt-3 text-sm text-black">`;
+            <div class="text-left font-sans">
+                <h3 class="text-2xl font-bold text-indigo-300 border-b border-gray-600 pb-2 mb-2">${m.name}</h3>
+                <div class="text-sm text-yellow-500 italic mb-4">${m.size} ${m.type}, ${m.align}</div>
 
-        if (m.traits.length) { html += fmtText(m.traits); }
-        if (m.actions.length) { html += `<div class="dnd-section-title mt-2">Actions</div>${fmtText(m.actions)}`; }
-        if (m.legendary.length) { html += `<div class="dnd-section-title mt-2">Legendary Actions</div>${fmtText(m.legendary)}`; }
+                <div class="grid grid-cols-3 gap-4 bg-gray-800 p-3 rounded border border-gray-700 mb-4 text-center">
+                    <div><div class="text-xs text-gray-500 uppercase">AC</div><div class="text-xl font-bold text-blue-300">${m.ac}</div></div>
+                    <div><div class="text-xs text-gray-500 uppercase">HP</div><div class="text-xl font-bold text-green-300">${m.hp}</div><div class="text-[10px] text-gray-500">${m.hitDice}</div></div>
+                    <div><div class="text-xs text-gray-500 uppercase">Speed</div><div class="text-sm font-bold text-white mt-1">${m.speed}</div></div>
+                </div>
 
-        html += `</div></div>`;
+                <div class="grid grid-cols-6 text-center text-xs font-mono text-gray-400 mb-4 bg-gray-800/50 p-2 rounded">
+                    <div>STR<br><span class="text-white font-bold text-sm">${m.str}</span><br>${fmtMod(m.str)}</div>
+                    <div>DEX<br><span class="text-white font-bold text-sm">${m.dex}</span><br>${fmtMod(m.dex)}</div>
+                    <div>CON<br><span class="text-white font-bold text-sm">${m.con}</span><br>${fmtMod(m.con)}</div>
+                    <div>INT<br><span class="text-white font-bold text-sm">${m.int}</span><br>${fmtMod(m.int)}</div>
+                    <div>WIS<br><span class="text-white font-bold text-sm">${m.wis}</span><br>${fmtMod(m.wis)}</div>
+                    <div>CHA<br><span class="text-white font-bold text-sm">${m.cha}</span><br>${fmtMod(m.cha)}</div>
+                </div>
+
+                <div class="text-xs text-gray-300 space-y-1 mb-4 border-b border-gray-700 pb-4">
+                    <p><strong class="text-indigo-300">Saves:</strong> ${m.saves}</p>
+                    <p><strong class="text-indigo-300">Skills:</strong> ${m.skills}</p>
+                    <p><strong class="text-indigo-300">Senses:</strong> ${m.senses}</p>
+                    <p><strong class="text-indigo-300">Languages:</strong> ${m.langs}</p>
+                    <p><strong class="text-indigo-300">Challenge:</strong> ${m.cr} (${m.xp} XP)</p>
+                </div>
+
+                <div class="space-y-4">
+                    ${fmtText(m.traits)}
+                    
+                    ${m.actions.length ? `<div class="text-lg font-bold text-red-400 border-b border-red-900/50 pb-1 mb-2 mt-4">Actions</div>` : ''}
+                    ${fmtText(m.actions)}
+                    
+                    ${m.legendary.length ? `<div class="text-lg font-bold text-red-400 border-b border-red-900/50 pb-1 mb-2 mt-4">Legendary Actions</div>` : ''}
+                    ${fmtText(m.legendary)}
+                </div>
+            </div>`;
+
         output.innerHTML = html;
-        
-        // 7. Reveal the Save Buttons
         document.getElementById('save-options-monster').classList.remove('hidden');
 
-    } catch(e) {  
-        console.error(e);  
-        output.textContent = "Error during generation: " + e.message;
+    } catch(e) {   
+        console.error(e);
+        output.innerHTML = `<div class="p-3 bg-red-900/50 rounded border border-red-500 text-red-200 text-xs">
+            <strong>Generation Failed:</strong> ${e.message}<br>
+            Please check your API Key in the Prep tab.
+        </div>`;
         window.lastGeneratedMonster = null; 
-    } finally {  
-        spinner.classList.add('hidden');  
-        btn.disabled = false;  
+    } finally {   
+        spinner.classList.add('hidden');   
+        btn.disabled = false;   
     }
 };
 
