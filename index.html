@@ -2609,104 +2609,181 @@ window.saveMonsterToNotes = async function() {
         return s;
     };
 
+    // --- NEW HELPER FUNCTIONS FOR FULL RENDER (INSERT ABOVE window.searchCompendium) ---
+const fmtSrdSection = (title, items) => {
+    if (!items || items.length === 0) return '';
+    let html = `<div class="dnd-section-title mt-2">${title}</div>`;
+    items.forEach(a => {
+        html += `<div class="mb-2 text-sm leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`;
+    });
+    return html;
+};
+
+const fmtList = (val) => Array.isArray(val) ? val.join(', ') : (val || '-');
+
+
+// The core function to build the full, collapsable statblock card
+const renderDetailedSrdMonster = (m, index) => {
+    const initMod = getMod(m.dexterity);
+    const hp = m.hit_points || 10;
+    const ac = m.armor_class || 10;
+    const safeName = m.name.replace(/'/g, "\\'");
+    const uniqueId = `monster-${index}`;
+    
+    // --- Collect Saves ---
+    let saves = [];
+    if(m.strength_save !== null) saves.push(`Str ${m.strength_save}`);
+    if(m.dexterity_save !== null) saves.push(`Dex ${m.dexterity_save}`);
+    if(m.constitution_save !== null) saves.push(`Con ${m.constitution_save}`);
+    if(m.intelligence_save !== null) saves.push(`Int ${m.intelligence_save}`);
+    if(m.wisdom_save !== null) saves.push(`Wis ${m.wisdom_save}`);
+    if(m.charisma_save !== null) saves.push(`Cha ${m.charisma_save}`);
+    const savesStr = saves.length > 0 ? saves.join(', ') : '-';
+    
+    // --- Collect Skills (Handles object/string inconsistency in API) ---
+    let skillsStr = '-';
+    if (m.skills) {
+        if (typeof m.skills === 'object' && !Array.isArray(m.skills)) {
+            skillsStr = Object.entries(m.skills).map(([k,v]) => `${k.charAt(0).toUpperCase() + k.slice(1)} +${v}`).join(', ');
+        } else {
+             skillsStr = m.skills;
+        }
+    }
+    
+    const xp = m.xp || (m.challenge_rating ? m.challenge_rating * 1000 : 0);
+    
+    const div = document.createElement('div');
+    div.className = 'bg-gray-800 rounded border border-gray-700 overflow-hidden mb-2';
+    
+    div.innerHTML = `
+        <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition select-none" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
+            <div>
+                <div class="font-bold text-blue-200 text-sm flex items-center gap-2">
+                    <span>${m.name}</span>
+                    <span class="text-[10px] text-gray-500">▼</span>
+                </div>
+                <div class="text-[10px] text-gray-400">
+                    CR ${m.challenge_rating} • AC ${ac} • HP ${hp}
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="event.stopPropagation(); window.saveSrdToNotes(${index})" class="bg-yellow-700 hover:bg-yellow-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow border border-yellow-600" title="Save to Enemy Notes">
+                    📜 Note
+                </button>
+                <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow border border-green-500">
+                    + Add
+                </button>
+            </div>
+        </div>
+
+        <div id="${uniqueId}" class="hidden border-t border-gray-600">
+            <div class="dnd-statblock text-left text-sm">
+                <div class="dnd-header">${m.name}</div>
+                <div class="italic text-black text-xs mb-2">${m.size} ${m.type}, ${m.alignment}</div>
+                <div class="tapered-rule"></div>
+                <div class="text-red-900 font-serif">
+                    <p><strong>AC</strong> ${m.armor_class} (${m.armor_desc || 'natural armor'})</p>
+                    <p><strong>HP</strong> ${m.hit_points} (${m.hit_dice})</p>
+                    <p><strong>Speed</strong> ${m.speed ? JSON.stringify(m.speed).replace(/[{"}]/g, '').replace(/,/g, ', ') : '30 ft.'}</p>
+                </div>
+                <div class="tapered-rule"></div>
+                <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
+                    <div>STR<br>${m.strength} (${fmtMod(m.strength)})</div>
+                    <div>DEX<br>${m.dexterity} (${fmtMod(m.dexterity)})</div>
+                    <div>CON<br>${m.constitution} (${fmtMod(m.constitution)})</div>
+                    <div>INT<br>${m.intelligence} (${fmtMod(m.intelligence)})</div>
+                    <div>WIS<br>${m.wisdom} (${fmtMod(m.wisdom)})</div>
+                    <div>CHA<br>${m.charisma} (${fmtMod(m.charisma)})</div>
+                </div>
+                <div class="tapered-rule"></div>
+                <div class="text-xs leading-relaxed text-red-900 space-y-1 mt-2">
+                    <p><strong>Saves:</strong> <span class="text-black">${savesStr}</span></p>
+                    <p><strong>Skills:</strong> <span class="text-black">${skillsStr}</span></p>
+                    <p><strong>Damage Immunities:</strong> <span class="text-black">${fmtList(m.damage_immunities)}</span></p>
+                    <p><strong>Condition Immunities:</strong> <span class="text-black">${fmtList(m.condition_immunities)}</span></p>
+                    <p><strong>Senses:</strong> <span class="text-black">${m.senses || 'passive Perception 10'}</span></p>
+                    <p><strong>Languages:</strong> <span class="text-black">${m.languages || '-'}</span></p>
+                    <p><strong>Challenge:</strong> <span class="text-black">${m.challenge_rating} (${xp.toLocaleString()} XP)</span></p>
+                </div>
+                <div class="tapered-rule"></div>
+                <div class="text-black mt-2 space-y-3 font-serif">
+                    ${fmtSrdSection("Special Abilities", m.special_abilities)}
+                    ${fmtSrdSection("Actions", m.actions)}
+                    ${fmtSrdSection("Reactions", m.reactions)}
+                    ${fmtSrdSection("Legendary Actions", m.legendary_actions)}
+                </div>
+            </div>
+        </div>
+    `;
+    return div;
+};
+
+
     window.searchCompendium = async () => {
-        const rawQuery = document.getElementById('compendium-search').value.trim();
-        const cr = document.getElementById('compendium-cr').value; 
-        const list = document.getElementById('compendium-results');
+    const rawQuery = document.getElementById('compendium-search').value.trim();
+    const cr = document.getElementById('compendium-cr').value;
+    const list = document.getElementById('compendium-results');
+    
+    if (!rawQuery && !cr) {
+        list.innerHTML = '<p class="text-center text-gray-500 text-xs">Search by Name or CR.</p>';
+        return;
+    }
+    
+    list.innerHTML = '<div class="loading-spinner mx-auto mt-10"></div>';
+    
+    try {
+        let url = `https://api.open5e.com/monsters/?limit=50`;
+        if (rawQuery) url += `&search=${rawQuery}`;
+        if (cr) url += `&challenge_rating=${cr}`;
         
-        if (!rawQuery && !cr) {
-             list.innerHTML = '<p class="text-center text-gray-500 text-xs">Search by Name or CR.</p>';
-             return;
+        const res = await fetch(url);
+        const data = await res.json();
+        let results = data.results;
+        
+        if (cr) { results = results.filter(m => m.challenge_rating == cr); }
+
+        if (results.length === 0) {
+            list.innerHTML = '<p class="text-center text-gray-500 text-xs mt-5">No monsters found matching your criteria.</p>';
+            window.currentSrdResults = []; 
+            return;
         }
+
+        // --- FETCH FULL DETAILS FOR EACH MONSTER ---
+        // This array ensures we fetch the full data for each monster by its slug.
+        const fetchDetails = results.map(m => fetch(`https://api.open5e.com/monsters/${m.slug}/`).then(res => {
+            if (!res.ok) throw new Error(`Failed to fetch details for ${m.name}`);
+            return res.json();
+        }));
         
-        list.innerHTML = '<div class="loading-spinner mx-auto"></div>';
-        
-        try {
-            let url = `https://api.open5e.com/monsters/?limit=100`; 
-            if (rawQuery) url += `&search=${rawQuery}`;
-            if (cr) url += `&challenge_rating=${cr}`; 
+        const detailedResults = await Promise.all(fetchDetails);
+        window.currentSrdResults = detailedResults; // Save full data globally
 
-            const res = await fetch(url);
-            const data = await res.json();
-            
-            // 🟢 IMPORTANT: Save results globally so the Save function can read them
-            let results = data.results;
-            window.currentSrdResults = results; 
-
-            if (cr) { results = results.filter(m => m.challenge_rating == cr); }
-
-            if (results.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-500 text-xs">No monsters found.</p>';
-                return;
-            }
-
-            // Sorting
-            if (rawQuery) {
-                const query = rawQuery.toLowerCase();
-                results.sort((a, b) => {
-                    const nameA = a.name.toLowerCase();
-                    const nameB = b.name.toLowerCase();
-                    if (nameA === query && nameB !== query) return -1;
-                    if (nameB === query && nameA !== query) return 1;
-                    return nameA.length - nameB.length;
-                });
-            } else {
-                results.sort((a, b) => a.name.localeCompare(b.name));
-            }
-
-            list.innerHTML = '';
-
-            // Render
-            results.forEach((m, index) => {
-                const initMod = Math.floor((m.dexterity - 10) / 2);
-                const hp = m.hit_points || 10;
-                const ac = m.armor_class || 10;
-                const safeName = m.name.replace(/'/g, "\\'");
-                const uniqueId = `monster-${index}`;
-
-                const div = document.createElement('div');
-                div.className = 'bg-gray-800 rounded border border-gray-700 overflow-hidden mb-2';
-                
-                div.innerHTML = `
-                    <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition select-none" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
-                        <div>
-                            <div class="font-bold text-blue-200 text-sm flex items-center gap-2">
-                                <span>${m.name}</span>
-                                <span class="text-[10px] text-gray-500">▼</span>
-                            </div>
-                            <div class="text-[10px] text-gray-400">
-                                CR ${m.challenge_rating} • AC ${ac} • HP ${hp}
-                            </div>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="event.stopPropagation(); window.saveSrdToNotes(${index})" class="bg-yellow-700 hover:bg-yellow-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow border border-yellow-600" title="Save to Enemy Notes">
-                                📜 Note
-                            </button>
-                            <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded transition shadow border border-green-500">
-                                + Add
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="${uniqueId}" class="hidden border-t border-gray-600">
-                        <div class="dnd-statblock text-left text-xs sm:text-sm">
-                            <div class="dnd-property-line"><strong>Speed</strong> ${m.speed ? JSON.stringify(m.speed).replace(/[{"}]/g, '').replace(/,/g, ', ') : '30 ft.'}</div>
-                            <div class="dnd-property-line"><strong>Stats</strong> 
-                                STR ${m.strength}, DEX ${m.dexterity}, CON ${m.constitution}, 
-                                INT ${m.intelligence}, WIS ${m.wisdom}, CHA ${m.charisma}
-                            </div>
-                            ${m.actions ? `<div class="dnd-section-title mt-2">Actions</div>${m.actions.map(a => `<div class="mb-1 leading-snug"><strong class="dnd-action-name text-red-900">${a.name}.</strong> <span class="text-black">${a.desc}</span></div>`).join('')}` : ''}
-                        </div>
-                    </div>
-                `;
-                list.appendChild(div);
+        // Sorting (Keep for relevance)
+        if (rawQuery) {
+            const query = rawQuery.toLowerCase();
+            detailedResults.sort((a, b) => {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+                if (nameA === query && nameB !== query) return -1;
+                if (nameB === query && nameA !== query) return 1;
+                return nameA.length - nameB.length;
             });
-            
-        } catch (error) {
-            console.error(error);
-            list.innerHTML = '<p class="text-center text-red-400 text-xs">Error fetching data.</p>';
+        } else {
+            detailedResults.sort((a, b) => a.name.localeCompare(b.name));
         }
-    };
+
+        list.innerHTML = '';
+        
+        // --- RENDER FULL STATBLOCKS ---
+        detailedResults.forEach((m, index) => {
+            list.appendChild(renderDetailedSrdMonster(m, index));
+        });
+            
+    } catch (error) {
+        console.error("Compendium Error:", error);
+        list.innerHTML = `<p class="text-center text-red-400 text-xs">Error fetching full data. Try again or search by name. (${error.message})</p>`;
+    }
+};
         // --- THE MISSING IMPORT FUNCTION ---
     // ==========================================
 // ⚔️ FIX: IMPORT COMPENDIUM MONSTER (PRE-POPULATES COMBAT INPUTS)
