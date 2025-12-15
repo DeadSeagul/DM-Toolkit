@@ -1073,8 +1073,11 @@
         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Title</label>
         <input type="text" id="modal-title" class="w-full p-3 rounded-lg input-style mb-4 text-lg font-bold">
         
-        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Content</label>
-        <textarea id="modal-content" class="flex-1 w-full p-4 rounded-lg input-style mb-6 resize-none text-base leading-relaxed"></textarea>
+        <div class="flex justify-between items-center mb-1">
+           <label class="block text-xs font-bold text-gray-500 uppercase">Content</label>
+           <span class="text-[10px] text-gray-400">Supports: **bold**, *italic*, - list</span>
+       </div>
+       <textarea id="modal-content" class="flex-1 w-full p-4 rounded-lg input-style mb-6 resize-none text-base leading-relaxed font-mono text-sm"></textarea>
         
         <div class="flex justify-end space-x-3 mt-auto">
             <button onclick="closeEditModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg">Cancel</button>
@@ -1419,46 +1422,64 @@
         renderStructuredNotes(window.currentSubTab);
     };
 
-    // --- EXPOSED RENDER FUNCTION (Fixes Search Button) ---
+    // 6. UPDATE: Render Notes (With Markdown & Filter)
     window.renderStructuredNotes = function(tab) {
         const list = document.getElementById(`${tab}-list`);
         if(!list) return;
 
-        // 1. GET SEARCH QUERY
         const searchInput = document.getElementById('notes-search');
         const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
-        
-        // 2. GET NOTES
-        // We use the global structuredNotes variable
         const allNotes = structuredNotes[tab] || [];
         
-        // 3. FILTER NOTES
-        // If query is empty, filter returns true (shows all). 
-        // If not, it checks Title OR Content.
-        const filteredNotes = allNotes.filter(n => 
+        // 🟢 FILTER BY CAMPAIGN
+        const campaignNotes = allNotes.filter(n => {
+            const noteCampaign = n.campaign || 'Default Campaign';
+            return noteCampaign === window.currentCampaign;
+        });
+
+        // Filter by Search Query
+        const filteredNotes = campaignNotes.filter(n => 
             n.title.toLowerCase().includes(query) || 
             n.content.toLowerCase().includes(query)
         );
 
-        // 4. RENDER RESULTS
-        list.innerHTML = filteredNotes.length ? '' : '<p class="text-center text-gray-500 pt-8">No matching notes found.</p>';
+        list.innerHTML = filteredNotes.length ? '' : `<p class="text-center text-gray-500 pt-8 text-xs">No notes in <strong>${window.currentCampaign}</strong>.</p>`;
         
+        // Simple Markdown Parser
+        const parseMd = (text) => {
+            if (!text) return "";
+            let html = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-300">$1</strong>') // Bold
+                .replace(/\*(.*?)\*/g, '<em class="text-yellow-200">$1</em>') // Italic
+                .replace(/^# (.*)$/gm, '<h3 class="text-lg font-bold text-white mt-2 border-b border-gray-600 pb-1">$1</h3>') // Header 1
+                .replace(/^## (.*)$/gm, '<h4 class="text-md font-bold text-gray-200 mt-2">$1</h4>') // Header 2
+                .replace(/^- (.*)$/gm, '<li class="ml-4 list-disc text-gray-300">$1</li>') // List
+                .replace(/\n/g, '<br>'); // Newlines
+            return html;
+        };
+
         filteredNotes.forEach(n => {
             const div = document.createElement('div'); 
-            div.className = 'note-item card p-0 rounded-lg shadow-md'; 
+            div.className = 'note-item card p-0 rounded-lg shadow-md mb-2 bg-gray-800 border border-gray-700 overflow-hidden'; 
             div.id = `note-${n.id}`;
             
+            // Format Date
+            const dateStr = n.timestamp ? new Date(n.timestamp).toLocaleDateString() : "";
+
             div.innerHTML = `
-            <div class="collapsible-header hover:bg-gray-600/50 transition" onclick="toggleCollapse('${n.id}')">
-                <span class="font-bold text-indigo-300 truncate">${n.title}</span>
-                <span class="text-gray-400">▼</span>
+            <div class="collapsible-header hover:bg-gray-700/50 transition p-3 cursor-pointer flex justify-between items-center" onclick="toggleCollapse('${n.id}')">
+                <span class="font-bold text-indigo-200 truncate text-sm">${n.title}</span>
+                <span class="text-gray-500 text-[10px]">▼</span>
             </div>
-            <div class="collapsible-content" id="content-${n.id}">
-                <div class="flex justify-end p-2 gap-2 border-b border-gray-700 mb-2">
-                    <button onclick="editNote('${n.id}', '${tab}')" class="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded font-semibold">Edit</button>
-                    <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs bg-red-600 hover:bg-red-500 px-3 py-1 rounded font-semibold">Delete</button>
+            <div class="collapsible-content bg-gray-900/50" id="content-${n.id}">
+                <div class="flex justify-between items-center p-2 border-b border-gray-700 bg-gray-800/30">
+                    <span class="text-[10px] text-gray-500">${dateStr}</span>
+                    <div class="flex gap-2">
+                        <button onclick="editNote('${n.id}', '${tab}')" class="text-xs text-blue-400 hover:text-white font-semibold">Edit</button>
+                        <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs text-red-400 hover:text-white font-semibold">Delete</button>
+                    </div>
                 </div>
-                <div class="p-3 whitespace-pre-wrap text-sm text-gray-300 leading-relaxed font-sans">${n.content}</div>
+                <div class="p-4 text-sm text-gray-300 leading-relaxed font-sans">${parseMd(n.content)}</div>
             </div>`;
             
             list.appendChild(div);
@@ -1489,61 +1510,65 @@ window.deleteNote = (id, tab) => {
     window.renderStructuredNotes(tab);
 };
     // ==========================================
-// 📝 FINAL FIX: EDIT NOTE (Surgically Scrapes ONLY Content)
+// 🛠️ FINAL EDIT FIX: Reverse-Engineer HTML to Markdown
 // ==========================================
 window.editNote = function(id, tab) {
-    // 1. SAFETY SHIELD: Initialize memory 
-    if (!window.structuredNotes) {
-        window.structuredNotes = {};
-    }
-
-    let n = null;
+    let note = null;
     let title = "Edit Note";
     let content = "";
-    
-    // 2. Try to find the note data in memory (Preferred)
-    if (window.structuredNotes[tab]) {
-        n = window.structuredNotes[tab].find(x => x.id === id);
+
+    // 1. Try to find the raw data in memory (Preferred)
+    if (window.structuredNotes && window.structuredNotes[tab]) {
+        note = window.structuredNotes[tab].find(n => n.id === id);
     }
-    
-    if (n) {
-        // Data found in memory (Best Case)
-        title = n.title;
-        content = n.content || "";
+
+    if (note) {
+        // ✅ Success: We have the original symbols (e.g. **Bold**)
+        title = note.title;
+        content = note.content;
     } else {
-        // 3. FALLBACK: Data not found in memory, scrape from the screen
-        console.warn(`Note ID ${id} not found in memory. Attempting visual scrape.`);
-        
+        // ⚠️ Fallback: We have to read the HTML from the screen.
+        // We must convert the HTML tags BACK into symbols.
+        console.warn(`Note ID ${id} not found in memory. Reversing HTML...`);
         const card = document.getElementById('note-' + id);
         
         if (card) {
-            // Target the collapsible header span for the title
-            const titleEl = card.querySelector('.collapsible-header .font-bold');
+            const titleEl = card.querySelector('.collapsible-header span');
             if (titleEl) title = titleEl.innerText;
-        }
 
-        // 🟢 CRITICAL FIX: We directly target the specific content div inside the card.
-        const contentDiv = card ? card.querySelector('.whitespace-pre-wrap') : null;
+            const contentDiv = card.querySelector('.font-sans');
+            if (contentDiv) {
+                // Get the HTML, not just text
+                let html = contentDiv.innerHTML;
 
-        if (contentDiv) {
-            // Read innerText which preserves spacing and ignores HTML
-            content = contentDiv.innerText || contentDiv.textContent; 
-        } else {
-            alert("Error: Note content element structure missing. Please refresh.");
-            return;
+                // 🔄 REVERSE PARSER: HTML -> Markdown Symbols
+                content = html
+                    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, "**$1**") // Bold
+                    .replace(/<b[^>]*>(.*?)<\/b>/gi, "**$1**")
+                    .replace(/<em[^>]*>(.*?)<\/em>/gi, "*$1*") // Italic
+                    .replace(/<i[^>]*>(.*?)<\/i>/gi, "*$1*")
+                    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, "# $1\n") // Header 1
+                    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, "## $1\n") // Header 2
+                    .replace(/<li[^>]*>(.*?)<\/li>/gi, "- $1\n") // Lists
+                    .replace(/<br\s*\/?>/gi, "\n") // Newlines
+                    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"); // Symbols
+
+                // Clean up extra whitespace created by the conversion
+                content = content.replace(/\n\s+\n/g, "\n\n").trim();
+            } else {
+                alert("Error: Note content missing. Please refresh.");
+                return;
+            }
         }
     }
 
-    // 4. DE-CLUMPING FIX: Convert any HTML breaks (<br>) back to Newlines (\n)
-    content = content.replace(/<br\s*\/?>/gi, '\n');
-    
-    // 5. Populate and Show Modal
+    // 2. Load into Modal
     document.getElementById('modal-note-id').value = id;
     document.getElementById('modal-tab-name').value = tab;
     document.getElementById('modal-title').value = title;
-    
-    // Set the clean content in the textarea
     document.getElementById('modal-content').value = content;
+    
+    // 3. Show Modal
     document.getElementById('edit-modal').classList.remove('hidden');
 };
     window.saveEditedNote = () => {
@@ -4452,7 +4477,841 @@ window.saveMonsterToNotes = async function() {
         });
     }; 
 
+    // ==========================================
+// 🚀 MARKDOWN FIX & INSTANT UPDATE PATCH
+// ==========================================
+
+// 1. The Parser: Converts symbols to HTML
+window.parseMarkdown = (text) => {
+    if (!text) return "";
+    return text
+        .replace(/</g, "&lt;") // Security: Sanitize HTML tags
+        .replace(/>/g, "&gt;")
+        .replace(/^# (.*$)/gim, '<h3 class="text-xl font-bold text-indigo-300 mt-3 border-b border-gray-600 pb-1">$1</h3>') // H1
+        .replace(/^## (.*$)/gim, '<h4 class="text-lg font-bold text-indigo-200 mt-2">$1</h4>') // H2
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white bg-indigo-900/50 px-1 rounded">$1</strong>') // Bold
+        .replace(/\*(.*?)\*/g, '<em class="text-yellow-300">$1</em>') // Italic
+        .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc text-gray-300">$1</li>') // List
+        .replace(/\n/g, '<br>'); // Newlines
+};
+
+// 2. The Renderer: Displays the notes
+window.renderStructuredNotes = function(tab) {
+    const list = document.getElementById(`${tab}-list`);
+    if(!list) return;
+
+    const searchInput = document.getElementById('notes-search');
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    const allNotes = structuredNotes[tab] || [];
     
+    // Filter logic
+    const filteredNotes = allNotes.filter(n => {
+        const matchesCampaign = (n.campaign || 'Default Campaign') === window.currentCampaign;
+        const matchesSearch = n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query);
+        return matchesCampaign && matchesSearch;
+    });
+
+    list.innerHTML = filteredNotes.length ? '' : `<p class="text-center text-gray-500 pt-8 text-xs">No notes in <strong>${window.currentCampaign}</strong>.</p>`;
+    
+    filteredNotes.forEach(n => {
+        const div = document.createElement('div'); 
+        div.className = 'note-item card p-0 rounded-lg shadow-md mb-2 bg-gray-800 border border-gray-700 overflow-hidden'; 
+        div.id = `note-${n.id}`;
+        const dateStr = n.timestamp ? new Date(n.timestamp).toLocaleDateString() : "";
+
+        div.innerHTML = `
+        <div class="collapsible-header hover:bg-gray-700/50 transition p-3 cursor-pointer flex justify-between items-center" onclick="toggleCollapse('${n.id}')">
+            <span class="font-bold text-indigo-200 truncate text-sm">${n.title}</span>
+            <span class="text-gray-500 text-[10px]">▼</span>
+        </div>
+        <div class="collapsible-content bg-gray-900/50" id="content-${n.id}">
+            <div class="flex justify-between items-center p-2 border-b border-gray-700 bg-gray-800/30">
+                <span class="text-[10px] text-gray-500">${dateStr}</span>
+                <div class="flex gap-2">
+                    <button onclick="editNote('${n.id}', '${tab}')" class="text-xs text-blue-400 hover:text-white font-semibold">Edit</button>
+                    <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs text-red-400 hover:text-white font-semibold">Delete</button>
+                </div>
+            </div>
+            <div class="p-4 text-sm text-gray-300 leading-relaxed font-sans">${window.parseMarkdown(n.content)}</div>
+        </div>`;
+        
+        list.appendChild(div);
+    });
+};
+
+// 3. The Save Action: Forces a refresh immediately
+window.saveEditedNote = () => {
+    const id = document.getElementById('modal-note-id').value;
+    const tab = document.getElementById('modal-tab-name').value;
+    const idx = structuredNotes[tab].findIndex(x => x.id === id);
+    
+    if(idx > -1) {
+        structuredNotes[tab][idx].title = document.getElementById('modal-title').value;
+        structuredNotes[tab][idx].content = document.getElementById('modal-content').value; // Save raw text
+        
+        // Save to DB
+        window.saveStructuredNotes(tab, structuredNotes[tab]);
+        
+        // 🟢 Force Instant Refresh (So you don't have to wait)
+        window.renderStructuredNotes(tab);
+        
+        // Auto-expand the note you just edited so you can see the result
+        setTimeout(() => {
+            const contentEl = document.getElementById(`content-${id}`);
+            if(contentEl) {
+                contentEl.classList.add('expanded');
+                contentEl.style.maxHeight = contentEl.scrollHeight + "px";
+            }
+        }, 100);
+    }
+    document.getElementById('edit-modal').classList.add('hidden');
+};
+
+// ==========================================
+// 🔗 OBSIDIAN-STYLE LINKING UPDATE
+// ==========================================
+
+// 1. UPDATED PARSER: Handles [[Wiki Links]] + Markdown
+window.parseMarkdown = (text) => {
+    if (!text) return "";
+    return text
+        .replace(/</g, "&lt;").replace(/>/g, "&gt;") // Sanitize
+        .replace(/^# (.*$)/gim, '<h3 class="text-xl font-bold text-indigo-300 mt-3 border-b border-gray-600 pb-1">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h4 class="text-lg font-bold text-indigo-200 mt-2">$1</h4>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white bg-indigo-900/50 px-1 rounded">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="text-yellow-300">$1</em>')
+        .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc text-gray-300">$1</li>')
+        .replace(/\n/g, '<br>')
+        // 🟢 NEW: Wiki Links [[Note Title]]
+        // Creates a clickable cyan link that calls our new function
+        .replace(/\[\[(.*?)\]\]/g, '<span class="note-link text-cyan-400 font-bold cursor-pointer hover:underline hover:text-cyan-300 transition" onclick="event.stopPropagation(); window.openLinkedNote(\'$1\')">🔗 $1</span>');
+};
+
+// 2. NEW FUNCTION: Find and Open the Note
+window.openLinkedNote = (targetTitle) => {
+    // Search across ALL sub-tabs (Prep, PCs, Enemies, NPCs, Loot)
+    const tabs = ['prepNotes', 'pcNotes', 'enemyNotes', 'npcNotes', 'lootNotes'];
+    let foundId = null;
+    let foundTab = null;
+
+    // Normalize target for comparison (ignore case)
+    const target = targetTitle.toLowerCase().trim();
+
+    for (const tab of tabs) {
+        if (structuredNotes[tab]) {
+            // Find a note where the title matches
+            const note = structuredNotes[tab].find(n => n.title.toLowerCase().trim() === target);
+            if (note) {
+                foundId = note.id;
+                foundTab = tab;
+                break; // Stop searching once found
+            }
+        }
+    }
+
+    if (foundId) {
+        // 1. Clear Search bar (so the note isn't hidden by a filter)
+        const searchInput = document.getElementById('notes-search');
+        if(searchInput) searchInput.value = "";
+
+        // 2. Switch to the correct tab automatically
+        window.switchSubTab(foundTab);
+
+        // 3. Highlight & Expand the note
+        setTimeout(() => {
+            const el = document.getElementById(`note-${foundId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Flash effect so you see which one it is
+                el.classList.add('ring-2', 'ring-cyan-400', 'shadow-[0_0_15px_rgba(34,211,238,0.5)]');
+                setTimeout(() => el.classList.remove('ring-2', 'ring-cyan-400', 'shadow-[0_0_15px_rgba(34,211,238,0.5)]'), 1500);
+                
+                // Expand if it's closed
+                const content = document.getElementById(`content-${foundId}`);
+                if (content && !content.classList.contains('expanded')) {
+                    window.toggleCollapse(foundId);
+                }
+            }
+        }, 100); // Small delay to allow the tab to render first
+    } else {
+        alert(`❌ Note "${targetTitle}" not found in this campaign.\nCheck your spelling or create a note with that title.`);
+    }
+};
+
+// 3. UPDATED EDIT FIX: Preserves Links on Edit
+window.editNote = function(id, tab) {
+    let note = null;
+    let title = "Edit Note";
+    let content = "";
+
+    // Try memory first (Best)
+    if (window.structuredNotes && window.structuredNotes[tab]) {
+        note = window.structuredNotes[tab].find(n => n.id === id);
+    }
+
+    if (note) {
+        title = note.title;
+        content = note.content;
+    } else {
+        // Fallback: Reverse Engineer from HTML (If memory fails)
+        console.warn(`Note ID ${id} not found in memory. Reversing HTML...`);
+        const card = document.getElementById('note-' + id);
+        
+        if (card) {
+            const titleEl = card.querySelector('.collapsible-header span');
+            if (titleEl) title = titleEl.innerText;
+
+            const contentDiv = card.querySelector('.font-sans');
+            if (contentDiv) {
+                let html = contentDiv.innerHTML;
+                
+                content = html
+                    // 🟢 NEW: Turn HTML link back into [[Title]]
+                    .replace(/<span[^>]*class="note-link[^>]*>🔗 (.*?)<\/span>/gi, "[[$1]]")
+                    // Standard Markdown Reversal
+                    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, "**$1**")
+                    .replace(/<b[^>]*>(.*?)<\/b>/gi, "**$1**")
+                    .replace(/<em[^>]*>(.*?)<\/em>/gi, "*$1*")
+                    .replace(/<i[^>]*>(.*?)<\/i>/gi, "*$1*")
+                    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, "# $1\n")
+                    .replace(/<h4[^>]*>(.*?)<\/h4>/gi, "## $1\n")
+                    .replace(/<li[^>]*>(.*?)<\/li>/gi, "- $1\n")
+                    .replace(/<br\s*\/?>/gi, "\n")
+                    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+
+                content = content.replace(/\n\s+\n/g, "\n\n").trim();
+            } else {
+                alert("Error: Note content missing.");
+                return;
+            }
+        }
+    }
+
+    document.getElementById('modal-note-id').value = id;
+    document.getElementById('modal-tab-name').value = tab;
+    document.getElementById('modal-title').value = title;
+    document.getElementById('modal-content').value = content;
+    document.getElementById('edit-modal').classList.remove('hidden');
+};
+
+// ==========================================
+// 🎲 ACTIVE NOTES & TOAST SYSTEM
+// ==========================================
+
+// 1. TOAST NOTIFICATION SYSTEM (Replaces alerts)
+window.showToast = (message, type = 'info') => {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    // Create Element
+    const el = document.createElement('div');
+    
+    // Colors based on type
+    let bgClass = "bg-gray-800 border-gray-600";
+    if (type === 'success') bgClass = "bg-green-900/90 border-green-500 text-green-100";
+    if (type === 'roll') bgClass = "bg-indigo-900/90 border-indigo-500 text-indigo-100";
+    if (type === 'error') bgClass = "bg-red-900/90 border-red-500 text-red-100";
+
+    el.className = `${bgClass} border px-6 py-3 rounded-full shadow-2xl text-sm font-bold opacity-0 transform translate-y-4 transition-all duration-300 pointer-events-auto flex items-center gap-2`;
+    el.innerHTML = message;
+
+    container.appendChild(el);
+
+    // Animate In
+    requestAnimationFrame(() => {
+        el.classList.remove('opacity-0', 'translate-y-4');
+    });
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-4');
+        setTimeout(() => el.remove(), 300);
+    }, 3000);
+};
+
+// 2. INLINE DICE ROLLER
+window.rollInline = (formula) => {
+    // Parse Formula (e.g. "2d6+4")
+    const match = formula.toLowerCase().match(/^(\d+)d(\d+)([+\-]\d+)?$/);
+    if (!match) return;
+
+    const count = parseInt(match[1]);
+    const sides = parseInt(match[2]);
+    const modStr = match[3] || "+0";
+    const mod = parseInt(modStr);
+
+    let total = 0;
+    let rolls = [];
+    
+    for(let i=0; i<count; i++) {
+        const r = Math.floor(Math.random() * sides) + 1;
+        rolls.push(r);
+        total += r;
+    }
+    
+    const finalResult = total + mod;
+    
+    // Trigger 3D Dice Visuals (if existing system allows)
+    if(window.throwDiceVisuals) window.throwDiceVisuals(rolls, sides);
+
+    // Play Sound
+    if(window.playTone) window.playTone(finalResult === 20 ? 'critical' : finalResult === 1 ? 'fail' : 'success');
+
+    // Show Toast
+    const icon = finalResult >= 20 ? "🔥" : "🎲";
+    const detail = count > 1 ? `[${rolls.join('+')}]${modStr}` : `(d${sides}${modStr})`;
+    
+    window.showToast(`${icon} Rolled <strong>${finalResult}</strong> <span class='text-xs opacity-75 ml-1'>${detail}</span>`, 'roll');
+};
+
+// 3. UPDATED MARKDOWN PARSER (With Dice Detection)
+window.parseMarkdown = (text) => {
+    if (!text) return "";
+    return text
+        .replace(/</g, "&lt;").replace(/>/g, "&gt;") // Sanitize
+        
+        // 🟢 NEW: Detect Dice [[2d6+3]]
+        // Must come BEFORE standard links to avoid conflict
+        .replace(/\[\[(\d+d\d+(?:[+\-]\d+)?)\]\]/gi, 
+            '<button onclick="event.stopPropagation(); window.rollInline(\'$1\')" class="inline-flex items-center gap-1 bg-indigo-900/50 hover:bg-indigo-700 border border-indigo-500/50 text-indigo-200 px-1.5 rounded text-xs font-mono font-bold cursor-pointer transition select-none transform active:scale-95 mx-1">🎲 $1</button>')
+        
+        // Standard Links [[Note Title]]
+        .replace(/\[\[(.*?)\]\]/g, 
+            '<span class="note-link text-cyan-400 font-bold cursor-pointer hover:underline hover:text-cyan-300 transition" onclick="event.stopPropagation(); window.openLinkedNote(\'$1\')">🔗 $1</span>')
+        
+        // Standard Markdown
+        .replace(/^# (.*$)/gim, '<h3 class="text-xl font-bold text-indigo-300 mt-3 border-b border-gray-600 pb-1">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h4 class="text-lg font-bold text-indigo-200 mt-2">$1</h4>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white bg-indigo-900/50 px-1 rounded">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="text-yellow-300">$1</em>')
+        .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc text-gray-300">$1</li>')
+        .replace(/\n/g, '<br>');
+};
+
+// 4. OVERRIDE EDIT LOGIC (To handle the new Dice Buttons)
+window.editNote = function(id, tab) {
+    let note = null;
+    let title = "Edit Note";
+    let content = "";
+
+    // Try memory first
+    if (window.structuredNotes && window.structuredNotes[tab]) {
+        note = window.structuredNotes[tab].find(n => n.id === id);
+    }
+
+    if (note) {
+        title = note.title;
+        content = note.content;
+    } else {
+        // Fallback: Reverse Engineer HTML
+        const card = document.getElementById('note-' + id);
+        if (card) {
+            const titleEl = card.querySelector('.collapsible-header span');
+            if (titleEl) title = titleEl.innerText;
+            const contentDiv = card.querySelector('.font-sans');
+            if (contentDiv) {
+                let html = contentDiv.innerHTML;
+                content = html
+                    // 🟢 Reverse Dice Buttons back to [[XdY]]
+                    .replace(/<button[^>]*onclick="[^"]*rollInline\('([^']+)'\)[^"]*"[^>]*>.*?<\/button>/gi, "[[$1]]")
+                    // Reverse Links
+                    .replace(/<span[^>]*class="note-link[^>]*>🔗 (.*?)<\/span>/gi, "[[$1]]")
+                    // Reverse Markdown
+                    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, "**$1**").replace(/<b[^>]*>(.*?)<\/b>/gi, "**$1**")
+                    .replace(/<em[^>]*>(.*?)<\/em>/gi, "*$1*").replace(/<i[^>]*>(.*?)<\/i>/gi, "*$1*")
+                    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, "# $1\n").replace(/<h4[^>]*>(.*?)<\/h4>/gi, "## $1\n")
+                    .replace(/<li[^>]*>(.*?)<\/li>/gi, "- $1\n").replace(/<br\s*\/?>/gi, "\n")
+                    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+                
+                content = content.replace(/\n\s+\n/g, "\n\n").trim();
+            }
+        }
+    }
+    document.getElementById('modal-note-id').value = id;
+    document.getElementById('modal-tab-name').value = tab;
+    document.getElementById('modal-title').value = title;
+    document.getElementById('modal-content').value = content;
+    document.getElementById('edit-modal').classList.remove('hidden');
+};
+
+    
+// ==========================================
+// 🛡️ STATBLOCK FIX: Save as Clean Markdown
+// ==========================================
+
+// Helper: Auto-link dice formulas like "(2d6 + 3)" -> "([[2d6 + 3]])"
+const linkifyDice = (text) => {
+    if (!text) return "";
+    // Looks for patterns like "1d6", "2d8 + 3", "3d6+2"
+    return text.replace(/(\d+d\d+(?:\s?[\+\-]\s?\d+)?)/gi, "[[$1]]");
+};
+
+// 1. SAVE SRD MONSTER (Clean Markdown)
+window.saveSrdToNotes = async function(index) {
+    const m = window.currentSrdResults ? window.currentSrdResults[index] : null;
+    if (!m) { alert("Error: Monster data not found."); return; }
+
+    const targetCampaign = await window.promptForCampaign();
+    if (!targetCampaign) return;
+
+    // Formatting Helpers
+    const xpTable = { "0": 10, "1/8": 25, "1/4": 50, "1/2": 100, "1": 200, "2": 450, "3": 700, "4": 1100, "5": 1800, "6": 2300, "7": 2900, "8": 3900, "9": 5000, "10": 5900, "11": 7200, "12": 8400, "13": 10000, "14": 11500, "15": 13000, "16": 15000, "17": 18000, "18": 20000, "19": 22000, "20": 25000, "21": 33000, "22": 41000, "23": 50000, "24": 62000, "30": 155000 };
+    const xp = m.xp || xpTable[m.challenge_rating] || 0;
+    const speed = m.speed ? JSON.stringify(m.speed).replace(/[{"}]/g, '').replace(/,/g, ', ') : '30 ft.';
+    const fmtList = (val) => Array.isArray(val) ? val.join(', ') : (val || '-');
+    
+    // Ability Scores formatted in a line
+    const getMod = (s) => Math.floor((s - 10) / 2);
+    const fmtStat = (val) => { const v = val||10; const mod = getMod(v); return `${v} (${mod>=0?'+':''}${mod})`; };
+    const statsLine = `**STR:** ${fmtStat(m.strength)} | **DEX:** ${fmtStat(m.dexterity)} | **CON:** ${fmtStat(m.constitution)}\n**INT:** ${fmtStat(m.intelligence)} | **WIS:** ${fmtStat(m.wisdom)} | **CHA:** ${fmtStat(m.charisma)}`;
+
+    // Build the Markdown String
+    let md = `# ${m.name}\n`;
+    md += `*${m.size} ${m.type}, ${m.alignment}*\n`;
+    md += `---\n`;
+    md += `**AC:** ${m.armor_class} (${m.armor_desc || 'natural'})\n`;
+    md += `**HP:** ${linkifyDice(m.hit_points + " (" + m.hit_dice + ")")}\n`;
+    md += `**Speed:** ${speed}\n`;
+    md += `---\n`;
+    md += `${statsLine}\n`;
+    md += `---\n`;
+    md += `**Saves:** ${m.strength_save ? 'Str +'+m.strength_save : ''} ${m.dexterity_save ? 'Dex +'+m.dexterity_save : ''} ${m.constitution_save ? 'Con +'+m.constitution_save : ''} ${m.intelligence_save ? 'Int +'+m.intelligence_save : ''} ${m.wisdom_save ? 'Wis +'+m.wisdom_save : ''} ${m.charisma_save ? 'Cha +'+m.charisma_save : ''}\n`;
+    md += `**Skills:** ${JSON.stringify(m.skills || '-').replace(/[{"}]/g, '').replace(/,/g, ', ')}\n`;
+    md += `**Senses:** ${m.senses || '-'}\n`;
+    md += `**CR:** ${m.challenge_rating} (${xp} XP)\n`;
+    md += `---\n`;
+
+    // Traits
+    if (m.special_abilities) {
+        md += `## Traits\n`;
+        m.special_abilities.forEach(t => md += `**${t.name}.** ${linkifyDice(t.desc)}\n\n`);
+    }
+
+    // Actions
+    if (m.actions) {
+        md += `## Actions\n`;
+        m.actions.forEach(a => md += `**${a.name}.** ${linkifyDice(a.desc)}\n\n`);
+    }
+
+    // Legendary
+    if (m.legendary_actions) {
+        md += `## Legendary Actions\n`;
+        m.legendary_actions.forEach(a => md += `**${a.name}.** ${linkifyDice(a.desc)}\n\n`);
+    }
+
+    // Save
+    const newNote = { 
+        id: crypto.randomUUID(), 
+        title: `${m.name} (Statblock)`, 
+        content: md, 
+        timestamp: new Date().toISOString() 
+    };
+    
+    await window.finalizeSave('enemyNotes', newNote, targetCampaign);
+};
+
+// 2. SAVE AI GENERATED MONSTER (Clean Markdown)
+window.saveMonsterToNotes = async function() {
+    if (!window.userId) { alert("Please log in."); window.openLoginModal(); return; }
+    const m = window.lastGeneratedMonster;
+    if (!m) { alert("No monster generated."); return; }
+
+    const targetCampaign = await window.promptForCampaign();
+    if (!targetCampaign) return;
+
+    // Build Markdown from the AI Object
+    const getMod = (s) => Math.floor(((parseInt(s)||10) - 10) / 2);
+    const fmtStat = (val) => { const v = parseInt(val)||10; const mod = getMod(v); return `${v} (${mod>=0?'+':''}${mod})`; };
+    
+    let md = `# ${m.name}\n*${m.size} ${m.type}, ${m.align}*\n---\n`;
+    md += `**AC:** ${m.ac}\n**HP:** ${linkifyDice(m.hp.toString())}\n**Speed:** ${m.speed}\n---\n`;
+    md += `**STR:** ${fmtStat(m.str)} | **DEX:** ${fmtStat(m.dex)} | **CON:** ${fmtStat(m.con)}\n`;
+    md += `**INT:** ${fmtStat(m.int)} | **WIS:** ${fmtStat(m.wis)} | **CHA:** ${fmtStat(m.cha)}\n---\n`;
+    md += `**CR:** ${m.cr || 'Unknown'}\n---\n`;
+
+    if (m.traits && m.traits.length) {
+        md += `## Traits\n`;
+        m.traits.forEach(t => md += `**${t.name}.** ${linkifyDice(t.description || t.desc)}\n\n`);
+    }
+    
+    if (m.actions && m.actions.length) {
+        md += `## Actions\n`;
+        m.actions.forEach(a => md += `**${a.name}.** ${linkifyDice(a.description || t.desc)}\n\n`);
+    }
+
+    const newNote = { 
+        id: crypto.randomUUID(), 
+        title: `${m.name} (AI Generated)`, 
+        content: md, 
+        timestamp: new Date().toISOString() 
+    };
+
+    await window.finalizeSave('enemyNotes', newNote, targetCampaign);
+};
+
+
+// ==========================================
+// 🛡️ HYBRID RENDERER (Protects Old Notes)
+// ==========================================
+
+window.renderStructuredNotes = function(tab) {
+    const list = document.getElementById(`${tab}-list`);
+    if(!list) return;
+
+    const searchInput = document.getElementById('notes-search');
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    const allNotes = structuredNotes[tab] || [];
+    
+    // Filter
+    const filteredNotes = allNotes.filter(n => {
+        const matchesCampaign = (n.campaign || 'Default Campaign') === window.currentCampaign;
+        const matchesSearch = n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query);
+        return matchesCampaign && matchesSearch;
+    });
+
+    list.innerHTML = filteredNotes.length ? '' : `<p class="text-center text-gray-500 pt-8 text-xs">No notes in <strong>${window.currentCampaign}</strong>.</p>`;
+    
+    filteredNotes.forEach(n => {
+        const div = document.createElement('div'); 
+        div.className = 'note-item card p-0 rounded-lg shadow-md mb-2 bg-gray-800 border border-gray-700 overflow-hidden'; 
+        div.id = `note-${n.id}`;
+        const dateStr = n.timestamp ? new Date(n.timestamp).toLocaleDateString() : "";
+
+        // 🟢 HYBRID CHECK: Is this an old HTML note or a new Markdown note?
+        let displayContent = "";
+        
+        // If content starts with "<div", "<p", or "<table", assume it's OLD HTML.
+        if (n.content && n.content.trim().match(/^<(div|p|table|h\d|ul|ol)/i)) {
+            // Render RAW HTML (Legacy Support)
+            // We also run a simple dice check on it so dice work in old notes too!
+            displayContent = n.content.replace(/\[\[(\d+d\d+(?:[+\-]\d+)?)\]\]/gi, 
+                '<button onclick="event.stopPropagation(); window.rollInline(\'$1\')" class="inline-flex items-center gap-1 bg-indigo-900/50 hover:bg-indigo-700 border border-indigo-500/50 text-indigo-200 px-1.5 rounded text-xs font-mono font-bold cursor-pointer transition select-none transform active:scale-95 mx-1">🎲 $1</button>');
+        } else {
+            // Render MARKDOWN (New System)
+            displayContent = window.parseMarkdown(n.content);
+        }
+
+        div.innerHTML = `
+        <div class="collapsible-header hover:bg-gray-700/50 transition p-3 cursor-pointer flex justify-between items-center" onclick="toggleCollapse('${n.id}')">
+            <span class="font-bold text-indigo-200 truncate text-sm">${n.title}</span>
+            <span class="text-gray-500 text-[10px]">▼</span>
+        </div>
+        <div class="collapsible-content bg-gray-900/50" id="content-${n.id}">
+            <div class="flex justify-between items-center p-2 border-b border-gray-700 bg-gray-800/30">
+                <span class="text-[10px] text-gray-500">${dateStr}</span>
+                <div class="flex gap-2">
+                    <button onclick="editNote('${n.id}', '${tab}')" class="text-xs text-blue-400 hover:text-white font-semibold">Edit</button>
+                    <button onclick="deleteNote('${n.id}', '${tab}')" class="text-xs text-red-400 hover:text-white font-semibold">Delete</button>
+                </div>
+            </div>
+            <div class="p-4 text-sm text-gray-300 leading-relaxed font-sans">${displayContent}</div>
+        </div>`;
+        
+        list.appendChild(div);
+    });
+};
+
+// ==========================================
+// 🛠️ CRITICAL FIX: Safe Dice Linking & Saving
+// ==========================================
+
+// 1. GLOBAL LINKIFY FUNCTION (Safe Override)
+window.linkifyDice = function(text) {
+    if (!text) return "";
+    // Regex matches dice (2d6) and optional modifier (+ 4) with spaces
+    return text.replace(/(\d+d\d+)(?:\s?([+\-])\s?(\d+))?/gi, (match, dice, sign, mod) => {
+        if (sign && mod) {
+            // Remove spaces: "2d6 + 4" becomes "[[2d6+4]]"
+            return `[[${dice}${sign}${mod}]]`; 
+        }
+        return `[[${dice}]]`;
+    });
+};
+
+// 2. ROBUST ROLLER (Ignores spaces inside the button)
+window.rollInline = function(formula) {
+    // Sanitize: "2d6 + 4" -> "2d6+4"
+    const cleanFormula = formula.replace(/\s/g, '').toLowerCase();
+
+    const match = cleanFormula.match(/^(\d+)d(\d+)([+\-]\d+)?$/);
+    
+    if (!match) {
+        if(window.showToast) window.showToast(`❌ Invalid Dice: ${formula}`, 'error');
+        return;
+    }
+
+    const count = parseInt(match[1]);
+    const sides = parseInt(match[2]);
+    const modStr = match[3] || "+0";
+    const mod = parseInt(modStr);
+
+    let total = 0;
+    let rolls = [];
+    
+    for(let i=0; i<count; i++) {
+        const r = Math.floor(Math.random() * sides) + 1;
+        rolls.push(r);
+        total += r;
+    }
+    
+    const finalResult = total + mod;
+    
+    // Fire Visuals & Sound
+    if(window.throwDiceVisuals) window.throwDiceVisuals(rolls, sides);
+    if(window.playTone) window.playTone(finalResult === 20 ? 'critical' : finalResult === 1 ? 'fail' : 'success');
+
+    // Show Toast
+    const icon = finalResult >= 20 ? "🔥" : "🎲";
+    const detail = count > 1 ? `[${rolls.join('+')}]${modStr}` : `(d${sides}${modStr})`;
+    
+    if(window.showToast) window.showToast(`${icon} Rolled <strong>${finalResult}</strong> <span class='text-xs opacity-75 ml-1'>${detail}</span>`, 'roll');
+};
+
+// 3. OVERWRITE SAVE: SRD MONSTER
+window.saveSrdToNotes = async function(index) {
+    const m = window.currentSrdResults ? window.currentSrdResults[index] : null;
+    if (!m) { alert("Error: Monster data not found."); return; }
+
+    const targetCampaign = await window.promptForCampaign();
+    if (!targetCampaign) return;
+
+    // Formatting Helpers
+    const xpTable = { "0": 10, "1/8": 25, "1/4": 50, "1/2": 100, "1": 200, "2": 450, "3": 700, "4": 1100, "5": 1800, "6": 2300, "7": 2900, "8": 3900, "9": 5000, "10": 5900, "11": 7200, "12": 8400, "13": 10000, "14": 11500, "15": 13000, "16": 15000, "17": 18000, "18": 20000, "19": 22000, "20": 25000, "21": 33000, "22": 41000, "23": 50000, "24": 62000, "30": 155000 };
+    const xp = m.xp || xpTable[m.challenge_rating] || 0;
+    const speed = m.speed ? JSON.stringify(m.speed).replace(/[{"}]/g, '').replace(/,/g, ', ') : '30 ft.';
+    
+    const getMod = (s) => Math.floor(((parseInt(s)||10) - 10) / 2);
+    const fmtStat = (val) => { const v = parseInt(val)||10; const mod = getMod(v); return `${v} (${mod>=0?'+':''}${mod})`; };
+    const statsLine = `**STR:** ${fmtStat(m.strength)} | **DEX:** ${fmtStat(m.dexterity)} | **CON:** ${fmtStat(m.constitution)}\n**INT:** ${fmtStat(m.intelligence)} | **WIS:** ${fmtStat(m.wisdom)} | **CHA:** ${fmtStat(m.charisma)}`;
+
+    // Build Clean Markdown
+    let md = `# ${m.name}\n`;
+    md += `*${m.size} ${m.type}, ${m.alignment}*\n`;
+    md += `---\n`;
+    md += `**AC:** ${m.armor_class} (${m.armor_desc || 'natural'})\n`;
+    // 🟢 Uses window.linkifyDice
+    md += `**HP:** ${window.linkifyDice(m.hit_points + " (" + m.hit_dice + ")")}\n`;
+    md += `**Speed:** ${speed}\n`;
+    md += `---\n`;
+    md += `${statsLine}\n`;
+    md += `---\n`;
+    md += `**Saves:** ${m.strength_save ? 'Str +'+m.strength_save : ''} ${m.dexterity_save ? 'Dex +'+m.dexterity_save : ''} ${m.constitution_save ? 'Con +'+m.constitution_save : ''} ${m.intelligence_save ? 'Int +'+m.intelligence_save : ''} ${m.wisdom_save ? 'Wis +'+m.wisdom_save : ''} ${m.charisma_save ? 'Cha +'+m.charisma_save : ''}\n`;
+    md += `**Skills:** ${JSON.stringify(m.skills || '-').replace(/[{"}]/g, '').replace(/,/g, ', ')}\n`;
+    md += `**Senses:** ${m.senses || '-'}\n`;
+    md += `**CR:** ${m.challenge_rating} (${xp} XP)\n`;
+    md += `---\n`;
+
+    if (m.special_abilities) {
+        md += `## Traits\n`;
+        m.special_abilities.forEach(t => md += `**${t.name}.** ${window.linkifyDice(t.desc)}\n\n`);
+    }
+
+    if (m.actions) {
+        md += `## Actions\n`;
+        m.actions.forEach(a => md += `**${a.name}.** ${window.linkifyDice(a.desc)}\n\n`);
+    }
+
+    if (m.legendary_actions) {
+        md += `## Legendary Actions\n`;
+        m.legendary_actions.forEach(a => md += `**${a.name}.** ${window.linkifyDice(a.desc)}\n\n`);
+    }
+
+    const newNote = { 
+        id: crypto.randomUUID(), 
+        title: `${m.name} (Statblock)`, 
+        content: md, 
+        timestamp: new Date().toISOString() 
+    };
+    
+    await window.finalizeSave('enemyNotes', newNote, targetCampaign);
+};
+
+// 4. OVERWRITE SAVE: AI MONSTER
+window.saveMonsterToNotes = async function() {
+    if (!window.userId) { alert("Please log in."); window.openLoginModal(); return; }
+    const m = window.lastGeneratedMonster;
+    if (!m) { alert("No monster generated."); return; }
+
+    const targetCampaign = await window.promptForCampaign();
+    if (!targetCampaign) return;
+
+    const getMod = (s) => Math.floor(((parseInt(s)||10) - 10) / 2);
+    const fmtStat = (val) => { const v = parseInt(val)||10; const mod = getMod(v); return `${v} (${mod>=0?'+':''}${mod})`; };
+    
+    let md = `# ${m.name}\n*${m.size} ${m.type}, ${m.align}*\n---\n`;
+    md += `**AC:** ${m.ac}\n**HP:** ${window.linkifyDice(m.hp.toString())}\n**Speed:** ${m.speed}\n---\n`;
+    md += `**STR:** ${fmtStat(m.str)} | **DEX:** ${fmtStat(m.dex)} | **CON:** ${fmtStat(m.con)}\n`;
+    md += `**INT:** ${fmtStat(m.int)} | **WIS:** ${fmtStat(m.wis)} | **CHA:** ${fmtStat(m.cha)}\n---\n`;
+    md += `**CR:** ${m.cr || 'Unknown'}\n---\n`;
+
+    if (m.traits && m.traits.length) {
+        md += `## Traits\n`;
+        m.traits.forEach(t => md += `**${t.name}.** ${window.linkifyDice(t.description || t.desc)}\n\n`);
+    }
+    
+    if (m.actions && m.actions.length) {
+        md += `## Actions\n`;
+        m.actions.forEach(a => md += `**${a.name}.** ${window.linkifyDice(a.description || t.desc)}\n\n`);
+    }
+
+    const newNote = { 
+        id: crypto.randomUUID(), 
+        title: `${m.name} (AI Generated)`, 
+        content: md, 
+        timestamp: new Date().toISOString() 
+    };
+
+    await window.finalizeSave('enemyNotes', newNote, targetCampaign);
+};
+
+
+// ==========================================
+// ⚔️ COMBAT NPC FIX (Markdown Save & Layout)
+// ==========================================
+
+// 1. GENERATOR: Displays the result & correct buttons
+window.generateCombatNpc = async () => {
+    const btn = document.getElementById('generate-combat-button');    
+    const spinner = document.getElementById('combat-loading-spinner');
+    const outputDiv = document.getElementById('ai-output');    
+    
+    btn.disabled = true;
+    spinner.classList.remove('hidden');
+    outputDiv.textContent = "Generating character sheet...";
+    
+    window.lastGeneratedNpc = null;     
+
+    try {
+        const txt = document.getElementById('npc-type').value;
+        const lvl = document.getElementById('npc-level').value;
+        
+        const prompt = `Generate a D&D 5e combat NPC stat block optimized for quick combat (Level ${lvl}, ${txt}). Return strictly JSON. Ensure all saving throws, skills, and ability scores reflect the NPC's type and level.`;
+        
+        const data = await callAI(API_URL, {    
+            contents: [{ parts: [{ text: prompt }] }],    
+            generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema }    
+        });
+        
+        const parsedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
+        
+        if (!parsedNpc || !parsedNpc.name || !parsedNpc.ability_scores) {
+             throw new Error("AI returned invalid data.");
+        }
+        
+        window.lastGeneratedNpc = parsedNpc;     
+        const n = parsedNpc;
+        const scores = n.ability_scores; 
+        const getMod = (s) => Math.floor(((parseInt(s)||10) - 10) / 2);
+        const fmtMod = (s) => { const m = getMod(s); return m >= 0 ? `+${m}` : m; };
+        const fmtScoreLine = (s) => `${s} (${fmtMod(s)})`;
+
+        // Render the Visual Card
+        outputDiv.innerHTML = `
+            <div class="text-2xl font-bold text-green-400 mb-1">${n.name}</div>
+            <div class="text-gray-400 text-xs mb-4 uppercase tracking-widest">Level ${n.level_or_cr} • Combat NPC</div>
+
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="p-2 bg-gray-800 rounded border border-gray-600 text-center">
+                    <div class="text-[10px] text-gray-500 uppercase">AC</div>
+                    <div class="font-bold text-xl text-blue-300">${n.armor_class_ac}</div>
+                </div>
+                <div class="p-2 bg-gray-800 rounded border border-gray-600 text-center">
+                    <div class="text-[10px] text-gray-500 uppercase">HP</div>
+                    <div class="font-bold text-xl text-green-300">${n.max_hit_points}</div>
+                </div>
+                <div class="p-2 bg-gray-800 rounded border border-gray-600 text-center">
+                    <div class="text-[10px] text-gray-500 uppercase">Init</div>
+                    <div class="font-bold text-xl text-yellow-300">${fmtMod(scores.DEX)}</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-6 text-center text-[10px] font-bold text-gray-400 mb-1">
+                <div>STR</div><div>DEX</div><div>CON</div><div>INT</div><div>WIS</div><div>CHA</div>
+            </div>
+            <div class="grid grid-cols-6 text-center text-xs font-mono text-white mb-4 bg-gray-800 p-2 rounded">
+                <div>${fmtScoreLine(scores.STR)}</div>
+                <div>${fmtScoreLine(scores.DEX)}</div>
+                <div>${fmtScoreLine(scores.CON)}</div>
+                <div>${fmtScoreLine(scores.INT)}</div>
+                <div>${fmtScoreLine(scores.WIS)}</div>
+                <div>${fmtScoreLine(scores.CHA)}</div>
+            </div>
+
+            <div class="bg-gray-800 p-3 rounded border border-gray-700 mb-4">
+                <h4 class="text-xs font-bold text-red-300 uppercase mb-2 border-b border-gray-600 pb-1">Actions</h4>
+                <p class="text-sm text-white mb-2">${n.main_attack_action}</p>
+                ${n.key_feature ? `<p class="text-xs text-green-300 italic border-t border-gray-700 pt-2">${n.key_feature}</p>` : ''}
+            </div>
+
+            <button onclick="window.addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg mb-2 shadow-lg">💾 Add to Tracker</button>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="window.saveCombatNpcToNotes('prepNotes')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs font-bold border border-gray-500">Note</button>
+                <button onclick="window.saveCombatNpcToNotes('enemyNotes')" class="bg-red-900/80 hover:bg-red-800 text-white py-2 rounded text-xs font-bold border border-red-700">Enemy</button>
+                <button onclick="window.saveCombatNpcToNotes('npcNotes')" class="bg-blue-900/80 hover:bg-blue-800 text-white py-2 rounded text-xs font-bold border border-blue-700">NPC</button>
+            </div>
+        `;
+        
+        // Hide the old generic buttons that caused the HTML issue
+        document.getElementById('save-options-creative').classList.add('hidden');
+
+    } catch(e) {    
+        outputDiv.textContent = "Error: " + e.message;    
+        window.lastGeneratedNpc = null;
+    } finally {    
+        spinner.classList.add('hidden');    
+        btn.disabled = false;    
+    }
+};
+
+// 2. SAVER: Converts Data to Clean Markdown
+window.saveCombatNpcToNotes = async function(tab) {
+    if (!window.isAuthReady) { alert("Please log in."); window.openLoginModal(); return; }
+    
+    const n = window.lastGeneratedNpc;
+    if (!n) { alert("No NPC data found. Generate one first."); return; }
+
+    const targetCampaign = await window.promptForCampaign();
+    if (!targetCampaign) return;
+
+    const scores = n.ability_scores || { STR:10, DEX:10, CON:10, INT:10, WIS:10, CHA:10 };
+    const getMod = (s) => Math.floor(((parseInt(s)||10) - 10) / 2);
+    const fmtStat = (val) => { const v = parseInt(val)||10; const mod = getMod(v); return `${v} (${mod>=0?'+':''}${mod})`; };
+
+    // 🟢 BUILD MARKDOWN (Not HTML)
+    let md = `# ${n.name}\n`;
+    md += `*Level/CR ${n.level_or_cr || '?'}, Combat NPC*\n`;
+    md += `---\n`;
+    md += `**AC:** ${n.armor_class_ac} | **HP:** ${n.max_hit_points}\n`;
+    md += `**Init:** ${n.initiative_bonus >= 0 ? '+'+n.initiative_bonus : n.initiative_bonus}\n`;
+    md += `---\n`;
+    md += `**STR:** ${fmtStat(scores.STR)} | **DEX:** ${fmtStat(scores.DEX)} | **CON:** ${fmtStat(scores.CON)}\n`;
+    md += `**INT:** ${fmtStat(scores.INT)} | **WIS:** ${fmtStat(scores.WIS)} | **CHA:** ${fmtStat(scores.CHA)}\n`;
+    md += `---\n`;
+    
+    if (n.saving_throws && n.saving_throws.length) md += `**Saves:** ${n.saving_throws.join(', ')}\n`;
+    if (n.skills && n.skills.length) md += `**Skills:** ${n.skills.join(', ')}\n`;
+    
+    md += `\n## Actions\n`;
+    // Auto-link dice in the attack string
+    md += `**Attack.** ${window.linkifyDice(n.main_attack_action)}\n`;
+    
+    if (n.key_feature) {
+        md += `\n## Features\n`;
+        md += `**Feature.** ${window.linkifyDice(n.key_feature)}\n`;
+    }
+
+    const newNote = { 
+        id: crypto.randomUUID(), 
+        title: `${n.name} (NPC)`, 
+        content: md, 
+        timestamp: new Date().toISOString() 
+    };
+
+    await window.finalizeSave(tab, newNote, targetCampaign);
+};
+
+
 </script>
 
     <!-- Login Modal -->
@@ -4527,6 +5386,8 @@ window.saveMonsterToNotes = async function() {
 <button onclick="window.switchTab('help')" class="fixed bottom-6 right-6 z-50 w-12 h-12 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl border-2 border-indigo-400 flex items-center justify-center transition transform hover:scale-110 active:scale-95 group" title="Go to Help">
     <span class="text-xl font-bold group-hover:animate-bounce">?</span>
 </button>
+
+<div id="toast-container" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none"></div>
         
 </body>
 </html>
