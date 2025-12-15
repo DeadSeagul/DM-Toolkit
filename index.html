@@ -5311,6 +5311,152 @@ window.saveCombatNpcToNotes = async function(tab) {
     await window.finalizeSave(tab, newNote, targetCampaign);
 };
 
+  // ==========================================
+// 🛠️ FINAL FIX: AI CONNECTOR & DARK MODE MONSTERS
+// ==========================================
+
+// 1. GLOBAL AI CONNECTOR (Fixes "callAI is not a function" error)
+window.callAI = async function(url, payload) {
+    // Attempt to get key from Input first, then Local Storage
+    let key = document.getElementById('user-api-key')?.value.trim();
+    if (!key) key = localStorage.getItem('dm_toolkit_api_key');
+    
+    if (!key) throw new Error("Missing API Key. Please enter it in the Prep Tab.");
+
+    // Retry Logic for stability
+    const maxRetries = 3;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const res = await fetch(`${url}?key=${key}`, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(payload) 
+            });
+
+            if (res.ok) return await res.json();
+            if (res.status === 503) {
+                await new Promise(resolve => setTimeout(resolve, 2000)); 
+                continue; 
+            }
+            throw new Error(await res.text());
+        } catch (e) {
+            if (i === maxRetries - 1) throw e;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+};
+
+// 2. MONSTER GENERATOR (Dark Mode / Notes Style)
+window.generateMonsterStatblock = async function() {
+    const btn = document.getElementById('generate-monster-button');   
+    const spinner = document.getElementById('monster-loading-spinner');
+    const output = document.getElementById('monster-output');   
+    const status = document.getElementById('monster-status-message');
+
+    // Reset UI
+    window.lastGeneratedMonster = null;   
+    btn.disabled = true;   
+    spinner.classList.remove('hidden');
+    output.innerHTML = '<span class="text-gray-400 animate-pulse">Summoning creature...</span>';
+    if(status) status.classList.add('hidden');
+
+    try {
+        const name = document.getElementById('monster-name').value;
+        const cr = document.getElementById('monster-cr').value;
+        
+        // Use standard Flash model for speed/reliability
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+        const strictSchema = {
+            type: "OBJECT",
+            properties: {
+                name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" },
+                ac: { type: "INTEGER" }, hp: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" },
+                str: { type: "INTEGER" }, dex: { type: "INTEGER" }, con: { type: "INTEGER" }, int: { type: "INTEGER" }, wis: { type: "INTEGER" }, cha: { type: "INTEGER" },
+                saves: { type: "STRING" }, skills: { type: "STRING" }, senses: { type: "STRING" }, languages: { type: "STRING" },
+                cr: { type: "STRING" }, xp: { type: "INTEGER" },
+                traits: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, desc: { type: "STRING" } } } },
+                actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, desc: { type: "STRING" } } } },
+                legendary: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, desc: { type: "STRING" } } } }
+            },
+            required: ["name", "ac", "hp", "str", "dex", "con", "int", "wis", "cha", "actions"]
+        };
+
+        const prompt = `Create a D&D 5e statblock for "${name}" (CR ${cr}). Return JSON only.`;
+
+        // Call the Global AI Function
+        const data = await window.callAI(API_URL, { 
+            contents: [{ parts: [{ text: prompt }] }], 
+            generationConfig: { responseMimeType: "application/json", responseSchema: strictSchema } 
+        });
+        
+        const raw = JSON.parse(data.candidates[0].content.parts[0].text);
+
+        // Normalize
+        const m = {
+            name: raw.name || name, size: raw.size || "Medium", type: raw.type || "Monster", align: raw.alignment || "Unaligned",
+            ac: parseInt(raw.ac)||10, hp: parseInt(raw.hp)||10, hitDice: raw.hit_dice||"1d8", speed: raw.speed||"30 ft.",
+            str: parseInt(raw.str)||10, dex: parseInt(raw.dex)||10, con: parseInt(raw.con)||10, int: parseInt(raw.int)||10, wis: parseInt(raw.wis)||10, cha: parseInt(raw.cha)||10,
+            saves: raw.saves||"-", skills: raw.skills||"-", senses: raw.senses||"-", langs: raw.languages||"-",
+            cr: raw.cr||cr, xp: raw.xp||0, traits: raw.traits||[], actions: raw.actions||[], legendary: raw.legendary||[]
+        };
+
+        window.lastGeneratedMonster = m;
+
+        // Render in "Notes Style" (Dark Mode)
+        const getMod = (s) => Math.floor(((parseInt(s)||10)-10)/2);
+        const fmtMod = (s) => { const m = getMod(s); return m>=0?`+${m}`:m; };
+        
+        let html = `
+            <div class="text-left font-sans text-sm text-gray-300">
+                <h3 class="text-xl font-bold text-indigo-300 border-b border-gray-600 pb-1 mb-1">${m.name}</h3>
+                <div class="text-xs text-yellow-500 italic mb-3">${m.size} ${m.type}, ${m.align}</div>
+
+                <div class="flex gap-4 mb-3 text-xs">
+                    <div class="font-bold text-gray-400">AC <span class="text-white">${m.ac}</span></div>
+                    <div class="font-bold text-gray-400">HP <span class="text-green-400">${m.hp}</span> <span class="text-gray-500 font-normal">(${m.hitDice})</span></div>
+                    <div class="font-bold text-gray-400">SPD <span class="text-white">${m.speed}</span></div>
+                </div>
+
+                <div class="grid grid-cols-6 text-center text-[10px] font-mono text-gray-400 mb-3 bg-gray-800 rounded p-1 border border-gray-700">
+                    <div>STR<br><span class="text-white text-xs">${m.str}</span><br>${fmtMod(m.str)}</div>
+                    <div>DEX<br><span class="text-white text-xs">${m.dex}</span><br>${fmtMod(m.dex)}</div>
+                    <div>CON<br><span class="text-white text-xs">${m.con}</span><br>${fmtMod(m.con)}</div>
+                    <div>INT<br><span class="text-white text-xs">${m.int}</span><br>${fmtMod(m.int)}</div>
+                    <div>WIS<br><span class="text-white text-xs">${m.wis}</span><br>${fmtMod(m.wis)}</div>
+                    <div>CHA<br><span class="text-white text-xs">${m.cha}</span><br>${fmtMod(m.cha)}</div>
+                </div>
+
+                <div class="text-xs space-y-0.5 mb-3 border-b border-gray-600 pb-2">
+                    <p><strong class="text-gray-500">Saves:</strong> ${m.saves}</p>
+                    <p><strong class="text-gray-500">Skills:</strong> ${m.skills}</p>
+                    <p><strong class="text-gray-500">Senses:</strong> ${m.senses}</p>
+                    <p><strong class="text-gray-500">CR:</strong> <span class="text-white">${m.cr}</span> (${m.xp} XP)</p>
+                </div>
+
+                <div class="space-y-2">
+                    ${m.traits.map(t => `<div><strong class="text-indigo-200">${t.name}.</strong> ${t.desc}</div>`).join('')}
+                    
+                    ${m.actions.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Actions</div>` : ''}
+                    ${m.actions.map(a => `<div><strong class="text-white">${a.name}.</strong> ${a.desc}</div>`).join('')}
+                    
+                    ${m.legendary.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Legendary Actions</div>` : ''}
+                    ${m.legendary.map(l => `<div><strong class="text-white">${l.name}.</strong> ${l.desc}</div>`).join('')}
+                </div>
+            </div>`;
+
+        output.innerHTML = html;
+        document.getElementById('save-options-monster').classList.remove('hidden');
+
+    } catch(e) {   
+        console.error(e);
+        output.innerHTML = `<div class="p-3 bg-red-900/50 rounded border border-red-500 text-red-200 text-xs"><strong>Error:</strong> ${e.message}</div>`;
+        window.lastGeneratedMonster = null; 
+    } finally {   
+        spinner.classList.add('hidden');   
+        btn.disabled = false;   
+    }
+};      
 
 </script>
 
