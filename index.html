@@ -5312,37 +5312,9 @@ window.saveCombatNpcToNotes = async function(tab) {
 };
 
   // ==========================================
-// 🛠️ MONSTER FIX: Restoring Your Working Model + Dark Visuals
+// 🛠️ MONSTER FIX: Cleaner (Removes |n| & undefined)
 // ==========================================
 
-// 1. GLOBAL AI CONNECTOR (Fixes "callAI is not a function")
-window.callAI = async function(url, payload) {
-    // 1. Get Key
-    let key = document.getElementById('user-api-key')?.value.trim();
-    if (!key) key = localStorage.getItem('dm_toolkit_api_key');
-    if (!key) throw new Error("Missing API Key. Please enter it in the Prep Tab.");
-
-    // 2. Retry Logic
-    const maxRetries = 3;
-    for (let i = 0; i < maxRetries; i++) {
-        try {
-            const res = await fetch(`${url}?key=${key}`, { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify(payload) 
-            });
-
-            if (res.ok) return await res.json();
-            if (res.status === 503) { await new Promise(r => setTimeout(r, 2000)); continue; }
-            throw new Error(await res.text());
-        } catch (e) {
-            if (i === maxRetries - 1) throw e;
-            await new Promise(r => setTimeout(r, 1000));
-        }
-    }
-};
-
-// 2. MONSTER GENERATOR (Restored 2.5 Model + Dark Mode)
 window.generateMonsterStatblock = async function() {
     const btn = document.getElementById('generate-monster-button');   
     const spinner = document.getElementById('monster-loading-spinner');
@@ -5359,50 +5331,69 @@ window.generateMonsterStatblock = async function() {
         const name = document.getElementById('monster-name').value;
         const cr = document.getElementById('monster-cr').value;
         
-        // 🟢 RESTORED: The specific URL from your code that works for you
-        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+        // 1. USE GEMINI PRO (Legacy Compatible)
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
-        // Strict Schema (Supported by 2.5 Flash)
-        const strictSchema = {
-            type: "OBJECT",
-            properties: {
-                name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" },
-                ac: { type: "INTEGER" }, hp: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" },
-                str: { type: "INTEGER" }, dex: { type: "INTEGER" }, con: { type: "INTEGER" }, int: { type: "INTEGER" }, wis: { type: "INTEGER" }, cha: { type: "INTEGER" },
-                saves: { type: "STRING" }, skills: { type: "STRING" }, senses: { type: "STRING" }, languages: { type: "STRING" },
-                cr: { type: "STRING" }, xp: { type: "INTEGER" },
-                traits: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, desc: { type: "STRING" } } } },
-                actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, desc: { type: "STRING" } } } },
-                legendary: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, desc: { type: "STRING" } } } }
-            },
-            required: ["name", "ac", "hp", "str", "dex", "con", "int", "wis", "cha", "actions"]
-        };
+        const prompt = `
+        Generate a JSON statblock for D&D 5e: "${name}" (CR ${cr}).
+        Return ONLY valid JSON. No markdown formatting.
+        Structure:
+        {
+            "name": "String", "size": "String", "type": "String", "align": "String",
+            "ac": Integer, "hp": Integer, "hitDice": "String", "speed": "String",
+            "str": Integer, "dex": Integer, "con": Integer, "int": Integer, "wis": Integer, "cha": Integer,
+            "saves": "String", "skills": "String", "senses": "String", "langs": "String",
+            "cr": "String", "xp": Integer,
+            "traits": [{"name": "String", "desc": "String"}],
+            "actions": [{"name": "String", "desc": "String"}],
+            "legendary": [{"name": "String", "desc": "String"}]
+        }`;
 
-        const prompt = `Create a D&D 5e statblock for "${name}" (CR ${cr}). Return JSON only.`;
-
-        // Call AI
-        const data = await window.callAI(API_URL, { 
-            contents: [{ parts: [{ text: prompt }] }], 
-            generationConfig: { responseMimeType: "application/json", responseSchema: strictSchema } 
-        });
+        // 2. CALL AI
+        const data = await window.callAI(API_URL, { contents: [{ parts: [{ text: prompt }] }] });
         
-        const raw = JSON.parse(data.candidates[0].content.parts[0].text);
+        // 3. PARSE
+        let rawText = data.candidates[0].content.parts[0].text;
+        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim(); 
+        const raw = JSON.parse(rawText);
 
-        // Normalize Data
+        // 4. NORMALIZE
         const m = {
-            name: raw.name || name, size: raw.size || "Medium", type: raw.type || "Monster", align: raw.alignment || "Unaligned",
-            ac: parseInt(raw.ac)||10, hp: parseInt(raw.hp)||10, hitDice: raw.hit_dice||"1d8", speed: raw.speed||"30 ft.",
+            name: raw.name || name, size: raw.size || "Medium", type: raw.type || "Monster", align: raw.align || "Unaligned",
+            ac: parseInt(raw.ac)||10, hp: parseInt(raw.hp)||10, hitDice: raw.hitDice||"1d8", speed: raw.speed||"30 ft.",
             str: parseInt(raw.str)||10, dex: parseInt(raw.dex)||10, con: parseInt(raw.con)||10, int: parseInt(raw.int)||10, wis: parseInt(raw.wis)||10, cha: parseInt(raw.cha)||10,
-            saves: raw.saves||"-", skills: raw.skills||"-", senses: raw.senses||"-", langs: raw.languages||"-",
+            saves: raw.saves||"-", skills: raw.skills||"-", senses: raw.senses||"-", langs: raw.langs||"-",
             cr: raw.cr||cr, xp: raw.xp||0, traits: raw.traits||[], actions: raw.actions||[], legendary: raw.legendary||[]
         };
 
         window.lastGeneratedMonster = m;
 
-        // 🟢 VISUALS: Dark Mode (No Parchment)
+        // 5. HELPER: CLEAN TEXT (Removes |n| and undefined)
+        const cleanFmt = (arr) => {
+            if (!arr || !Array.isArray(arr)) return "";
+            return arr.map(t => {
+                // Fix bad splitting
+                let n = t.name || "Action";
+                let d = t.desc || t.description || "";
+
+                // If AI merged them with |n|
+                if (n.includes("|n|")) {
+                    let parts = n.split("|n|");
+                    n = parts[0];
+                    d = parts[1] + " " + d;
+                }
+
+                // Remove literal "undefined" text
+                if (String(d).includes("undefined")) d = d.replace(/undefined/g, "");
+                
+                return `<div class="mb-3 text-sm text-gray-300"><strong class="text-white">${n}.</strong> ${d}</div>`;
+            }).join('');
+        };
+
         const getMod = (s) => Math.floor(((parseInt(s)||10)-10)/2);
         const fmtMod = (s) => { const m = getMod(s); return m>=0?`+${m}`:m; };
         
+        // 6. RENDER DARK CARD
         let html = `
             <div class="text-left font-sans text-sm text-gray-300">
                 <h3 class="text-xl font-bold text-indigo-300 border-b border-gray-600 pb-1 mb-1">${m.name}</h3>
@@ -5431,11 +5422,11 @@ window.generateMonsterStatblock = async function() {
                 </div>
 
                 <div class="space-y-3">
-                    ${m.traits.map(t => `<div><strong class="text-indigo-200">${t.name}.</strong> ${t.desc}</div>`).join('')}
+                    ${cleanFmt(m.traits)}
                     ${m.actions.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Actions</div>` : ''}
-                    ${m.actions.map(a => `<div><strong class="text-white">${a.name}.</strong> ${a.desc}</div>`).join('')}
+                    ${cleanFmt(m.actions)}
                     ${m.legendary.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Legendary Actions</div>` : ''}
-                    ${m.legendary.map(l => `<div><strong class="text-white">${l.name}.</strong> ${l.desc}</div>`).join('')}
+                    ${cleanFmt(m.legendary)}
                 </div>
             </div>`;
 
@@ -5444,11 +5435,9 @@ window.generateMonsterStatblock = async function() {
 
     } catch(e) {   
         console.error(e);
-        output.innerHTML = `<div class="p-3 bg-red-900/50 rounded border border-red-500 text-red-200 text-xs"><strong>Generation Failed:</strong> ${e.message}</div>`;
-        window.lastGeneratedMonster = null; 
+        output.innerHTML = `<div class="p-3 bg-red-900/50 rounded border border-red-500 text-red-200 text-xs"><strong>Generation Failed:</strong> ${e.message}<br>Check API Key.</div>`;
     } finally {   
-        spinner.classList.add('hidden');   
-        btn.disabled = false;   
+        spinner.classList.add('hidden'); btn.disabled = false;   
     }
 };
 
