@@ -5312,7 +5312,7 @@ window.saveCombatNpcToNotes = async function(tab) {
 };
 
  // ==========================================
-// 🐉 MONSTER GENERATOR (Strict Clean Actions)
+// 🐉 MONSTER GENERATOR (Auto-Link Dice [[2d6]])
 // ==========================================
 
 // 1. GLOBAL AI CONNECTOR
@@ -5357,15 +5357,12 @@ window.generateMonsterStatblock = async function() {
         // Use your working model
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
-        // 🟢 NEW PROMPT: Explicitly forbids "thinking out loud"
+        // Prompt
         const prompt = `
         Create a D&D 5e statblock for "${name}" (CR ${cr}). Return JSON only.
-        
-        CRITICAL RULES:
-        1. NO "design notes", NO "thinking out loud", NO "let's simplify". 
-        2. Action descriptions must be FINAL, IN-GAME text only.
-        3. Use standard format: "Melee Weapon Attack: +X to hit, reach 5 ft., one target. Hit: Y (dZ + W) type damage."
-        4. Multiattack should be concise: "The [monster] makes [number] attacks: [list]."
+        RULES:
+        1. Action descriptions must be FINAL, IN-GAME text only.
+        2. Use standard format: "Melee Weapon Attack: +X to hit, reach 5 ft., one target. Hit: Y (dZ + W) type damage."
         `;
 
         const strictSchema = {
@@ -5400,14 +5397,36 @@ window.generateMonsterStatblock = async function() {
 
         window.lastGeneratedMonster = m;
 
+        // --- RENDER HELPERS ---
         const getMod = (s) => Math.floor(((parseInt(s)||10)-10)/2);
         const fmtMod = (s) => { const m = getMod(s); return m>=0?`+${m}`:m; };
         
+        // 🟢 THE DICE LINKER: Swaps (2d6 + 3) -> [[2d6+3]]
+        const formatDice = (text) => {
+            if (!text) return "";
+            // 1. Clean up messy AI chatter first
+            let clean = text.replace(/Let's simplify.*?[\.\-]/gi, "").trim();
+            
+            // 2. Target parentheses with dice inside: "(2d6 + 4)" -> "[[2d6+4]]"
+            clean = clean.replace(/\(\s*(\d+d\d+)(?:\s*([+\-])\s*(\d+))?\s*\)/gi, (match, d, s, m) => {
+                const mod = (s && m) ? `${s}${m}` : '';
+                return `[[${d}${mod}]]`;
+            });
+
+            // 3. Target bare dice that missed the parens check: "plus 1d6 fire" -> "plus [[1d6]] fire"
+            clean = clean.replace(/(?<!\[\[)\b(\d+d\d+)(?:\s*([+\-])\s*(\d+))?\b(?!\]\])/gi, (match, d, s, m) => {
+                 const mod = (s && m) ? `${s}${m}` : '';
+                 return `[[${d}${mod}]]`;
+            });
+
+            return clean;
+        };
+
         const fmtText = (arr) => arr.map(t => {
             const n = t.name || "Ability";
-            // Clean up description if AI still tries to be chatty (fallback)
             let d = t.desc || t.description || ""; 
-            d = d.replace(/Let's simplify.*?[\.\-]/gi, "").trim(); 
+            // Apply the dice formatter to the description
+            d = formatDice(d);
             return `<div class="mb-3 text-sm text-gray-300"><strong class="text-white">${n}.</strong> ${d}</div>`;
         }).join('');
         
@@ -5447,6 +5466,7 @@ window.generateMonsterStatblock = async function() {
                 </div>
             </div>`;
 
+        // 🟢 SAVE the HTML we just generated so "Save to Notes" grabs the linked dice version
         output.innerHTML = html;
         document.getElementById('save-options-monster').classList.remove('hidden');
 
