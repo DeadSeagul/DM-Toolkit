@@ -1732,9 +1732,26 @@ window.addCombatant = async () => {
 
     // --- 10. AI & GENERATORS (Fully Restored) ---
     const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
-    const combatSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, level_or_cr: { type: "STRING" }, armor_class_ac: { type: "INTEGER" }, max_hit_points: { type: "INTEGER" }, initiative_bonus: { type: "INTEGER" }, main_attack: { type: "STRING" } }, required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "main_attack"] };
-    const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: { type: "INTEGER" }, DEX: { type: "INTEGER" }, CON: { type: "INTEGER" }, INT: { type: "INTEGER" }, WIS: { type: "INTEGER" }, CHA: { type: "INTEGER" } }, required: ["STR", "DEX", "CON", "INT", "WIS", "CHA"] }, saving_throws: { type: "ARRAY", items: { type: "STRING" } }, skills: { type: "ARRAY", items: { type: "STRING" } }, damage_vulnerabilities: { type: "ARRAY", items: { type: "STRING" } }, damage_resistances: { type: "ARRAY", items: { type: "STRING" } }, damage_immunities: { type: "ARRAY", items: { type: "STRING" } }, condition_immunities: { type: "ARRAY", items: { type: "STRING" } }, senses: { type: "STRING" }, languages: { type: "STRING" }, challenge_rating: { type: "STRING" }, xp: { type: "INTEGER" }, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } } } };
-
+const combatSchema = { 
+    type: "OBJECT", 
+    properties: { 
+        name: { type: "STRING" }, 
+        level_or_cr: { type: "STRING" }, 
+        armor_class_ac: { type: "INTEGER" }, 
+        max_hit_points: { type: "INTEGER" }, 
+        initiative_bonus: { type: "INTEGER" }, 
+        
+        // NEW FIELDS FOR FULL SHEET
+        ability_scores: { type: "OBJECT", properties: { STR: { type: "INTEGER" }, DEX: { type: "INTEGER" }, CON: { type: "INTEGER" }, INT: { type: "INTEGER" }, WIS: { type: "INTEGER" }, CHA: { type: "INTEGER" } }, required: ["STR", "DEX", "CON", "INT", "WIS", "CHA"] },
+        saving_throws: { type: "ARRAY", items: { type: "STRING" }, description: "e.g., ['Dex +5', 'Wis +3']" },
+        skills: { type: "ARRAY", items: { type: "STRING" }, description: "e.g., ['Perception +4', 'Stealth +5']" },
+        main_attack_action: { type: "STRING", description: "Full attack description for the main action." },
+        key_feature: { type: "STRING", description: "One key ability or feature, e.g., Sneak Attack (3d6)" },
+        
+    }, 
+    required: ["name", "level_or_cr", "armor_class_ac", "max_hit_points", "initiative_bonus", "ability_scores", "main_attack_action"] 
+};
+const monsterSchema = { type: "OBJECT", properties: { name: { type: "STRING" }, size: { type: "STRING" }, type: { type: "STRING" }, alignment: { type: "STRING" }, armor_class: { type: "INTEGER" }, ac_type: { type: "STRING" }, hit_points: { type: "INTEGER" }, hit_dice: { type: "STRING" }, speed: { type: "STRING" }, ability_scores: { type: "OBJECT", properties: { STR: { type: "INTEGER" }, DEX: { type: "INTEGER" }, CON: { type: "INTEGER" }, INT: { type: "INTEGER" }, WIS: { type: "INTEGER" }, CHA: { type: "INTEGER" } }, required: ["STR", "DEX", "CON", "INT", "WIS", "CHA"] }, saving_throws: { type: "ARRAY", items: { type: "STRING" } }, skills: { type: "ARRAY", items: { type: "STRING" } }, damage_vulnerabilities: { type: "ARRAY", items: { type: "STRING" } }, damage_resistances: { type: "ARRAY", items: { type: "STRING" } }, damage_immunities: { type: "ARRAY", items: { type: "STRING" } }, condition_immunities: { type: "ARRAY", items: { type: "STRING" } }, senses: { type: "STRING" }, languages: { type: "STRING" }, challenge_rating: { type: "STRING" }, xp: { type: "INTEGER" }, abilities: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } }, actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } }, legendary_actions: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, description: { type: "STRING" } } } } } };
     // --- UPDATED AI CALLER (With Auto-Retry) ---
     async function callAI(url, payload) {
         // 1. Get Key
@@ -1803,48 +1820,113 @@ window.addCombatant = async () => {
     // ==========================================
 // ⚔️ FIX: COMBAT NPC GENERATOR (GUARANTEED GLOBAL ASSIGNMENT)
 // ==========================================
+// You must have the getMod and fmtMod helpers defined earlier in your script!
 window.generateCombatNpc = async () => {
-    const btn = document.getElementById('generate-combat-button'); 
-    const outputDiv = document.getElementById('ai-output'); 
+    const btn = document.getElementById('generate-combat-button');    
+    const spinner = document.getElementById('combat-loading-spinner');
+    const outputDiv = document.getElementById('ai-output');    
     
     btn.disabled = true;
-    outputDiv.textContent = "Generating combat stats...";
+    spinner.classList.remove('hidden');
+    outputDiv.textContent = "Generating full character sheet...";
     
     // 1. Reset Global Variable immediately
-    window.lastGeneratedNpc = null; 
+    window.lastGeneratedNpc = null;    
 
     try {
         const txt = document.getElementById('npc-type').value, lvl = document.getElementById('npc-level').value;
-        const prompt = `Generate a D&D 5e combat NPC (Level ${lvl}, ${txt}). Return strictly JSON.`;
         
-        const data = await callAI(API_URL, { 
-            contents: [{ parts: [{ text: prompt }] }], 
-            generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema } 
+        // 🟢 NEW PROMPT: Requesting ALL sheet data
+        const prompt = `Generate a D&D 5e combat NPC stat block optimized for quick combat (Level ${lvl}, ${txt}). Return strictly JSON. Ensure all saving throws, skills, and ability scores reflect the NPC's type and level.`;
+        
+        const data = await callAI(API_URL, {    
+            contents: [{ parts: [{ text: prompt }] }],    
+            generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema }    
         });
         
-        // 2. Parse and Assign to Global Variable ONLY ONCE (CRITICAL)
+        // 2. Parse and Assign to Global Variable 
         const parsedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
         
-        if (!parsedNpc || !parsedNpc.name) {
-             throw new Error("AI returned empty or invalid NPC data.");
+        if (!parsedNpc || !parsedNpc.name || !parsedNpc.ability_scores) {
+             throw new Error("AI returned empty or invalid NPC data (missing scores).");
         }
         
         // 🟢 Guarantee the structured data is assigned globally.
-        window.lastGeneratedNpc = parsedNpc; 
-        const n = window.lastGeneratedNpc; // Use the global variable reference for rendering
+        window.lastGeneratedNpc = parsedNpc;    
+        const n = window.lastGeneratedNpc;
+        const scores = n.ability_scores; // Access ability scores object directly
+        
+        // Helper to format ability score lines (e.g. 18 (+4))
+        const fmtScoreLine = (score) => {
+            const val = parseInt(score) || 10;
+            const mod = fmtMod(val); // Assuming fmtMod is defined globally
+            return `${val} (${mod})`;
+        };
 
-        // 3. Render HTML using the global variable (n)
-        outputDiv.innerHTML = `<div class="text-2xl font-bold text-green-400 mb-2">${n.name}</div><div class="text-gray-300 text-sm mb-4">Level/CR: ${n.level_or_cr}</div><div class="grid grid-cols-2 gap-3 mb-4"><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Armor Class</div><div class="font-bold text-2xl text-blue-300">${n.armor_class_ac}</div></div><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><div class="text-xs text-gray-400 uppercase">Hit Points</div><div class="font-bold text-2xl text-green-300">${n.max_hit_points}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Initiative</div><div class="font-bold text-xl text-yellow-300">${n.initiative_bonus >= 0 ? '+' : ''}${n.initiative_bonus}</div></div><div class="p-3 bg-gray-700 rounded-lg col-span-2 border border-gray-600"><div class="text-xs text-gray-400 uppercase">Main Attack</div><div class="font-medium text-white mt-1">${n.main_attack}</div></div></div><button onclick="window.addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button><div class="grid grid-cols-3 gap-2"><button onclick="window.saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button><button onclick="window.saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button><button onclick="window.saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button></div>`;
+        // 3. Render FULL Character Sheet HTML
+        outputDiv.innerHTML = `
+            <div class="text-2xl font-bold text-green-400 mb-2">${n.name}</div>
+            <div class="text-gray-300 text-sm mb-4">Level/CR: ${n.level_or_cr || 'N/A'}</div>
+
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="p-2 bg-gray-700 rounded-lg border border-gray-600 text-center">
+                    <div class="text-xs text-gray-400 uppercase">AC</div>
+                    <div class="font-bold text-2xl text-blue-300">${n.armor_class_ac}</div>
+                </div>
+                <div class="p-2 bg-gray-700 rounded-lg border border-gray-600 text-center">
+                    <div class="text-xs text-gray-400 uppercase">HP</div>
+                    <div class="font-bold text-2xl text-green-300">${n.max_hit_points}</div>
+                </div>
+                <div class="p-2 bg-gray-700 rounded-lg border border-gray-600 text-center">
+                    <div class="text-xs text-gray-400 uppercase">Init Bonus</div>
+                    <div class="font-bold text-xl text-yellow-300">${fmtMod(scores.DEX || 10)}</div>
+                </div>
+            </div>
+
+            <div class="p-3 bg-gray-700 rounded-lg border border-gray-600 mb-4">
+                <h4 class="text-sm font-bold text-red-300 mb-2 border-b border-gray-600 pb-1">Ability Scores</h4>
+                <div class="grid grid-cols-6 text-center text-xs font-bold text-white">
+                    <div>STR</div><div>DEX</div><div>CON</div><div>INT</div><div>WIS</div><div>CHA</div>
+                </div>
+                <div class="grid grid-cols-6 text-center text-sm font-mono text-gray-200 mt-1">
+                    <div>${fmtScoreLine(scores.STR)}</div>
+                    <div>${fmtScoreLine(scores.DEX)}</div>
+                    <div>${fmtScoreLine(scores.CON)}</div>
+                    <div>${fmtScoreLine(scores.INT)}</div>
+                    <div>${fmtScoreLine(scores.WIS)}</div>
+                    <div>${fmtScoreLine(scores.CHA)}</div>
+                </div>
+            </div>
+
+            <div class="p-3 bg-gray-700 rounded-lg border border-gray-600 mb-4 text-sm text-white">
+                ${(n.saving_throws && n.saving_throws.length) ? 
+                    `<p class="mb-1"><strong class="text-yellow-300">Saves:</strong> ${n.saving_throws.join(', ')}</p>` : ''}
+                ${(n.skills && n.skills.length) ? 
+                    `<p><strong class="text-yellow-300">Skills:</strong> ${n.skills.join(', ')}</p>` : ''}
+            </div>
+
+            <div class="p-3 bg-gray-700 rounded-lg border border-gray-600 mb-4">
+                <h4 class="text-sm font-bold text-red-300 mb-2 border-b border-gray-600 pb-1">Main Action</h4>
+                <p class="text-sm text-white">${n.main_attack_action}</p>
+                ${n.key_feature ? `<p class="text-xs text-green-400 mt-2">Feature: ${n.key_feature}</p>` : ''}
+            </div>
+
+            <button onclick="window.addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="window.saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button>
+                <button onclick="window.saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button>
+                <button onclick="window.saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button>
+            </div>`;
         
         // 4. Reveal the generic save buttons
         document.getElementById('save-options-creative').classList.remove('hidden');
 
-    } catch(e) { 
-        outputDiv.textContent = "Error: " + e.message; 
+    } catch(e) {    
+        outputDiv.textContent = "Error: " + e.message;    
         window.lastGeneratedNpc = null; // Clear on error
-    } finally { 
-        document.getElementById('combat-loading-spinner').classList.add('hidden'); 
-        btn.disabled = false; 
+    } finally {    
+        spinner.classList.add('hidden');    
+        btn.disabled = false;    
     }
 };
 
