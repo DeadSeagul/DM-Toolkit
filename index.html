@@ -5311,27 +5311,22 @@ window.saveCombatNpcToNotes = async function(tab) {
     await window.finalizeSave(tab, newNote, targetCampaign);
 };
 
-  // ==========================================
-// 🛠️ MONSTER FIX: Restoring Your Working Model + Dark Visuals
+ // ==========================================
+// 🐉 MONSTER GENERATOR (Strict Clean Actions)
 // ==========================================
 
-// 1. GLOBAL AI CONNECTOR (Fixes "callAI is not a function")
+// 1. GLOBAL AI CONNECTOR
 window.callAI = async function(url, payload) {
-    // 1. Get Key
     let key = document.getElementById('user-api-key')?.value.trim();
     if (!key) key = localStorage.getItem('dm_toolkit_api_key');
-    if (!key) throw new Error("Missing API Key. Please enter it in the Prep Tab.");
+    if (!key) throw new Error("Missing API Key.");
 
-    // 2. Retry Logic
     const maxRetries = 3;
     for (let i = 0; i < maxRetries; i++) {
         try {
             const res = await fetch(`${url}?key=${key}`, { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify(payload) 
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) 
             });
-
             if (res.ok) return await res.json();
             if (res.status === 503) { await new Promise(r => setTimeout(r, 2000)); continue; }
             throw new Error(await res.text());
@@ -5342,7 +5337,7 @@ window.callAI = async function(url, payload) {
     }
 };
 
-// 2. MONSTER GENERATOR (Restored 2.5 Model + Dark Mode)
+// 2. GENERATOR FUNCTION
 window.generateMonsterStatblock = async function() {
     const btn = document.getElementById('generate-monster-button');   
     const spinner = document.getElementById('monster-loading-spinner');
@@ -5359,10 +5354,20 @@ window.generateMonsterStatblock = async function() {
         const name = document.getElementById('monster-name').value;
         const cr = document.getElementById('monster-cr').value;
         
-        // 🟢 RESTORED: The specific URL from your code that works for you
+        // Use your working model
         const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
 
-        // Strict Schema (Supported by 2.5 Flash)
+        // 🟢 NEW PROMPT: Explicitly forbids "thinking out loud"
+        const prompt = `
+        Create a D&D 5e statblock for "${name}" (CR ${cr}). Return JSON only.
+        
+        CRITICAL RULES:
+        1. NO "design notes", NO "thinking out loud", NO "let's simplify". 
+        2. Action descriptions must be FINAL, IN-GAME text only.
+        3. Use standard format: "Melee Weapon Attack: +X to hit, reach 5 ft., one target. Hit: Y (dZ + W) type damage."
+        4. Multiattack should be concise: "The [monster] makes [number] attacks: [list]."
+        `;
+
         const strictSchema = {
             type: "OBJECT",
             properties: {
@@ -5378,9 +5383,6 @@ window.generateMonsterStatblock = async function() {
             required: ["name", "ac", "hp", "str", "dex", "con", "int", "wis", "cha", "actions"]
         };
 
-        const prompt = `Create a D&D 5e statblock for "${name}" (CR ${cr}). Return JSON only.`;
-
-        // Call AI
         const data = await window.callAI(API_URL, { 
             contents: [{ parts: [{ text: prompt }] }], 
             generationConfig: { responseMimeType: "application/json", responseSchema: strictSchema } 
@@ -5388,7 +5390,6 @@ window.generateMonsterStatblock = async function() {
         
         const raw = JSON.parse(data.candidates[0].content.parts[0].text);
 
-        // Normalize Data
         const m = {
             name: raw.name || name, size: raw.size || "Medium", type: raw.type || "Monster", align: raw.alignment || "Unaligned",
             ac: parseInt(raw.ac)||10, hp: parseInt(raw.hp)||10, hitDice: raw.hit_dice||"1d8", speed: raw.speed||"30 ft.",
@@ -5399,9 +5400,16 @@ window.generateMonsterStatblock = async function() {
 
         window.lastGeneratedMonster = m;
 
-        // 🟢 VISUALS: Dark Mode (No Parchment)
         const getMod = (s) => Math.floor(((parseInt(s)||10)-10)/2);
         const fmtMod = (s) => { const m = getMod(s); return m>=0?`+${m}`:m; };
+        
+        const fmtText = (arr) => arr.map(t => {
+            const n = t.name || "Ability";
+            // Clean up description if AI still tries to be chatty (fallback)
+            let d = t.desc || t.description || ""; 
+            d = d.replace(/Let's simplify.*?[\.\-]/gi, "").trim(); 
+            return `<div class="mb-3 text-sm text-gray-300"><strong class="text-white">${n}.</strong> ${d}</div>`;
+        }).join('');
         
         let html = `
             <div class="text-left font-sans text-sm text-gray-300">
@@ -5431,11 +5439,11 @@ window.generateMonsterStatblock = async function() {
                 </div>
 
                 <div class="space-y-3">
-                    ${m.traits.map(t => `<div><strong class="text-indigo-200">${t.name}.</strong> ${t.desc}</div>`).join('')}
+                    ${fmtText(m.traits)}
                     ${m.actions.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Actions</div>` : ''}
-                    ${m.actions.map(a => `<div><strong class="text-white">${a.name}.</strong> ${a.desc}</div>`).join('')}
+                    ${fmtText(m.actions)}
                     ${m.legendary.length ? `<div class="font-bold text-indigo-400 border-b border-gray-700 mt-3 mb-1">Legendary Actions</div>` : ''}
-                    ${m.legendary.map(l => `<div><strong class="text-white">${l.name}.</strong> ${l.desc}</div>`).join('')}
+                    ${fmtText(m.legendary)}
                 </div>
             </div>`;
 
