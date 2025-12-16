@@ -5676,21 +5676,23 @@ window.saveMonsterToNotes = async function() {
 <div id="share-modal" class="hidden fixed inset-0 z-[100] bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm" onclick="this.classList.add('hidden')">
     <div class="card w-full max-w-sm p-6 rounded-xl shadow-2xl border border-blue-500/50 text-center bg-gray-900 relative" onclick="event.stopPropagation()">
         
-        <button onclick="document.getElementById('share-modal').classList.add('hidden')" class="absolute top-2 right-2 text-gray-400 hover:text-white">✕</button>
+        <button onclick="document.getElementById('share-modal').classList.add('hidden')" class="absolute top-2 right-2 text-gray-400 hover:text-white transition">✕</button>
         
         <h3 class="text-xl font-bold text-blue-300 mb-2">Scan to Join</h3>
-        <p class="text-gray-400 text-xs mb-4">Players can scan this to open the toolkit.</p>
+        <p class="text-gray-400 text-xs mb-4">Players can scan this to open the toolkit on their phones.</p>
         
-        <div class="bg-white p-2 rounded-lg inline-block">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://deadseagul.github.io/DM-Toolkit/&color=000000" alt="QR Code" class="rounded">
+        <div class="bg-white p-2 rounded-lg inline-block shadow-lg">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://deadseagul.github.io/DM-Toolkit/&color=000000" alt="Aegis DM Toolkit QR Code" class="rounded w-48 h-48">
         </div>
         
         <div class="mt-4">
-            <p class="text-[10px] text-gray-500 font-mono bg-gray-800 p-2 rounded select-all">deadseagul.github.io/DM-Toolkit/</p>
+            <p class="text-[10px] text-gray-500 font-mono bg-gray-800 p-2 rounded select-all break-all border border-gray-700">
+                https://deadseagul.github.io/DM-Toolkit/
+            </p>
         </div>
         
-        <button onclick="navigator.clipboard.writeText('https://deadseagul.github.io/DM-Toolkit/'); alert('Link Copied!')" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-sm transition">
-            Copy Link
+        <button onclick="navigator.clipboard.writeText('https://deadseagul.github.io/DM-Toolkit/'); alert('Link Copied!')" class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-sm transition shadow-lg">
+            📋 Copy Link
         </button>
     </div>
 </div>
