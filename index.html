@@ -713,25 +713,33 @@
             
             <div class="flex gap-1 ml-2 items-center">
                 <div class="relative group">
-                    <button class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm cursor-help">
-                        ?
-                    </button>
-                    <div class="absolute right-0 top-full mt-2 w-64 p-4 bg-gray-800 border border-indigo-500 rounded-lg shadow-2xl z-50 hidden group-hover:block text-left pointer-events-none">
-                        <div class="text-xs text-gray-300 space-y-2">
-                            <div>
-                                <strong class="text-indigo-400">Formatting:</strong><br>
-                                <code class="bg-gray-900 px-1 rounded text-yellow-500">**Bold**</code> &nbsp; <code class="bg-gray-900 px-1 rounded text-yellow-500">*Italic*</code><br>
-                                <code class="bg-gray-900 px-1 rounded text-yellow-500"># Header</code>
-                            </div>
-                            <div class="border-t border-gray-700 pt-2">
-                                <strong class="text-indigo-400">Dice Roller:</strong><br>
-                                <div class="mt-1">Type brackets to create buttons:</div>
-                                <code class="bg-gray-900 px-1 rounded text-green-400">[[1d20]]</code><br>
-                                <code class="bg-gray-900 px-1 rounded text-green-400">[[1d8+3]]</code>
-                            </div>
-                        </div>
-                    </div>
+    <button class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm cursor-help">
+        ?
+    </button>
+    <div class="absolute right-0 top-full mt-2 w-64 p-4 bg-gray-800 border border-indigo-500 rounded-lg shadow-2xl z-50 hidden group-hover:block text-left pointer-events-none">
+        <div class="text-xs text-gray-300 space-y-2">
+            <div>
+                <strong class="text-indigo-400">Formatting:</strong><br>
+                <div class="mb-1">
+                    <code class="bg-gray-900 px-1 rounded text-yellow-500">**Bold**</code> &nbsp; 
+                    <code class="bg-gray-900 px-1 rounded text-yellow-500">*Italic*</code>
                 </div>
+                <div class="mb-1">
+                    <code class="bg-gray-900 px-1 rounded text-yellow-500"># Header</code>
+                </div>
+                <div>
+                    <code class="bg-gray-900 px-1 rounded text-blue-400">[Link Text](URL)</code>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 pt-2">
+                <strong class="text-indigo-400">Dice Roller:</strong><br>
+                <div class="mt-1">Type brackets to create buttons:</div>
+                <code class="bg-gray-900 px-1 rounded text-green-400">[[1d20]]</code><br>
+                <code class="bg-gray-900 px-1 rounded text-green-400">[[1d8+3]]</code>
+            </div>
+        </div>
+    </div>
+</div>
                 <button onclick="window.createNewCampaign()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm whitespace-nowrap">
                     + New
                 </button>
