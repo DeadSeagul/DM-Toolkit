@@ -698,51 +698,72 @@
             </div>
 
             <div id="notes" class="tab-content hidden">
-                <div class="card p-4 rounded-lg shadow-xl">
-                    <div class="flex justify-between items-center mb-4 bg-gray-900 p-3 rounded-lg border border-indigo-900/50 shadow-inner">
-                        <div class="flex items-center gap-3 flex-1 min-w-0">
-                            <div class="bg-indigo-600 p-1.5 rounded-lg text-white">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-                            </div>
-                            <div class="flex flex-col flex-1">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Active Campaign</label>
-                                <select id="campaign-selector" onchange="window.switchCampaign(this.value)" class="bg-transparent text-white font-bold text-sm outline-none cursor-pointer hover:text-indigo-300 transition w-full border-none p-0 focus:ring-0">
-                                    </select>
-                            </div>
-                        </div>
-                        <div class="flex gap-1 ml-2">
-                            <button onclick="window.createNewCampaign()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm whitespace-nowrap">
-                                + New
-                            </button>
-                            <button onclick="window.deleteCurrentCampaign()" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs font-bold px-3 py-2 rounded-lg transition border border-red-800 shadow-sm" title="Delete Current Campaign">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4 overflow-x-auto">
-                        <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="switchSubTab('prepNotes')">📜 General</button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="pcNotes" onclick="switchSubTab('pcNotes')">🛡️ PCs</button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="enemyNotes" onclick="switchSubTab('enemyNotes')">💀 Enemies</button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="switchSubTab('npcNotes')">👥 NPCs</button>
-                        <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="lootNotes" onclick="switchSubTab('lootNotes')">💰 Loot</button>
-                    </div>
-
-                    <div class="flex gap-2 mb-4">
-                        <input type="text" id="notes-search" placeholder="Search notes..." class="flex-1 p-2 rounded-lg input-style text-sm focus:ring-2 focus:ring-indigo-500 outline-none" onkeypress="if(event.key==='Enter') window.renderStructuredNotes(window.currentSubTab)">
-                        <button onclick="window.renderStructuredNotes(window.currentSubTab)" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 rounded-lg text-sm">Search</button>
-                    </div>
-                    
-                    <div id="prepNotes-sub-content" class="sub-tab-content"><div id="prepNotes-list" class="scrollable-content space-y-3"></div></div>
-                    <div id="pcNotes-sub-content" class="sub-tab-content hidden"><div id="pcNotes-list" class="scrollable-content space-y-3"></div></div>
-                    <div id="enemyNotes-sub-content" class="sub-tab-content hidden"><div id="enemyNotes-list" class="scrollable-content space-y-3"></div></div>
-                    <div id="npcNotes-sub-content" class="sub-tab-content hidden"><div id="npcNotes-list" class="scrollable-content space-y-3"></div></div>
-                    <div id="lootNotes-sub-content" class="sub-tab-content hidden"><div id="lootNotes-list" class="scrollable-content space-y-3"></div></div>
-                    
-                    <button onclick="addNewNote(window.currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">+ Add Manual Note</button>
-                    <p id="notes-status" class="mt-2 text-sm text-center text-gray-400"></p>
+    <div class="card p-4 rounded-lg shadow-xl">
+        <div class="flex justify-between items-center mb-4 bg-gray-900 p-3 rounded-lg border border-indigo-900/50 shadow-inner">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                <div class="bg-indigo-600 p-1.5 rounded-lg text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                </div>
+                <div class="flex flex-col flex-1">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Active Campaign</label>
+                    <select id="campaign-selector" onchange="window.switchCampaign(this.value)" class="bg-transparent text-white font-bold text-sm outline-none cursor-pointer hover:text-indigo-300 transition w-full border-none p-0 focus:ring-0">
+                    </select>
                 </div>
             </div>
+            
+            <div class="flex gap-1 ml-2 items-center">
+                <div class="relative group">
+                    <button class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm cursor-help">
+                        ?
+                    </button>
+                    <div class="absolute right-0 top-full mt-2 w-64 p-4 bg-gray-800 border border-indigo-500 rounded-lg shadow-2xl z-50 hidden group-hover:block text-left pointer-events-none">
+                        <div class="text-xs text-gray-300 space-y-2">
+                            <div>
+                                <strong class="text-indigo-400">Formatting:</strong><br>
+                                <code class="bg-gray-900 px-1 rounded text-yellow-500">**Bold**</code> &nbsp; <code class="bg-gray-900 px-1 rounded text-yellow-500">*Italic*</code><br>
+                                <code class="bg-gray-900 px-1 rounded text-yellow-500"># Header</code>
+                            </div>
+                            <div class="border-t border-gray-700 pt-2">
+                                <strong class="text-indigo-400">Dice Roller:</strong><br>
+                                <div class="mt-1">Type brackets to create buttons:</div>
+                                <code class="bg-gray-900 px-1 rounded text-green-400">[[1d20]]</code><br>
+                                <code class="bg-gray-900 px-1 rounded text-green-400">[[1d8+3]]</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="window.createNewCampaign()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition border border-gray-600 shadow-sm whitespace-nowrap">
+                    + New
+                </button>
+                <button onclick="window.deleteCurrentCampaign()" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs font-bold px-3 py-2 rounded-lg transition border border-red-800 shadow-sm" title="Delete Current Campaign">
+                    🗑️
+                </button>
+            </div>
+        </div>
+        
+        <div class="flex border-b border-gray-700 mb-4 -mx-4 px-4 overflow-x-auto">
+             <button class="sub-tab-button p-2 text-sm font-semibold transition duration-300 active" data-subtab="prepNotes" onclick="switchSubTab('prepNotes')">📜 General</button>
+             <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="pcNotes" onclick="switchSubTab('pcNotes')">🛡️ PCs</button>
+             <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="enemyNotes" onclick="switchSubTab('enemyNotes')">💀 Enemies</button>
+             <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="npcNotes" onclick="switchSubTab('npcNotes')">👥 NPCs</button>
+             <button class="sub-tab-button p-2 text-sm font-semibold text-gray-400 transition duration-300" data-subtab="lootNotes" onclick="switchSubTab('lootNotes')">💰 Loot</button>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="notes-search" placeholder="Search notes..." class="flex-1 p-2 rounded-lg input-style text-sm focus:ring-2 focus:ring-indigo-500 outline-none" onkeypress="if(event.key==='Enter') window.renderStructuredNotes(window.currentSubTab)">
+            <button onclick="window.renderStructuredNotes(window.currentSubTab)" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 rounded-lg text-sm">Search</button>
+        </div>
+        
+        <div id="prepNotes-sub-content" class="sub-tab-content"><div id="prepNotes-list" class="scrollable-content space-y-3"></div></div>
+        <div id="pcNotes-sub-content" class="sub-tab-content hidden"><div id="pcNotes-list" class="scrollable-content space-y-3"></div></div>
+        <div id="enemyNotes-sub-content" class="sub-tab-content hidden"><div id="enemyNotes-list" class="scrollable-content space-y-3"></div></div>
+        <div id="npcNotes-sub-content" class="sub-tab-content hidden"><div id="npcNotes-list" class="scrollable-content space-y-3"></div></div>
+        <div id="lootNotes-sub-content" class="sub-tab-content hidden"><div id="lootNotes-list" class="scrollable-content space-y-3"></div></div>
+        
+        <button onclick="addNewNote(window.currentSubTab)" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg transition duration-300">+ Add Manual Note</button>
+        <p id="notes-status" class="mt-2 text-sm text-center text-gray-400"></p>
+    </div>
+</div>
 
            <!-- Homebrew Tab (Items Updated to Parchment Style) -->
             <div id="homebrew" class="tab-content hidden">
@@ -1025,60 +1046,7 @@
                     </details>
                 </div>
 
-            <div class="help-section">
-    <h3>📝 Notes & Formatting Guide</h3>
-    <p>You can use special syntax in your notes to format text and create clickable dice rolls.</p>
-
-    <table class="help-table">
-        <thead>
-            <tr>
-                <th>Feature</th>
-                <th>Syntax to Type</th>
-                <th>Result</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>Bold</strong></td>
-                <td><code>**Bold Text**</code></td>
-                <td><strong>Bold Text</strong></td>
-            </tr>
-            <tr>
-                <td><em>Italics</em></td>
-                <td><code>*Italic Text*</code></td>
-                <td><em>Italic Text</em></td>
-            </tr>
-            <tr>
-                <td>Headers</td>
-                <td><code># Main Header</code><br><code>## Sub Header</code></td>
-                <td>Large, bold headings</td>
-            </tr>
-            <tr>
-                <td>Links</td>
-                <td><code>[Google](https://google.com)</code></td>
-                <td><a href="#">Google</a> (Clickable)</td>
-            </tr>
-            <tr>
-                <td><strong>Dice Roller</strong></td>
-                <td>
-                    <code>[[1d20]]</code><br>
-                    <code>[[1d8+3]]</code><br>
-                    <code>[[2d6+1d4+2]]</code>
-                </td>
-                <td>Creates a clickable button that rolls the dice in the chat.</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="help-tips">
-        <h4>💡 Pro Tips:</h4>
-        <ul>
-            <li><strong>Lists:</strong> Use <code>-</code> or <code>*</code> at the start of a line to create bullet points.</li>
-            <li><strong>Math in Dice:</strong> You can add modifiers directly inside the brackets (e.g., <code>[[1d20+5]]</code>).</li>
-            <li><strong>Organization:</strong> Use Headers (<code>#</code>) to separate different sections of your session notes for easy scanning.</li>
-        </ul>
-    </div>
-</div>
+            
 
                 <div class="card p-6 rounded-lg shadow-xl border border-red-500/30 mb-6 text-left">
                     <h3 class="text-lg font-bold text-red-300 mb-2 flex items-center gap-2">
