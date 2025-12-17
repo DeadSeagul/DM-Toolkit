@@ -1036,26 +1036,30 @@
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 ..."> 
    </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 bg-gray-800 p-3 rounded-lg border border-gray-700">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4 bg-gray-800 p-3 rounded-lg border border-gray-700">
     <div>
-        <label class="block text-[10px] uppercase font-bold text-green-400 mb-1">🌲 Forest Density</label>
-        <input type="range" id="param-forests" min="0" max="40" value="15" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500">
+        <label class="block text-[10px] uppercase font-bold text-green-400 mb-1">🌲 Forests</label>
+        <input type="range" id="param-forests" min="0" max="40" value="12" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500">
     </div>
     <div>
         <label class="block text-[10px] uppercase font-bold text-gray-400 mb-1">⛰️ Mountains</label>
         <input type="range" id="param-mountains" min="0" max="20" value="8" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-gray-400">
     </div>
     <div>
-        <label class="block text-[10px] uppercase font-bold text-blue-400 mb-1">💧 River Chance</label>
+        <label class="block text-[10px] uppercase font-bold text-blue-400 mb-1">💧 Rivers</label>
         <input type="range" id="param-rivers" min="0" max="100" value="80" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
     </div>
     <div>
-        <label class="block text-[10px] uppercase font-bold text-yellow-500 mb-1">🏰 Settlements</label>
+        <label class="block text-[10px] uppercase font-bold text-yellow-500 mb-1">🏰 Cities</label>
         <input type="range" id="param-cities" min="0" max="15" value="6" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500">
     </div>
     <div>
         <label class="block text-[10px] uppercase font-bold text-purple-400 mb-1">💀 Secrets</label>
         <input type="range" id="param-secrets" min="0" max="10" value="4" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500">
+    </div>
+    <div>
+        <label class="block text-[10px] uppercase font-bold text-cyan-400 mb-1">📏 Scale</label>
+        <input type="text" id="param-scale" value="24 Miles" class="w-full h-5 text-[10px] px-1 bg-gray-900 border border-gray-600 rounded text-cyan-100 focus:border-cyan-500 outline-none placeholder-gray-500">
     </div>
 </div>
 
@@ -5993,7 +5997,7 @@ window.addNoteToInitiative = function(name) {
 
 
 // ==========================================
-// 🗺️ ATLAS MAP GENERATOR (Fixed 24-Mile Scale)
+// 🗺️ ATLAS MAP GENERATOR (Custom Scale Edition)
 // ==========================================
 
 window.mapState = {
@@ -6022,6 +6026,10 @@ window.generateContinent = function() {
     const valRivers = document.getElementById('param-rivers') ? parseInt(document.getElementById('param-rivers').value) : 80;
     const valCities = document.getElementById('param-cities') ? parseInt(document.getElementById('param-cities').value) : 6;
     const valSecrets = document.getElementById('param-secrets') ? parseInt(document.getElementById('param-secrets').value) : 4;
+    // Get Scale Text (Default to '24 Miles' if empty)
+    const valScale = document.getElementById('param-scale') && document.getElementById('param-scale').value.trim() !== "" 
+                     ? document.getElementById('param-scale').value 
+                     : "24 Miles";
 
     // A. BACKGROUND
     ctx.fillStyle = PALETTE.ocean; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -6089,9 +6097,9 @@ window.generateContinent = function() {
     ctx.restore();
     ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.5; ctx.stroke(landPath);
 
-    // D. GRID & LEGEND (FIXED SCALE)
+    // D. GRID & LEGEND
     drawHexGrid(ctx, canvas.width, canvas.height, 60);
-    drawScaleLegend(ctx); 
+    drawScaleLegend(ctx, valScale); // Pass the custom text
 
     // E. CALCULATE MOUNTAINS
     const riverSources = []; const mountainPixels = []; const mountainPathsToDraw = []; 
@@ -6232,11 +6240,10 @@ function drawHex(ctx, x, y, r) {
     }
     ctx.closePath(); ctx.stroke();
 }
-function drawScaleLegend(ctx) {
-    // Draws fixed 24 Mile Legend
-    const x = 50; const y = 850; const r = 60; // Matches grid size (60)
+function drawScaleLegend(ctx, text) {
+    // Draws legend with custom text
+    const x = 50; const y = 850; const r = 60; // Matches grid size
     ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 2;
-    // Fill to make it readable
     ctx.fillStyle = "rgba(243, 238, 221, 0.9)";
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
@@ -6248,11 +6255,9 @@ function drawScaleLegend(ctx) {
     ctx.closePath(); ctx.fill(); ctx.stroke();
     
     // Text
-    ctx.fillStyle = PALETTE.ink; ctx.font = "bold 28px 'Cinzel Decorative', serif";
+    ctx.fillStyle = PALETTE.ink; ctx.font = "bold 24px 'Cinzel Decorative', serif";
     ctx.textAlign = "left";
-    ctx.fillText("= 24 Miles", x + 70, y + 10);
-    ctx.font = "italic 16px serif";
-    ctx.fillText("(1 Day Travel)", x + 70, y + 30);
+    ctx.fillText("= " + text, x + 70, y + 10);
 }
 function drawCompass(ctx, x, y, r) {
     ctx.save(); ctx.translate(x, y);
@@ -6324,27 +6329,14 @@ window.uploadMapImage = function(input) {
         reader.onload = function(e) {
             const img = new Image();
             img.onload = function() {
-                // 1. Create a canvas to process the image
                 const canvas = document.createElement('canvas');
-                canvas.width = 1600; 
-                canvas.height = 900;
+                canvas.width = 1600; canvas.height = 900;
                 const ctx = canvas.getContext('2d');
-
-                // 2. Fill background with Ocean color (matches your palette)
-                // This ensures "black bars" are actually blue bars
-                ctx.fillStyle = "#d4e0ee"; 
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // 3. Calculate Aspect Ratio to "Fit" the image
-                // We want to scale the image so it fits INSIDE the canvas
+                ctx.fillStyle = "#d4e0ee"; ctx.fillRect(0, 0, canvas.width, canvas.height);
                 const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
                 const x = (canvas.width / 2) - (img.width / 2) * scale;
                 const y = (canvas.height / 2) - (img.height / 2) * scale;
-
-                // 4. Draw the image centered and scaled
                 ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-
-                // 5. Send result to map viewer
                 window.setMapImage(canvas.toDataURL());
             };
             img.src = e.target.result;
@@ -6361,7 +6353,7 @@ window.setMapImage = function(src) {
     }
 };
 
-// 3. PIN INTERACTION
+// 3. PIN INTERACTION & RENDER (Strict Hover Fix)
 window.handleMapClick = function(e) {
     if (e.target.classList.contains('map-pin-icon')) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -6410,7 +6402,7 @@ window.deletePin = function() {
     document.getElementById('pin-modal').classList.add('hidden');
 };
 
-// 4. RENDER PINS (Peer Hover)
+// 🔴 RENDER PINS (STRICT HOVER LOGIC)
 window.renderPins = function() {
     const container = document.getElementById('map-pins-layer');
     if(!container) return;
@@ -6418,7 +6410,7 @@ window.renderPins = function() {
 
     window.mapState.pins.forEach(pin => {
         const el = document.createElement('div');
-        // PARENT: pointer-events-none (ignores mouse)
+        // Parent container is pointer-events-none: Mouse ignores the empty space.
         el.className = 'absolute transform -translate-x-1/2 -translate-y-full z-10 pointer-events-none';
         el.style.left = pin.x + '%';
         el.style.top = pin.y + '%';
