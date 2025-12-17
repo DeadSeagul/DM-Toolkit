@@ -194,6 +194,7 @@
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('soundboard')">🔊 Sound</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('notes')">📜 Notes</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active min-w-[100px]" onclick="switchTab('homebrew')">🍺 Homebrew</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('maps')">🗺️ Maps</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('rules')">📖 Rules</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('help')">❓ Help & Questions</button>
         </div>
@@ -1015,6 +1016,110 @@
                     </div>
                 </div>
             </div>
+
+            <div id="maps" class="tab-content hidden">
+    <div class="card p-4 rounded-lg shadow-xl border border-emerald-500/30">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold text-emerald-300">Realm Cartographer</h2>
+            <div class="flex gap-2">
+                <button onclick="window.generateContinent()" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-1 px-3 rounded text-xs shadow">🎲 Generate Land</button>
+                <button onclick="document.getElementById('map-upload').click()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded text-xs shadow">📁 Upload Image</button>
+                <input type="file" id="map-upload" class="hidden" accept="image/*" onchange="window.uploadMapImage(this)">
+            </div>
+        </div>
+
+        <div class="mb-3">
+    <input type="text" id="map-title-input" placeholder="Enter Realm Name (leave empty for random)" 
+           class="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none placeholder-gray-600 transition">
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 ..."> 
+   </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 bg-gray-800 p-3 rounded-lg border border-gray-700">
+    <div>
+        <label class="block text-[10px] uppercase font-bold text-green-400 mb-1">🌲 Forest Density</label>
+        <input type="range" id="param-forests" min="0" max="40" value="15" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500">
+    </div>
+    <div>
+        <label class="block text-[10px] uppercase font-bold text-gray-400 mb-1">⛰️ Mountains</label>
+        <input type="range" id="param-mountains" min="0" max="20" value="8" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-gray-400">
+    </div>
+    <div>
+        <label class="block text-[10px] uppercase font-bold text-blue-400 mb-1">💧 River Chance</label>
+        <input type="range" id="param-rivers" min="0" max="100" value="80" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+    </div>
+    <div>
+        <label class="block text-[10px] uppercase font-bold text-yellow-500 mb-1">🏰 Settlements</label>
+        <input type="range" id="param-cities" min="0" max="15" value="6" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500">
+    </div>
+    <div>
+        <label class="block text-[10px] uppercase font-bold text-purple-400 mb-1">💀 Secrets</label>
+        <input type="range" id="param-secrets" min="0" max="10" value="4" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500">
+    </div>
+</div>
+
+        <div class="relative w-full bg-blue-900/50 rounded-xl overflow-hidden border-4 border-gray-800 shadow-2xl group select-none" id="map-container" style="aspect-ratio: 16/9;">
+            
+            <img id="active-map-image" class="w-full h-full object-cover opacity-80" src="" alt="Map Area" onerror="this.style.display='none'">
+            <canvas id="gen-map-canvas" class="w-full h-full absolute top-0 left-0 hidden"></canvas>
+            
+            <div id="map-placeholder" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-4xl opacity-20">🗺️</span>
+                <span class="text-gray-500 text-xs mt-2 opacity-50">Generate or Upload a Map</span>
+            </div>
+
+            <div id="map-pins-layer" class="absolute inset-0 cursor-crosshair" onclick="window.handleMapClick(event)">
+                </div>
+        </div>
+
+        <div class="mt-4 flex justify-between items-center bg-gray-800 p-2 rounded-lg">
+            <div class="text-xs text-gray-400">
+                <span class="text-emerald-400 font-bold">Tip:</span> Click anywhere on the map to add a Location Pin.
+            </div>
+            <button onclick="window.saveMapState()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg text-xs transition shadow-lg">
+                💾 Save Map & Pins
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="pin-modal" class="hidden fixed inset-0 z-[200] bg-black bg-opacity-80 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="card w-full max-w-sm p-6 rounded-xl shadow-2xl border border-emerald-500/50 bg-gray-900">
+        <h3 class="text-lg font-bold text-emerald-300 mb-4">Edit Location</h3>
+        <input type="hidden" id="pin-id">
+        <input type="hidden" id="pin-x">
+        <input type="hidden" id="pin-y">
+        
+        <div class="space-y-3">
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Location Name</label>
+                <input type="text" id="pin-title" class="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 text-sm focus:border-emerald-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Description</label>
+                <textarea id="pin-desc" rows="3" class="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 text-sm focus:border-emerald-500 outline-none"></textarea>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Type</label>
+                <select id="pin-type" class="w-full p-2 rounded bg-gray-800 text-white border border-gray-700 text-sm">
+                    <option value="city">🏰 City/Castle</option>
+                    <option value="village">🏘️ Village</option>
+                    <option value="dungeon">💀 Dungeon</option>
+                    <option value="ruin">🏛️ Ruins</option>
+                    <option value="forest">🌲 Forest</option>
+                    <option value="landmark">📍 Landmark</option>
+                </select>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="window.deletePin()" class="bg-red-900/50 hover:bg-red-800 text-red-200 text-xs font-bold py-2 px-3 rounded transition">Delete</button>
+                <div class="flex-1"></div>
+                <button onclick="document.getElementById('pin-modal').classList.add('hidden')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 px-4 rounded transition">Cancel</button>
+                <button onclick="window.savePin()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-4 rounded transition shadow-lg">Save Pin</button>
+            </div>
+        </div>
+    </div>
+</div>
         
         <!-- Rules Tab -->
         
@@ -2481,6 +2586,7 @@ window.saveMonsterToNotes = async function() {
             if(window.setupCombatDataListeners) window.setupCombatDataListeners();
             if(window.setupStatblocksListener) window.setupStatblocksListener();
             if(window.setupHomebrewListener) window.setupHomebrewListener();
+            if(window.loadMapState) window.loadMapState();
         } else {
             console.log("⚠️ No user, signing in anonymously...");
             try { await signInAnonymously(window.auth); } catch(e) {}
@@ -5884,6 +5990,482 @@ window.addNoteToInitiative = function(name) {
         }
     }
 };
+
+
+// ==========================================
+// 🗺️ ATLAS MAP GENERATOR (Fixed 24-Mile Scale)
+// ==========================================
+
+window.mapState = {
+    imageSrc: null, 
+    pins: [],
+    gridEnabled: true
+};
+
+// --- CONFIGURATION ---
+const PALETTE = {
+    ocean: "#d4e0ee", land: "#f3eedd", ink: "#2c241b",
+    mountains: "#786d61", river: "#4a6fa5", grid: "rgba(44, 36, 27, 0.15)",
+    tree_pine: "#2f4f4f", tree_oak: "#556b2f", tree_jungle: "#228b22" 
+};
+
+// 1. GENERATE WORLD
+window.generateContinent = function() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1600; canvas.height = 900;
+    const ctx = canvas.getContext('2d');
+    const CX = canvas.width / 2; const CY = canvas.height / 2;
+
+    // --- GET PARAMETERS ---
+    const valForests = document.getElementById('param-forests') ? parseInt(document.getElementById('param-forests').value) : 12;
+    const valMountains = document.getElementById('param-mountains') ? parseInt(document.getElementById('param-mountains').value) : 8;
+    const valRivers = document.getElementById('param-rivers') ? parseInt(document.getElementById('param-rivers').value) : 80;
+    const valCities = document.getElementById('param-cities') ? parseInt(document.getElementById('param-cities').value) : 6;
+    const valSecrets = document.getElementById('param-secrets') ? parseInt(document.getElementById('param-secrets').value) : 4;
+
+    // A. BACKGROUND
+    ctx.fillStyle = PALETTE.ocean; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const vig = ctx.createRadialGradient(CX, CY, 400, CX, CY, 900);
+    vig.addColorStop(0, "rgba(0,0,0,0)"); vig.addColorStop(1, "rgba(20,15,10,0.2)");
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    addNoise(ctx, 0.03); 
+
+    // B. GENERATE SHAPE
+    const landPath = new Path2D();
+    const steps = 800; const baseR = 260; const seed = Math.random() * 1000;
+    const mainPoints = [];
+    for (let i = 0; i <= steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        let r = baseR + Math.sin(a * 2 + seed) * 90 + Math.sin(a * 7 + seed*2) * 40 + Math.cos(a * 15 + seed) * 15 + Math.sin(a * 50 + seed) * 5; 
+        mainPoints.push({x: CX + Math.cos(a)*r, y: CY + Math.sin(a)*(r*0.65)+40});
+    }
+    mainPoints.forEach((p, i) => { if(i===0) landPath.moveTo(p.x, p.y); else landPath.lineTo(p.x, p.y); });
+    landPath.closePath();
+
+    // Islands
+    const numIslands = 8 + Math.floor(Math.random() * 8); 
+    for(let k=0; k<numIslands; k++) {
+        const islandAngle = Math.random() * Math.PI * 2;
+        const dist = baseR + 60 + (Math.random() * 180); 
+        const ix = CX + Math.cos(islandAngle) * dist;
+        const iy = CY + Math.sin(islandAngle) * (dist * 0.7) + 40;
+        const iSize = 20 + Math.random() * 30; 
+        const iPoints = [];
+        for(let j=0; j<=20; j++) {
+            const a = (j/20) * Math.PI * 2;
+            const r = iSize + (Math.random()-0.5)*15; 
+            iPoints.push({x: ix + Math.cos(a)*r, y: iy + Math.sin(a)*(r*0.7)});
+        }
+        iPoints.forEach((p, i) => { if(i===0) landPath.moveTo(p.x, p.y); else landPath.lineTo(p.x, p.y); });
+        landPath.closePath();
+    }
+
+    // C. RENDER LAND
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    for(let i=1; i<=4; i++) {
+        ctx.strokeStyle = `rgba(60, 70, 80, ${0.12 - (i*0.025)})`;
+        ctx.lineWidth = 8 + (i * 10); ctx.stroke(landPath);
+    }
+    ctx.fillStyle = PALETTE.land; ctx.fill(landPath);
+
+    // Biome Colors
+    ctx.save(); ctx.clip(landPath); ctx.globalCompositeOperation = 'multiply';
+    for (let i = 0; i < 300; i++) {
+        const x = Math.random() * canvas.width; const y = Math.random() * canvas.height;
+        if (ctx.isPointInPath(landPath, x, y)) {
+            const temp = y + (Math.sin(x * 0.005 + seed)*100);
+            const size = 80 + Math.random() * 150;
+            let color = null;
+            if (temp < 250) color = "rgba(220, 235, 240, 0.4)"; 
+            else if (temp > 680) color = "rgba(210, 180, 140, 0.3)"; 
+            else if (Math.random() > 0.6) color = "rgba(160, 180, 150, 0.25)"; 
+            if (color) {
+                const grd = ctx.createRadialGradient(x, y, 0, x, y, size);
+                grd.addColorStop(0, color); grd.addColorStop(1, "rgba(0,0,0,0)");
+                ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI*2); ctx.fill();
+            }
+        }
+    }
+    ctx.restore();
+    ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.5; ctx.stroke(landPath);
+
+    // D. GRID & LEGEND (FIXED SCALE)
+    drawHexGrid(ctx, canvas.width, canvas.height, 60);
+    drawScaleLegend(ctx); 
+
+    // E. CALCULATE MOUNTAINS
+    const riverSources = []; const mountainPixels = []; const mountainPathsToDraw = []; 
+    let mountainsPlaced = 0; let attemptsM = 0;
+    while(mountainsPlaced < valMountains && attemptsM < 1000) {
+        attemptsM++;
+        const mx = Math.random() * canvas.width; const my = Math.random() * canvas.height;
+        if(ctx.isPointInPath(landPath, mx, my)) {
+            const path = []; const len = 10 + Math.random() * 15; let validRange = true;
+            for(let j=0; j<len; j++) {
+                const px = mx + (j*12); const py = my + Math.sin(j + seed)*10;
+                if (ctx.isPointInPath(landPath, px, py)) path.push({x: px, y: py}); else { validRange = false; break; }
+            }
+            if (validRange && path.length > 5) {
+                path.forEach(p => mountainPixels.push({x: p.x, y: p.y, r: 15}));
+                riverSources.push(path[Math.floor(path.length/2)]); 
+                mountainPathsToDraw.push(path); mountainsPlaced++;
+            }
+        }
+    }
+
+    // F. RIVERS
+    ctx.strokeStyle = PALETTE.river; ctx.lineWidth = 2;
+    riverSources.forEach(start => {
+        if((Math.random() * 100) < valRivers) { 
+            ctx.beginPath(); ctx.moveTo(start.x, start.y + 10);
+            let dir = Math.atan2(start.y - CY, start.x - CX);
+            let cx = start.x; let cy = start.y + 10;
+            let onLand = true; let steps = 0;
+            while(onLand && steps < 300) {
+                dir += (Math.random() - 0.5) * 0.5;
+                cx += Math.cos(dir) * 5; cy += Math.sin(dir) * 5;
+                ctx.lineTo(cx, cy);
+                if (!ctx.isPointInPath(landPath, cx, cy)) onLand = false;
+                steps++;
+            }
+            ctx.stroke();
+        }
+    });
+
+    // G. DRAW FORESTS
+    let forestsPlaced = 0; let attemptsF = 0; const forestPixels = []; 
+    while(forestsPlaced < valForests && attemptsF < 1000) {
+        attemptsF++;
+        const hx = Math.random() * canvas.width; const hy = Math.random() * canvas.height;
+        if(ctx.isPointInPath(landPath, hx, hy)) {
+            forestsPlaced++;
+            const treeCount = 80 + Math.random() * 100; const forestRadius = 70 + Math.random() * 50;
+            let type = 'oak'; if(hy < 300) type = 'pine'; else if (hy > 600) type = 'jungle'; 
+            for(let k=0; k<treeCount; k++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = (Math.random() * 0.3 + Math.random() * 0.7) * forestRadius; 
+                const tx = hx + Math.cos(angle) * dist; const ty = hy + Math.sin(angle) * dist;
+                if(!ctx.isPointInPath(landPath, tx, ty)) continue;
+                let hitMountainBase = false;
+                for(let m of mountainPixels) { if(Math.abs(tx - m.x) < m.r && Math.abs(ty - m.y) < m.r) { hitMountainBase = true; break; } }
+                if(hitMountainBase) continue;
+                drawTree(ctx, tx, ty, type); forestPixels.push({x: tx, y: ty}); 
+            }
+        }
+    }
+
+    // H. DRAW MOUNTAINS
+    mountainPathsToDraw.forEach(path => { drawInkMountains(ctx, path); });
+
+    // I. COMPASS & TITLE
+    drawCompass(ctx, 1450, 750, 60);
+    const nameInput = document.getElementById('map-title-input');
+    let continentName = (nameInput && nameInput.value.trim() !== "") ? nameInput.value.trim() : generateFantasyName(true);
+    drawMapLabel(ctx, continentName, CX, 90, 50, true); 
+
+    // J. GENERATE PINS
+    const newPins = []; const placedPixels = []; const minDistance = 150;
+    let citiesPlaced = 0; let attemptsC = 0;
+    while(citiesPlaced < valCities && attemptsC < 1000) {
+        attemptsC++;
+        const cx = Math.random() * canvas.width; const cy = Math.random() * canvas.height;
+        if (ctx.isPointInPath(landPath, cx, cy) && ctx.isPointInPath(landPath, cx+20, cy) && ctx.isPointInPath(landPath, cx-20, cy)) {
+            let tooClose = false;
+            for (let p of placedPixels) { if (Math.sqrt((p.x - cx)**2 + (p.y - cy)**2) < minDistance) { tooClose = true; break; } }
+            if (!tooClose) {
+                placedPixels.push({x: cx, y: cy});
+                newPins.push({
+                    id: crypto.randomUUID(), x: (cx / canvas.width) * 100, y: (cy / canvas.height) * 100,
+                    title: generateFantasyName(), desc: "Settlement", type: Math.random() > 0.6 ? 'city' : 'village'
+                });
+                citiesPlaced++;
+            }
+        }
+    }
+    const secretCount = valSecrets;
+    for(let i=0; i<secretCount; i++) {
+        const roll = Math.random(); let type = 'landmark'; let sx, sy; let valid = false;
+        if (roll < 0.4 && mountainPixels.length > 0) {
+            type = 'dungeon'; const mp = mountainPixels[Math.floor(Math.random() * mountainPixels.length)]; sx = mp.x; sy = mp.y; valid = true;
+        } else if (roll < 0.7 && forestPixels.length > 0) {
+            type = 'ruin'; const fp = forestPixels[Math.floor(Math.random() * forestPixels.length)]; sx = fp.x; sy = fp.y; valid = true;
+        } else {
+            let attempts = 0;
+            while(!valid && attempts < 50) {
+                sx = Math.random() * canvas.width; sy = Math.random() * canvas.height;
+                if(ctx.isPointInPath(landPath, sx, sy)) valid = true; attempts++;
+            }
+        }
+        if(valid) {
+            newPins.push({
+                id: crypto.randomUUID(), x: (sx / canvas.width) * 100, y: (sy / canvas.height) * 100,
+                title: "Unknown " + (type.charAt(0).toUpperCase() + type.slice(1)), desc: "A location of interest.", type: type
+            });
+        }
+    }
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+    window.setMapImage(dataUrl);
+    window.mapState.pins = newPins;
+    window.renderPins();
+};
+
+// --- HELPERS ---
+function drawHexGrid(ctx, w, h, size) {
+    if(!window.mapState.gridEnabled) return;
+    ctx.strokeStyle = PALETTE.grid; ctx.lineWidth = 1;
+    const dx = size * 1.5; const dy = size * Math.sqrt(3);
+    for(let y = -size; y < h + size; y += dy) {
+        for(let x = -size; x < w + size; x += dx) {
+            const offset = (Math.floor(x / dx) % 2) * (dy / 2);
+            drawHex(ctx, x, y + offset, size);
+        }
+    }
+}
+function drawHex(ctx, x, y, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i;
+        const px = x + r * Math.cos(angle);
+        const py = y + r * Math.sin(angle);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.stroke();
+}
+function drawScaleLegend(ctx) {
+    // Draws fixed 24 Mile Legend
+    const x = 50; const y = 850; const r = 60; // Matches grid size (60)
+    ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 2;
+    // Fill to make it readable
+    ctx.fillStyle = "rgba(243, 238, 221, 0.9)";
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i;
+        const px = x + r * Math.cos(angle);
+        const py = y + r * Math.sin(angle);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    
+    // Text
+    ctx.fillStyle = PALETTE.ink; ctx.font = "bold 28px 'Cinzel Decorative', serif";
+    ctx.textAlign = "left";
+    ctx.fillText("= 24 Miles", x + 70, y + 10);
+    ctx.font = "italic 16px serif";
+    ctx.fillText("(1 Day Travel)", x + 70, y + 30);
+}
+function drawCompass(ctx, x, y, r) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.strokeStyle = PALETTE.ink; ctx.fillStyle = PALETTE.land; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,r*0.8,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle = "#2c241b";
+    ctx.beginPath(); ctx.moveTo(0, -r*1.4); ctx.lineTo(10, -20); ctx.lineTo(0,0); ctx.lineTo(-10, -20); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(r,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-r,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,r); ctx.stroke();
+    ctx.font = "bold 20px serif"; ctx.textAlign = "center"; ctx.fillText("N", 0, -r*1.5);
+    ctx.restore();
+}
+function addNoise(ctx, amount) {
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    const idata = ctx.getImageData(0,0,w,h);
+    const data = idata.data;
+    for(let i=0; i<data.length; i+=4) {
+        const grain = (Math.random() - 0.5) * (amount * 255);
+        data[i] += grain; data[i+1] += grain; data[i+2] += grain;
+    }
+    ctx.putImageData(idata, 0, 0);
+}
+function drawInkMountains(ctx, points) {
+    ctx.fillStyle = PALETTE.mountains; ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.5;
+    points.forEach(p => {
+        const w = 12 + Math.random() * 8; const h = 18 + Math.random() * 10;
+        ctx.beginPath(); ctx.moveTo(p.x - w, p.y); 
+        ctx.lineTo(p.x, p.y - h - (Math.random()*5)); ctx.lineTo(p.x + w, p.y);
+        ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x, p.y - h); ctx.lineTo(p.x + w*0.6, p.y); 
+        ctx.lineWidth = 0.5; ctx.stroke(); ctx.lineWidth = 1.5;
+    });
+}
+function drawTree(ctx, x, y, type) {
+    ctx.beginPath();
+    if(type === 'pine') {
+        ctx.fillStyle = PALETTE.tree_pine; ctx.moveTo(x, y-12); ctx.lineTo(x+4, y); ctx.lineTo(x-4, y);
+    } else if (type === 'jungle') {
+        ctx.fillStyle = PALETTE.tree_jungle; ctx.arc(x, y-5, 5, 0, Math.PI*2); ctx.rect(x-1, y-2, 2, 4);
+    } else {
+        ctx.fillStyle = PALETTE.tree_oak; ctx.arc(x, y-6, 4, 0, Math.PI*2); ctx.arc(x-3, y-3, 3, 0, Math.PI*2); ctx.arc(x+3, y-3, 3, 0, Math.PI*2);
+    }
+    ctx.fill();
+}
+function drawMapLabel(ctx, text, x, y, size, isTitle = false) {
+    ctx.font = `bold ${size}px 'Cinzel Decorative', serif`; 
+    ctx.fillStyle = "rgba(44, 36, 27, 0.9)"; ctx.textAlign = "center";
+    ctx.save(); ctx.translate(x, y);
+    if (isTitle) { 
+        ctx.shadowColor = "rgba(243, 238, 221, 1)"; ctx.shadowBlur = 10;
+        ctx.strokeStyle = "rgba(44, 36, 27, 0.5)"; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(-150, 10); ctx.lineTo(150, 10); ctx.stroke();
+    } else { ctx.rotate(-0.05); }
+    ctx.fillText(text.toUpperCase(), 0, 0); ctx.restore();
+}
+function generateFantasyName(isMajor = false) {
+    const sylA = ["Ael", "Cor", "Fael", "Gae", "Ith", "Oth", "Syl", "Tor", "Val", "Xar", "Zor", "Dun", "Kil", "Ros", "Bel"];
+    const sylB = ["dor", "gard", "ia", "lund", "mar", "thos", "vorn", "wick", "grad", "helm", "keep", "mont", "more", "field"];
+    const base = sylA[Math.floor(Math.random()*sylA.length)] + sylB[Math.floor(Math.random()*sylB.length)];
+    return isMajor ? "The Realm of " + base : base;
+}
+
+// 2. UPLOAD & DISPLAY (Smart Fit)
+window.uploadMapImage = function(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // 1. Create a canvas to process the image
+                const canvas = document.createElement('canvas');
+                canvas.width = 1600; 
+                canvas.height = 900;
+                const ctx = canvas.getContext('2d');
+
+                // 2. Fill background with Ocean color (matches your palette)
+                // This ensures "black bars" are actually blue bars
+                ctx.fillStyle = "#d4e0ee"; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 3. Calculate Aspect Ratio to "Fit" the image
+                // We want to scale the image so it fits INSIDE the canvas
+                const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+                const x = (canvas.width / 2) - (img.width / 2) * scale;
+                const y = (canvas.height / 2) - (img.height / 2) * scale;
+
+                // 4. Draw the image centered and scaled
+                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+                // 5. Send result to map viewer
+                window.setMapImage(canvas.toDataURL());
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+};
+window.setMapImage = function(src) {
+    window.mapState.imageSrc = src;
+    const img = document.getElementById('active-map-image');
+    if(img) {
+        img.src = src; img.style.display = 'block';
+        document.getElementById('map-placeholder').style.display = 'none';
+    }
+};
+
+// 3. PIN INTERACTION
+window.handleMapClick = function(e) {
+    if (e.target.classList.contains('map-pin-icon')) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+    window.openPinModal(null, xPercent, yPercent);
+};
+window.openPinModal = function(id, x, y) {
+    const modal = document.getElementById('pin-modal');
+    document.getElementById('pin-id').value = id || '';
+    document.getElementById('pin-x').value = x || 0;
+    document.getElementById('pin-y').value = y || 0;
+    if (id) {
+        const pin = window.mapState.pins.find(p => p.id === id);
+        if(pin) {
+            document.getElementById('pin-title').value = pin.title;
+            document.getElementById('pin-desc').value = pin.desc;
+            document.getElementById('pin-type').value = pin.type;
+        }
+    } else {
+        document.getElementById('pin-title').value = '';
+        document.getElementById('pin-desc').value = '';
+        document.getElementById('pin-type').value = 'village';
+    }
+    modal.classList.remove('hidden');
+};
+window.savePin = function() {
+    const id = document.getElementById('pin-id').value;
+    const title = document.getElementById('pin-title').value || "Location";
+    const desc = document.getElementById('pin-desc').value;
+    const type = document.getElementById('pin-type').value;
+    const x = parseFloat(document.getElementById('pin-x').value);
+    const y = parseFloat(document.getElementById('pin-y').value);
+    if (id) {
+        const idx = window.mapState.pins.findIndex(p => p.id === id);
+        if (idx !== -1) window.mapState.pins[idx] = { ...window.mapState.pins[idx], title, desc, type };
+    } else {
+        window.mapState.pins.push({ id: crypto.randomUUID(), x, y, title, desc, type });
+    }
+    document.getElementById('pin-modal').classList.add('hidden');
+    window.renderPins();
+};
+window.deletePin = function() {
+    const id = document.getElementById('pin-id').value;
+    if (id) { window.mapState.pins = window.mapState.pins.filter(p => p.id !== id); window.renderPins(); }
+    document.getElementById('pin-modal').classList.add('hidden');
+};
+
+// 4. RENDER PINS (Peer Hover)
+window.renderPins = function() {
+    const container = document.getElementById('map-pins-layer');
+    if(!container) return;
+    container.innerHTML = '';
+
+    window.mapState.pins.forEach(pin => {
+        const el = document.createElement('div');
+        // PARENT: pointer-events-none (ignores mouse)
+        el.className = 'absolute transform -translate-x-1/2 -translate-y-full z-10 pointer-events-none';
+        el.style.left = pin.x + '%';
+        el.style.top = pin.y + '%';
+
+        const icons = { city: '🏰', village: '🏘️', dungeon: '💀', ruin: '🏛️', forest: '🌲', landmark: '📍', default: '📍' };
+        const icon = icons[pin.type] || icons.default;
+
+        el.innerHTML = `
+            <div class="map-pin-icon text-2xl drop-shadow-md hover:scale-125 transition transform duration-200 pointer-events-auto cursor-pointer peer" 
+                 onclick="window.openPinModal('${pin.id}')">
+                 ${icon}
+            </div>
+            
+            <div class="opacity-0 peer-hover:opacity-100 transition-opacity duration-200 absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-20 pointer-events-none">
+                <div class="bg-black/80 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-emerald-500/50 backdrop-blur-sm tracking-wide uppercase">
+                    ${pin.title}
+                </div>
+                <div class="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-emerald-500/50 mx-auto"></div>
+            </div>
+        `;
+        container.appendChild(el);
+    });
+};
+
+// 5. DATABASE SYNC
+window.saveMapState = async function() {
+    if(!window.isAuthReady) { alert("Please log in."); return; }
+    try {
+        await setDoc(getSharedDoc('shared_map_data'), {
+            campaign: window.currentCampaign,
+            imageSrc: window.mapState.imageSrc,
+            pins: window.mapState.pins
+        }, { merge: true });
+        if(window.showToast) window.showToast("✅ Map Saved!", "success");
+    } catch(e) { console.error(e); alert("Error saving map: " + e.message); }
+};
+window.loadMapState = function() {
+    if(!window.isAuthReady) return;
+    onSnapshot(getSharedDoc('shared_map_data'), (doc) => {
+        if(doc.exists()) {
+            const d = doc.data();
+            if (d.imageSrc) window.setMapImage(d.imageSrc);
+            if (d.pins) { window.mapState.pins = d.pins; window.renderPins(); }
+        }
+    });
+};
+if(window.loadMapState && window.userId) window.loadMapState();
         
 
 </script>
