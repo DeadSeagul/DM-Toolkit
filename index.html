@@ -6048,61 +6048,107 @@ window.addNoteToInitiative = function(name) {
     }
 };
 
-       // ==========================================
-// 🌍 UNIFIED CAMPAIGN MANAGER
+     // ==========================================
+// 🌍 UNIFIED CAMPAIGN MANAGER (Auto-Restore)
 // ==========================================
 
 // 1. Load List & Sync All Dropdowns
 window.refreshCampaignSelectors = function() {
     if(!window.isAuthReady) return;
 
-    // Get the master list from database
-    onSnapshot(getSharedDoc('meta_campaign_list'), (doc) => {
+    const docRef = getSharedDoc('meta_campaign_list');
+
+    onSnapshot(docRef, (doc) => {
         let campaigns = ["Lobby"]; // Default
-        if(doc.exists() && doc.data().names) {
+        
+        // A. If new list exists, use it
+        if(doc.exists() && doc.data().names && doc.data().names.length > 0) {
             campaigns = ["Lobby", ...doc.data().names]; 
+        } 
+        // B. If new list is EMPTY, try to find the OLD list
+        else {
+            console.log("⚠️ New list empty. Searching for legacy campaign lists...");
+            window.attemptLegacyMigration();
         }
 
-        // Find ALL selectors (Header, Notes, etc.)
+        // --- UPDATE UI ---
         const allSelectors = document.querySelectorAll('.campaign-selector-dropdown');
         const current = window.currentCampaign || localStorage.getItem('aegis_last_campaign') || "Lobby";
         window.currentCampaign = current;
 
         // Update every dropdown on the page
         allSelectors.forEach(sel => {
-            sel.innerHTML = ''; // Clear old options
+            // Don't redraw if list hasn't changed (prevents jitter)
+            if(sel.options.length === campaigns.length && sel.options[1]?.value === campaigns[1]) {
+                sel.value = current;
+                return;
+            }
+
+            sel.innerHTML = ''; 
             campaigns.forEach(name => {
                 const opt = document.createElement('option');
                 opt.value = name;
                 opt.innerText = name;
                 sel.appendChild(opt);
             });
-            sel.value = current; // Set to active
+            sel.value = current;
         });
 
-        // Trigger initial load for Maps/Notes
+        // Trigger initial load
         if(window.loadMapState) window.loadMapState();
-        if(window.loadNotes) window.loadNotes(); // Assuming you have a notes loader
+        if(window.loadNotes) window.loadNotes();
     });
 };
 
-// 2. Handle Change (User clicks dropdown)
+// 2. ONE-TIME MIGRATION (Restores names from old files)
+window.attemptLegacyMigration = async function() {
+    const newRef = getSharedDoc('meta_campaign_list');
+    
+    // List of likely places the old Notes tab saved its list
+    const candidates = ['campaigns', 'campaign_list', 'notes_metadata', 'notes_campaigns'];
+    let foundNames = [];
+
+    for (const id of candidates) {
+        try {
+            const snap = await getDoc(getSharedDoc(id));
+            if (snap.exists()) {
+                // Check common field names: 'list', 'names', 'campaigns'
+                const data = snap.data();
+                const list = data.list || data.names || data.campaigns || [];
+                if (Array.isArray(list) && list.length > 0) {
+                    console.log(`✅ Found legacy list in '${id}':`, list);
+                    foundNames = [...foundNames, ...list];
+                }
+            }
+        } catch(e) { console.log("Checked " + id + " - nothing."); }
+    }
+
+    // If we found old names, save them to the new system
+    if (foundNames.length > 0) {
+        // Remove duplicates
+        const uniqueNames = [...new Set(foundNames)].filter(n => n !== "Lobby");
+        await setDoc(newRef, { names: uniqueNames }, { merge: true });
+        if(window.showToast) window.showToast("♻️ Restored " + uniqueNames.length + " Campaigns", "success");
+    }
+};
+
+// 3. Handle Change (User clicks dropdown)
 window.changeGlobalCampaign = function(newName) {
     console.log("🔄 Switching to:", newName);
     window.currentCampaign = newName;
     localStorage.setItem('aegis_last_campaign', newName);
 
-    // 1. Sync visual dropdowns (so Header matches Notes)
+    // Sync visual dropdowns
     document.querySelectorAll('.campaign-selector-dropdown').forEach(s => s.value = newName);
 
-    // 2. Refresh contents
+    // Refresh contents
     if(window.loadMapState) window.loadMapState();
     if(window.loadNotes) window.loadNotes();
     
     if(window.showToast) window.showToast("Active Campaign: " + newName, "success");
 };
 
-// 3. Create New
+// 4. Create New
 window.createNewCampaign = async function() {
     const name = prompt("Name your new campaign:");
     if(!name || !name.trim()) return;
@@ -6116,14 +6162,13 @@ window.createNewCampaign = async function() {
     if(!list.includes(clean)) {
         list.push(clean);
         await setDoc(docRef, { names: list }, { merge: true });
-        // Automatically switch to it
         window.changeGlobalCampaign(clean);
     } else {
         alert("Campaign already exists!");
     }
 };
 
-// 4. Initialize
+// 5. Initialize
 setTimeout(() => {
     if(window.refreshCampaignSelectors) window.refreshCampaignSelectors();
 }, 1000);
