@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="description" content="The comprehensive web toolkit for DMs. Features a Combat Tracker, Map Generator, Monster Generator, Loot Splitter, Campaign Manager, and ambient Soundboard for D&D 5e."/>
+    <meta name="description" content="The comprehensive web toolkit for DMs. Features a Combat Tracker, Monster Generator, Loot Splitter, Campaign Manager, and ambient Soundboard for D&D 5e."/>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Aegis DM Toolkit</title>
@@ -1028,6 +1028,38 @@
             </div>
         </div>
 
+        <div class="flex gap-2 mb-4">
+    <button onclick="window.openSaveModal()" class="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded border border-emerald-500 shadow-lg text-xs uppercase tracking-wider transition">
+        💾 Save to Folder
+    </button>
+    <button onclick="window.openLoadModal()" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded border border-blue-500 shadow-lg text-xs uppercase tracking-wider transition">
+        📂 Open Folder
+    </button>
+</div>
+
+<div id="save-map-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-gray-900 border border-gray-600 p-6 rounded-lg w-96 shadow-2xl relative">
+        <h3 class="text-white text-lg font-cinzel mb-4 border-b border-gray-700 pb-2">Name this Map</h3>
+        <input type="text" id="save-map-name" placeholder="e.g. The Northern Realms" class="w-full bg-gray-800 text-white border border-gray-600 p-2 rounded mb-4 focus:border-emerald-500 outline-none">
+        <div class="flex justify-end gap-2">
+            <button onclick="document.getElementById('save-map-modal').classList.add('hidden')" class="px-4 py-2 text-gray-400 hover:text-white transition">Cancel</button>
+            <button onclick="window.confirmSaveMap()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow-lg transition">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="load-map-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-gray-900 border border-gray-600 p-6 rounded-lg w-[500px] max-h-[80vh] flex flex-col shadow-2xl relative">
+        <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+            <h3 class="text-white text-lg font-cinzel">Campaign Maps</h3>
+            <button onclick="document.getElementById('load-map-modal').classList.add('hidden')" class="text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div id="saved-maps-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
+            <div class="text-gray-500 text-center text-sm italic py-4">Loading folder...</div>
+        </div>
+    </div>
+</div>
+
         <div class="mb-3">
     <input type="text" id="map-title-input" placeholder="Enter Realm Name (leave empty for random)" 
            class="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none placeholder-gray-600 transition">
@@ -1063,19 +1095,25 @@
     </div>
 </div>
 
-        <div class="relative w-full bg-blue-900/50 rounded-xl overflow-hidden border-4 border-gray-800 shadow-2xl group select-none" id="map-container" style="aspect-ratio: 16/9;">
-            
-            <img id="active-map-image" class="w-full h-full object-cover opacity-80" src="" alt="Map Area" onerror="this.style.display='none'">
-            <canvas id="gen-map-canvas" class="w-full h-full absolute top-0 left-0 hidden"></canvas>
-            
-            <div id="map-placeholder" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span class="text-4xl opacity-20">🗺️</span>
-                <span class="text-gray-500 text-xs mt-2 opacity-50">Generate or Upload a Map</span>
-            </div>
+        <div id="map-wrapper" class="relative w-full aspect-video bg-blue-900/50 rounded-xl overflow-hidden border-4 border-gray-800 shadow-2xl group select-none transition-all duration-300">
+    
+    <img id="active-map-image" class="w-full h-full object-contain opacity-80" style="display:none;" src="" alt="Map Area">
 
-            <div id="map-pins-layer" class="absolute inset-0 cursor-crosshair" onclick="window.handleMapClick(event)">
-                </div>
-        </div>
+    <div id="map-pins-layer" class="absolute inset-0 cursor-crosshair z-10" onclick="window.handleMapClick(event)"></div>
+
+    <div id="map-placeholder" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span class="text-4xl opacity-20">🗺️</span>
+        <span class="text-gray-500 text-xs mt-2 opacity-50">Generate or Upload a Map</span>
+    </div>
+
+    <button onclick="window.toggleMapFullScreen()" 
+            class="absolute bottom-4 right-4 bg-black/70 hover:bg-emerald-600 text-white p-2 rounded-lg backdrop-blur-sm border border-white/20 transition shadow-lg z-40 opacity-0 group-hover:opacity-100"
+            title="Toggle Full Screen">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        </svg>
+    </button>
+</div>
 
         <div class="mt-4 flex justify-between items-center bg-gray-800 p-2 rounded-lg">
             <div class="text-xs text-gray-400">
@@ -5997,7 +6035,7 @@ window.addNoteToInitiative = function(name) {
 
 
 // ==========================================
-// 🗺️ ATLAS MAP GENERATOR (Custom Scale Edition)
+// 🗺️ ATLAS MAP GENERATOR (Stable Load Fix)
 // ==========================================
 
 window.mapState = {
@@ -6020,25 +6058,18 @@ window.generateContinent = function() {
     const ctx = canvas.getContext('2d');
     const CX = canvas.width / 2; const CY = canvas.height / 2;
 
-    // --- GET PARAMETERS ---
     const valForests = document.getElementById('param-forests') ? parseInt(document.getElementById('param-forests').value) : 12;
     const valMountains = document.getElementById('param-mountains') ? parseInt(document.getElementById('param-mountains').value) : 8;
     const valRivers = document.getElementById('param-rivers') ? parseInt(document.getElementById('param-rivers').value) : 80;
     const valCities = document.getElementById('param-cities') ? parseInt(document.getElementById('param-cities').value) : 6;
     const valSecrets = document.getElementById('param-secrets') ? parseInt(document.getElementById('param-secrets').value) : 4;
-    // Get Scale Text (Default to '24 Miles' if empty)
-    const valScale = document.getElementById('param-scale') && document.getElementById('param-scale').value.trim() !== "" 
-                     ? document.getElementById('param-scale').value 
-                     : "24 Miles";
 
-    // A. BACKGROUND
     ctx.fillStyle = PALETTE.ocean; ctx.fillRect(0, 0, canvas.width, canvas.height);
     const vig = ctx.createRadialGradient(CX, CY, 400, CX, CY, 900);
     vig.addColorStop(0, "rgba(0,0,0,0)"); vig.addColorStop(1, "rgba(20,15,10,0.2)");
     ctx.fillStyle = vig; ctx.fillRect(0, 0, canvas.width, canvas.height);
     addNoise(ctx, 0.03); 
 
-    // B. GENERATE SHAPE
     const landPath = new Path2D();
     const steps = 800; const baseR = 260; const seed = Math.random() * 1000;
     const mainPoints = [];
@@ -6050,166 +6081,97 @@ window.generateContinent = function() {
     mainPoints.forEach((p, i) => { if(i===0) landPath.moveTo(p.x, p.y); else landPath.lineTo(p.x, p.y); });
     landPath.closePath();
 
-    // Islands
     const numIslands = 8 + Math.floor(Math.random() * 8); 
     for(let k=0; k<numIslands; k++) {
         const islandAngle = Math.random() * Math.PI * 2;
         const dist = baseR + 60 + (Math.random() * 180); 
-        const ix = CX + Math.cos(islandAngle) * dist;
-        const iy = CY + Math.sin(islandAngle) * (dist * 0.7) + 40;
-        const iSize = 20 + Math.random() * 30; 
-        const iPoints = [];
-        for(let j=0; j<=20; j++) {
-            const a = (j/20) * Math.PI * 2;
-            const r = iSize + (Math.random()-0.5)*15; 
-            iPoints.push({x: ix + Math.cos(a)*r, y: iy + Math.sin(a)*(r*0.7)});
-        }
+        const ix = CX + Math.cos(islandAngle) * dist; const iy = CY + Math.sin(islandAngle) * (dist * 0.7) + 40;
+        const iSize = 20 + Math.random() * 30; const iPoints = [];
+        for(let j=0; j<=20; j++) { const a = (j/20) * Math.PI * 2; const r = iSize + (Math.random()-0.5)*15; iPoints.push({x: ix + Math.cos(a)*r, y: iy + Math.sin(a)*(r*0.7)}); }
         iPoints.forEach((p, i) => { if(i===0) landPath.moveTo(p.x, p.y); else landPath.lineTo(p.x, p.y); });
         landPath.closePath();
     }
 
-    // C. RENDER LAND
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    for(let i=1; i<=4; i++) {
-        ctx.strokeStyle = `rgba(60, 70, 80, ${0.12 - (i*0.025)})`;
-        ctx.lineWidth = 8 + (i * 10); ctx.stroke(landPath);
-    }
+    for(let i=1; i<=4; i++) { ctx.strokeStyle = `rgba(60, 70, 80, ${0.12 - (i*0.025)})`; ctx.lineWidth = 8 + (i * 10); ctx.stroke(landPath); }
     ctx.fillStyle = PALETTE.land; ctx.fill(landPath);
 
-    // Biome Colors
     ctx.save(); ctx.clip(landPath); ctx.globalCompositeOperation = 'multiply';
     for (let i = 0; i < 300; i++) {
         const x = Math.random() * canvas.width; const y = Math.random() * canvas.height;
         if (ctx.isPointInPath(landPath, x, y)) {
-            const temp = y + (Math.sin(x * 0.005 + seed)*100);
-            const size = 80 + Math.random() * 150;
-            let color = null;
-            if (temp < 250) color = "rgba(220, 235, 240, 0.4)"; 
-            else if (temp > 680) color = "rgba(210, 180, 140, 0.3)"; 
-            else if (Math.random() > 0.6) color = "rgba(160, 180, 150, 0.25)"; 
-            if (color) {
-                const grd = ctx.createRadialGradient(x, y, 0, x, y, size);
-                grd.addColorStop(0, color); grd.addColorStop(1, "rgba(0,0,0,0)");
-                ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI*2); ctx.fill();
-            }
+            const temp = y + (Math.sin(x * 0.005 + seed)*100); const size = 80 + Math.random() * 150; let color = null;
+            if (temp < 250) color = "rgba(220, 235, 240, 0.4)"; else if (temp > 680) color = "rgba(210, 180, 140, 0.3)"; else if (Math.random() > 0.6) color = "rgba(160, 180, 150, 0.25)"; 
+            if (color) { const grd = ctx.createRadialGradient(x, y, 0, x, y, size); grd.addColorStop(0, color); grd.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI*2); ctx.fill(); }
         }
     }
     ctx.restore();
     ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.5; ctx.stroke(landPath);
 
-    // D. GRID & LEGEND
     drawHexGrid(ctx, canvas.width, canvas.height, 60);
-    drawScaleLegend(ctx, valScale); // Pass the custom text
+    const valScale = document.getElementById('param-scale') ? document.getElementById('param-scale').value : "24 Miles";
+    drawScaleLegend(ctx, valScale); 
 
-    // E. CALCULATE MOUNTAINS
     const riverSources = []; const mountainPixels = []; const mountainPathsToDraw = []; 
     let mountainsPlaced = 0; let attemptsM = 0;
     while(mountainsPlaced < valMountains && attemptsM < 1000) {
-        attemptsM++;
-        const mx = Math.random() * canvas.width; const my = Math.random() * canvas.height;
+        attemptsM++; const mx = Math.random() * canvas.width; const my = Math.random() * canvas.height;
         if(ctx.isPointInPath(landPath, mx, my)) {
             const path = []; const len = 10 + Math.random() * 15; let validRange = true;
-            for(let j=0; j<len; j++) {
-                const px = mx + (j*12); const py = my + Math.sin(j + seed)*10;
-                if (ctx.isPointInPath(landPath, px, py)) path.push({x: px, y: py}); else { validRange = false; break; }
-            }
-            if (validRange && path.length > 5) {
-                path.forEach(p => mountainPixels.push({x: p.x, y: p.y, r: 15}));
-                riverSources.push(path[Math.floor(path.length/2)]); 
-                mountainPathsToDraw.push(path); mountainsPlaced++;
-            }
+            for(let j=0; j<len; j++) { const px = mx + (j*12); const py = my + Math.sin(j + seed)*10; if (ctx.isPointInPath(landPath, px, py)) path.push({x: px, y: py}); else { validRange = false; break; } }
+            if (validRange && path.length > 5) { path.forEach(p => mountainPixels.push({x: p.x, y: p.y, r: 15})); riverSources.push(path[Math.floor(path.length/2)]); mountainPathsToDraw.push(path); mountainsPlaced++; }
         }
     }
 
-    // F. RIVERS
     ctx.strokeStyle = PALETTE.river; ctx.lineWidth = 2;
     riverSources.forEach(start => {
         if((Math.random() * 100) < valRivers) { 
             ctx.beginPath(); ctx.moveTo(start.x, start.y + 10);
-            let dir = Math.atan2(start.y - CY, start.x - CX);
-            let cx = start.x; let cy = start.y + 10;
-            let onLand = true; let steps = 0;
-            while(onLand && steps < 300) {
-                dir += (Math.random() - 0.5) * 0.5;
-                cx += Math.cos(dir) * 5; cy += Math.sin(dir) * 5;
-                ctx.lineTo(cx, cy);
-                if (!ctx.isPointInPath(landPath, cx, cy)) onLand = false;
-                steps++;
-            }
+            let dir = Math.atan2(start.y - CY, start.x - CX); let cx = start.x; let cy = start.y + 10; let onLand = true; let steps = 0;
+            while(onLand && steps < 300) { dir += (Math.random() - 0.5) * 0.5; cx += Math.cos(dir) * 5; cy += Math.sin(dir) * 5; ctx.lineTo(cx, cy); if (!ctx.isPointInPath(landPath, cx, cy)) onLand = false; steps++; }
             ctx.stroke();
         }
     });
 
-    // G. DRAW FORESTS
     let forestsPlaced = 0; let attemptsF = 0; const forestPixels = []; 
     while(forestsPlaced < valForests && attemptsF < 1000) {
-        attemptsF++;
-        const hx = Math.random() * canvas.width; const hy = Math.random() * canvas.height;
+        attemptsF++; const hx = Math.random() * canvas.width; const hy = Math.random() * canvas.height;
         if(ctx.isPointInPath(landPath, hx, hy)) {
-            forestsPlaced++;
-            const treeCount = 80 + Math.random() * 100; const forestRadius = 70 + Math.random() * 50;
+            forestsPlaced++; const treeCount = 80 + Math.random() * 100; const forestRadius = 70 + Math.random() * 50;
             let type = 'oak'; if(hy < 300) type = 'pine'; else if (hy > 600) type = 'jungle'; 
             for(let k=0; k<treeCount; k++) {
-                const angle = Math.random() * Math.PI * 2;
-                const dist = (Math.random() * 0.3 + Math.random() * 0.7) * forestRadius; 
+                const angle = Math.random() * Math.PI * 2; const dist = (Math.random() * 0.3 + Math.random() * 0.7) * forestRadius; 
                 const tx = hx + Math.cos(angle) * dist; const ty = hy + Math.sin(angle) * dist;
                 if(!ctx.isPointInPath(landPath, tx, ty)) continue;
-                let hitMountainBase = false;
-                for(let m of mountainPixels) { if(Math.abs(tx - m.x) < m.r && Math.abs(ty - m.y) < m.r) { hitMountainBase = true; break; } }
-                if(hitMountainBase) continue;
+                let hitMountainBase = false; for(let m of mountainPixels) { if(Math.abs(tx - m.x) < m.r && Math.abs(ty - m.y) < m.r) { hitMountainBase = true; break; } } if(hitMountainBase) continue;
                 drawTree(ctx, tx, ty, type); forestPixels.push({x: tx, y: ty}); 
             }
         }
     }
 
-    // H. DRAW MOUNTAINS
     mountainPathsToDraw.forEach(path => { drawInkMountains(ctx, path); });
 
-    // I. COMPASS & TITLE
     drawCompass(ctx, 1450, 750, 60);
     const nameInput = document.getElementById('map-title-input');
     let continentName = (nameInput && nameInput.value.trim() !== "") ? nameInput.value.trim() : generateFantasyName(true);
     drawMapLabel(ctx, continentName, CX, 90, 50, true); 
 
-    // J. GENERATE PINS
     const newPins = []; const placedPixels = []; const minDistance = 150;
     let citiesPlaced = 0; let attemptsC = 0;
     while(citiesPlaced < valCities && attemptsC < 1000) {
-        attemptsC++;
-        const cx = Math.random() * canvas.width; const cy = Math.random() * canvas.height;
+        attemptsC++; const cx = Math.random() * canvas.width; const cy = Math.random() * canvas.height;
         if (ctx.isPointInPath(landPath, cx, cy) && ctx.isPointInPath(landPath, cx+20, cy) && ctx.isPointInPath(landPath, cx-20, cy)) {
-            let tooClose = false;
-            for (let p of placedPixels) { if (Math.sqrt((p.x - cx)**2 + (p.y - cy)**2) < minDistance) { tooClose = true; break; } }
-            if (!tooClose) {
-                placedPixels.push({x: cx, y: cy});
-                newPins.push({
-                    id: crypto.randomUUID(), x: (cx / canvas.width) * 100, y: (cy / canvas.height) * 100,
-                    title: generateFantasyName(), desc: "Settlement", type: Math.random() > 0.6 ? 'city' : 'village'
-                });
-                citiesPlaced++;
-            }
+            let tooClose = false; for (let p of placedPixels) { if (Math.sqrt((p.x - cx)**2 + (p.y - cy)**2) < minDistance) { tooClose = true; break; } }
+            if (!tooClose) { placedPixels.push({x: cx, y: cy}); newPins.push({id: crypto.randomUUID(), x: (cx / canvas.width) * 100, y: (cy / canvas.height) * 100, title: generateFantasyName(), desc: "Settlement", type: Math.random() > 0.6 ? 'city' : 'village'}); citiesPlaced++; }
         }
     }
     const secretCount = valSecrets;
     for(let i=0; i<secretCount; i++) {
         const roll = Math.random(); let type = 'landmark'; let sx, sy; let valid = false;
-        if (roll < 0.4 && mountainPixels.length > 0) {
-            type = 'dungeon'; const mp = mountainPixels[Math.floor(Math.random() * mountainPixels.length)]; sx = mp.x; sy = mp.y; valid = true;
-        } else if (roll < 0.7 && forestPixels.length > 0) {
-            type = 'ruin'; const fp = forestPixels[Math.floor(Math.random() * forestPixels.length)]; sx = fp.x; sy = fp.y; valid = true;
-        } else {
-            let attempts = 0;
-            while(!valid && attempts < 50) {
-                sx = Math.random() * canvas.width; sy = Math.random() * canvas.height;
-                if(ctx.isPointInPath(landPath, sx, sy)) valid = true; attempts++;
-            }
-        }
-        if(valid) {
-            newPins.push({
-                id: crypto.randomUUID(), x: (sx / canvas.width) * 100, y: (sy / canvas.height) * 100,
-                title: "Unknown " + (type.charAt(0).toUpperCase() + type.slice(1)), desc: "A location of interest.", type: type
-            });
-        }
+        if (roll < 0.4 && mountainPixels.length > 0) { type = 'dungeon'; const mp = mountainPixels[Math.floor(Math.random() * mountainPixels.length)]; sx = mp.x; sy = mp.y; valid = true; } 
+        else if (roll < 0.7 && forestPixels.length > 0) { type = 'ruin'; const fp = forestPixels[Math.floor(Math.random() * forestPixels.length)]; sx = fp.x; sy = fp.y; valid = true; } 
+        else { let attempts = 0; while(!valid && attempts < 50) { sx = Math.random() * canvas.width; sy = Math.random() * canvas.height; if(ctx.isPointInPath(landPath, sx, sy)) valid = true; attempts++; } }
+        if(valid) { newPins.push({id: crypto.randomUUID(), x: (sx / canvas.width) * 100, y: (sy / canvas.height) * 100, title: "Unknown " + (type.charAt(0).toUpperCase() + type.slice(1)), desc: "Location", type: type}); }
     }
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
@@ -6218,111 +6180,32 @@ window.generateContinent = function() {
     window.renderPins();
 };
 
-// --- HELPERS ---
-function drawHexGrid(ctx, w, h, size) {
-    if(!window.mapState.gridEnabled) return;
-    ctx.strokeStyle = PALETTE.grid; ctx.lineWidth = 1;
-    const dx = size * 1.5; const dy = size * Math.sqrt(3);
-    for(let y = -size; y < h + size; y += dy) {
-        for(let x = -size; x < w + size; x += dx) {
-            const offset = (Math.floor(x / dx) % 2) * (dy / 2);
-            drawHex(ctx, x, y + offset, size);
-        }
-    }
-}
-function drawHex(ctx, x, y, r) {
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 3) * i;
-        const px = x + r * Math.cos(angle);
-        const py = y + r * Math.sin(angle);
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.closePath(); ctx.stroke();
-}
-function drawScaleLegend(ctx, text) {
-    // Draws legend with custom text
-    const x = 50; const y = 850; const r = 60; // Matches grid size
-    ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 2;
-    ctx.fillStyle = "rgba(243, 238, 221, 0.9)";
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 3) * i;
-        const px = x + r * Math.cos(angle);
-        const py = y + r * Math.sin(angle);
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.closePath(); ctx.fill(); ctx.stroke();
+// 2. FULL SCREEN LOGIC
+window.toggleMapFullScreen = function() {
+    const wrapper = document.getElementById('map-wrapper');
+    if (!wrapper) return;
+    const isFull = wrapper.classList.contains('fixed');
     
-    // Text
-    ctx.fillStyle = PALETTE.ink; ctx.font = "bold 24px 'Cinzel Decorative', serif";
-    ctx.textAlign = "left";
-    ctx.fillText("= " + text, x + 70, y + 10);
-}
-function drawCompass(ctx, x, y, r) {
-    ctx.save(); ctx.translate(x, y);
-    ctx.strokeStyle = PALETTE.ink; ctx.fillStyle = PALETTE.land; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0,0,r*0.8,0,Math.PI*2); ctx.stroke();
-    ctx.fillStyle = "#2c241b";
-    ctx.beginPath(); ctx.moveTo(0, -r*1.4); ctx.lineTo(10, -20); ctx.lineTo(0,0); ctx.lineTo(-10, -20); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(r,0); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-r,0); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,r); ctx.stroke();
-    ctx.font = "bold 20px serif"; ctx.textAlign = "center"; ctx.fillText("N", 0, -r*1.5);
-    ctx.restore();
-}
-function addNoise(ctx, amount) {
-    const w = ctx.canvas.width, h = ctx.canvas.height;
-    const idata = ctx.getImageData(0,0,w,h);
-    const data = idata.data;
-    for(let i=0; i<data.length; i+=4) {
-        const grain = (Math.random() - 0.5) * (amount * 255);
-        data[i] += grain; data[i+1] += grain; data[i+2] += grain;
-    }
-    ctx.putImageData(idata, 0, 0);
-}
-function drawInkMountains(ctx, points) {
-    ctx.fillStyle = PALETTE.mountains; ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.5;
-    points.forEach(p => {
-        const w = 12 + Math.random() * 8; const h = 18 + Math.random() * 10;
-        ctx.beginPath(); ctx.moveTo(p.x - w, p.y); 
-        ctx.lineTo(p.x, p.y - h - (Math.random()*5)); ctx.lineTo(p.x + w, p.y);
-        ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x, p.y - h); ctx.lineTo(p.x + w*0.6, p.y); 
-        ctx.lineWidth = 0.5; ctx.stroke(); ctx.lineWidth = 1.5;
-    });
-}
-function drawTree(ctx, x, y, type) {
-    ctx.beginPath();
-    if(type === 'pine') {
-        ctx.fillStyle = PALETTE.tree_pine; ctx.moveTo(x, y-12); ctx.lineTo(x+4, y); ctx.lineTo(x-4, y);
-    } else if (type === 'jungle') {
-        ctx.fillStyle = PALETTE.tree_jungle; ctx.arc(x, y-5, 5, 0, Math.PI*2); ctx.rect(x-1, y-2, 2, 4);
+    if (!isFull) {
+        wrapper.classList.add('fixed', 'top-0', 'left-0', 'z-[9999]', 'bg-gray-900', 'flex', 'items-center', 'justify-center');
+        wrapper.classList.remove('relative', 'aspect-video', 'rounded-lg', 'shadow-2xl', 'border', 'border-gray-700');
+        wrapper.style.width = '100vw'; wrapper.style.height = '100vh'; wrapper.style.margin = '0'; wrapper.style.borderRadius = '0';
+        document.addEventListener('keydown', window.escToExitMap);
     } else {
-        ctx.fillStyle = PALETTE.tree_oak; ctx.arc(x, y-6, 4, 0, Math.PI*2); ctx.arc(x-3, y-3, 3, 0, Math.PI*2); ctx.arc(x+3, y-3, 3, 0, Math.PI*2);
+        window.exitMapFullScreen();
     }
-    ctx.fill();
-}
-function drawMapLabel(ctx, text, x, y, size, isTitle = false) {
-    ctx.font = `bold ${size}px 'Cinzel Decorative', serif`; 
-    ctx.fillStyle = "rgba(44, 36, 27, 0.9)"; ctx.textAlign = "center";
-    ctx.save(); ctx.translate(x, y);
-    if (isTitle) { 
-        ctx.shadowColor = "rgba(243, 238, 221, 1)"; ctx.shadowBlur = 10;
-        ctx.strokeStyle = "rgba(44, 36, 27, 0.5)"; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.moveTo(-150, 10); ctx.lineTo(150, 10); ctx.stroke();
-    } else { ctx.rotate(-0.05); }
-    ctx.fillText(text.toUpperCase(), 0, 0); ctx.restore();
-}
-function generateFantasyName(isMajor = false) {
-    const sylA = ["Ael", "Cor", "Fael", "Gae", "Ith", "Oth", "Syl", "Tor", "Val", "Xar", "Zor", "Dun", "Kil", "Ros", "Bel"];
-    const sylB = ["dor", "gard", "ia", "lund", "mar", "thos", "vorn", "wick", "grad", "helm", "keep", "mont", "more", "field"];
-    const base = sylA[Math.floor(Math.random()*sylA.length)] + sylB[Math.floor(Math.random()*sylB.length)];
-    return isMajor ? "The Realm of " + base : base;
-}
+};
+window.exitMapFullScreen = function() {
+    const wrapper = document.getElementById('map-wrapper');
+    if (!wrapper) return;
+    wrapper.classList.remove('fixed', 'top-0', 'left-0', 'z-[9999]', 'bg-gray-900', 'flex', 'items-center', 'justify-center');
+    wrapper.classList.add('relative', 'aspect-video', 'rounded-lg', 'shadow-2xl', 'border', 'border-gray-700');
+    wrapper.style.width = ''; wrapper.style.height = ''; wrapper.style.margin = ''; wrapper.style.borderRadius = '';
+    document.removeEventListener('keydown', window.escToExitMap);
+};
+window.escToExitMap = function(e) { if (e.key === 'Escape') window.exitMapFullScreen(); };
 
-// 2. UPLOAD & DISPLAY (Smart Fit)
+// 3. UPLOAD & DISPLAY
 window.uploadMapImage = function(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -6345,15 +6228,17 @@ window.uploadMapImage = function(input) {
     }
 };
 window.setMapImage = function(src) {
+    if (!src) return;
     window.mapState.imageSrc = src;
     const img = document.getElementById('active-map-image');
     if(img) {
-        img.src = src; img.style.display = 'block';
+        img.src = src; 
+        img.style.display = 'block';
         document.getElementById('map-placeholder').style.display = 'none';
     }
 };
 
-// 3. PIN INTERACTION & RENDER (Strict Hover Fix)
+// 4. PIN INTERACTION & RENDER
 window.handleMapClick = function(e) {
     if (e.target.classList.contains('map-pin-icon')) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -6402,7 +6287,6 @@ window.deletePin = function() {
     document.getElementById('pin-modal').classList.add('hidden');
 };
 
-// 🔴 RENDER PINS (STRICT HOVER LOGIC)
 window.renderPins = function() {
     const container = document.getElementById('map-pins-layer');
     if(!container) return;
@@ -6410,10 +6294,8 @@ window.renderPins = function() {
 
     window.mapState.pins.forEach(pin => {
         const el = document.createElement('div');
-        // Parent container is pointer-events-none: Mouse ignores the empty space.
         el.className = 'absolute transform -translate-x-1/2 -translate-y-full z-10 pointer-events-none';
-        el.style.left = pin.x + '%';
-        el.style.top = pin.y + '%';
+        el.style.left = pin.x + '%'; el.style.top = pin.y + '%';
 
         const icons = { city: '🏰', village: '🏘️', dungeon: '💀', ruin: '🏛️', forest: '🌲', landmark: '📍', default: '📍' };
         const icon = icons[pin.type] || icons.default;
@@ -6423,7 +6305,6 @@ window.renderPins = function() {
                  onclick="window.openPinModal('${pin.id}')">
                  ${icon}
             </div>
-            
             <div class="opacity-0 peer-hover:opacity-100 transition-opacity duration-200 absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-20 pointer-events-none">
                 <div class="bg-black/80 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-emerald-500/50 backdrop-blur-sm tracking-wide uppercase">
                     ${pin.title}
@@ -6435,28 +6316,268 @@ window.renderPins = function() {
     });
 };
 
-// 5. DATABASE SYNC
+// 5. DATABASE SYNC (FIXED LOAD & DELETE)
+window.activeMapListener = null;
+
+// ID Generators
+window.getGlobalIndexID = function() { return 'global_map_directory'; };
+window.getCampaignIndexID = function() { const camp = window.currentCampaign ? window.currentCampaign : 'lobby'; return 'map_index_' + camp.replace(/\s+/g, '_').toLowerCase(); };
+window.getActiveMapID = function() { const camp = window.currentCampaign ? window.currentCampaign : 'lobby'; return 'map_' + camp.replace(/\s+/g, '_').toLowerCase(); };
+
+// A. SAVE LIVE STATE
 window.saveMapState = async function() {
     if(!window.isAuthReady) { alert("Please log in."); return; }
     try {
-        await setDoc(getSharedDoc('shared_map_data'), {
-            campaign: window.currentCampaign,
+        const docId = window.getActiveMapID();
+        await setDoc(getSharedDoc(docId), {
+            campaign: window.currentCampaign || 'Lobby',
             imageSrc: window.mapState.imageSrc,
             pins: window.mapState.pins
         }, { merge: true });
-        if(window.showToast) window.showToast("✅ Map Saved!", "success");
-    } catch(e) { console.error(e); alert("Error saving map: " + e.message); }
+        if(window.showToast) window.showToast("✅ Auto-Saved Map", "success");
+    } catch(e) { console.error(e); }
 };
+
+// B. FOLDER SAVE (Global)
+window.openSaveModal = function() { document.getElementById('save-map-modal').classList.remove('hidden'); };
+window.confirmSaveMap = async function() {
+    const name = document.getElementById('save-map-name').value || "Untitled Map";
+    const uniqueID = Date.now().toString();
+    const storageID = 'map_archive_' + uniqueID;
+    
+    await setDoc(getSharedDoc(storageID), {
+        name: name,
+        date: new Date().toISOString(),
+        campaignTag: window.currentCampaign || "General",
+        imageSrc: window.mapState.imageSrc,
+        pins: window.mapState.pins
+    });
+
+    const indexID = window.getGlobalIndexID();
+    const indexRef = getSharedDoc(indexID);
+    const indexSnap = await getDoc(indexRef);
+    let list = [];
+    if(indexSnap.exists()) list = indexSnap.data().list || [];
+    
+    list.push({ id: uniqueID, name: name, date: new Date().toLocaleDateString(), campaign: window.currentCampaign || "General" });
+    
+    await setDoc(indexRef, { list: list }, { merge: true });
+    
+    document.getElementById('save-map-modal').classList.add('hidden');
+    if(window.showToast) window.showToast("✅ Saved to Global Folder", "success");
+};
+
+// C. SMART LOAD & MIGRATE
+window.openLoadModal = async function() {
+    const modal = document.getElementById('load-map-modal');
+    const listContainer = document.getElementById('saved-maps-list');
+    modal.classList.remove('hidden');
+    listContainer.innerHTML = '<div class="text-gray-500 text-center italic">Scanning folders...</div>';
+
+    const globalRef = getSharedDoc(window.getGlobalIndexID());
+    const globalSnap = await getDoc(globalRef);
+    let globalList = globalSnap.exists() ? (globalSnap.data().list || []) : [];
+
+    // Check for Legacy Migration
+    const legacyRef = getSharedDoc(window.getCampaignIndexID());
+    const legacySnap = await getDoc(legacyRef);
+    let needsUpdate = false;
+    
+    if(legacySnap.exists() && legacySnap.data().list && legacySnap.data().list.length > 0) {
+        const legacyList = legacySnap.data().list;
+        legacyList.forEach(legacyMap => {
+            const exists = globalList.some(g => g.id === legacyMap.id);
+            if (!exists) {
+                const campTag = legacyMap.campaign || window.currentCampaign || "Archived";
+                globalList.push({ id: legacyMap.id, name: legacyMap.name, date: legacyMap.date || new Date().toLocaleDateString(), campaign: campTag });
+                needsUpdate = true;
+            }
+        });
+    }
+
+    if (needsUpdate) {
+        await setDoc(globalRef, { list: globalList }, { merge: true });
+    }
+
+    // Render List
+    listContainer.innerHTML = '';
+    if(globalList.length === 0) {
+        listContainer.innerHTML = '<div class="text-gray-500 text-center">No saved maps found.</div>';
+        return;
+    }
+
+    globalList.sort((a, b) => (new Date(b.date) - new Date(a.date)));
+    globalList.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "flex justify-between items-center bg-gray-800 p-3 rounded hover:bg-gray-700 transition border border-gray-700";
+        div.innerHTML = `
+            <div>
+                <div class="text-white font-bold text-sm">${item.name}</div>
+                <div class="text-gray-500 text-[10px]">${item.campaign || 'General'} • ${item.date}</div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="window.restoreMap('${item.id}')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1 rounded shadow">Load</button>
+                <button onclick="window.deleteMap('${item.id}')" class="text-red-400 hover:text-red-300 text-sm px-2 py-1 transition" title="Delete Map">🗑️</button>
+            </div>
+        `;
+        listContainer.appendChild(div);
+    });
+};
+
+// *** FIXED RESTORE FUNCTION (Pauses Listener to Prevent Conflict) ***
+window.restoreMap = async function(id) {
+    if(window.showToast) window.showToast("⏳ Loading Map...", "info");
+    
+    // 1. Pause active listener so it doesn't try to overwrite what we are loading
+    if(window.activeMapListener) {
+        window.activeMapListener();
+        window.activeMapListener = null;
+    }
+
+    try {
+        const storageID = 'map_archive_' + id;
+        const snap = await getDoc(getSharedDoc(storageID));
+        
+        if(snap.exists()) {
+            const d = snap.data();
+            
+            // 2. Update Local State immediately
+            if(d.imageSrc) window.setMapImage(d.imageSrc);
+            window.mapState.pins = d.pins || [];
+            window.renderPins();
+            
+            // 3. Force Save to Active Doc (So it persists)
+            const docId = window.getActiveMapID();
+            await setDoc(getSharedDoc(docId), {
+                campaign: window.currentCampaign || 'Lobby',
+                imageSrc: window.mapState.imageSrc,
+                pins: window.mapState.pins
+            }, { merge: true });
+
+            document.getElementById('load-map-modal').classList.add('hidden');
+            if(window.showToast) window.showToast("✅ Map Loaded: " + d.name, "success");
+        } else {
+            alert("Could not find map data.");
+        }
+    } catch(e) {
+        console.error("Load failed:", e);
+        alert("Load failed: " + e.message);
+    }
+
+    // 4. Restart Listener
+    window.loadMapState();
+};
+
+window.deleteMap = async function(id) {
+    if(!confirm("Are you sure? This deletes the map for ALL campaigns.")) return;
+
+    if(window.showToast) window.showToast("⏳ Deleting...", "info");
+
+    try { await deleteDoc(getSharedDoc('map_archive_' + id)); } catch(e) {}
+
+    const globalRef = getSharedDoc(window.getGlobalIndexID());
+    const globalSnap = await getDoc(globalRef);
+    if(globalSnap.exists()) {
+        const list = globalSnap.data().list || [];
+        const newList = list.filter(m => m.id !== id);
+        await setDoc(globalRef, { list: newList }, { merge: true });
+    }
+
+    const legacyRef = getSharedDoc(window.getCampaignIndexID());
+    const legacySnap = await getDoc(legacyRef);
+    if(legacySnap.exists()) {
+        const list = legacySnap.data().list || [];
+        const newList = list.filter(m => m.id !== id);
+        await setDoc(legacyRef, { list: newList }, { merge: true });
+    }
+
+    window.openLoadModal(); 
+    if(window.showToast) window.showToast("🗑️ Map Deleted", "success");
+};
+
+// D. INITIAL LOAD
 window.loadMapState = function() {
     if(!window.isAuthReady) return;
-    onSnapshot(getSharedDoc('shared_map_data'), (doc) => {
+    if(window.activeMapListener) { window.activeMapListener(); window.activeMapListener = null; }
+
+    const docId = window.getActiveMapID();
+    window.activeMapListener = onSnapshot(getSharedDoc(docId), (doc) => {
         if(doc.exists()) {
             const d = doc.data();
             if (d.imageSrc) window.setMapImage(d.imageSrc);
-            if (d.pins) { window.mapState.pins = d.pins; window.renderPins(); }
+            window.mapState.pins = d.pins || [];
+            window.renderPins();
+        } else {
+            getDoc(getSharedDoc('shared_map_data')).then((legacyDoc) => {
+                if(legacyDoc.exists()) {
+                    const ld = legacyDoc.data();
+                    if (ld.imageSrc) window.setMapImage(ld.imageSrc);
+                    window.mapState.pins = ld.pins || [];
+                    window.renderPins();
+                } else {
+                    window.mapState.pins = [];
+                    window.renderPins();
+                }
+            });
         }
     });
 };
+
+// --- HELPERS (Draw) ---
+function drawHexGrid(ctx, w, h, size) {
+    if(!window.mapState.gridEnabled) return;
+    ctx.strokeStyle = PALETTE.grid; ctx.lineWidth = 1;
+    const dx = size * 1.5; const dy = size * Math.sqrt(3);
+    for(let y = -size; y < h + size; y += dy) { for(let x = -size; x < w + size; x += dx) { const offset = (Math.floor(x / dx) % 2) * (dy / 2); drawHex(ctx, x, y + offset, size); } }
+}
+function drawHex(ctx, x, y, r) {
+    ctx.beginPath(); for (let i = 0; i < 6; i++) { const angle = (Math.PI / 3) * i; const px = x + r * Math.cos(angle); const py = y + r * Math.sin(angle); if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.closePath(); ctx.stroke();
+}
+function drawScaleLegend(ctx, text) {
+    const x = 50; const y = 850; const r = 60; 
+    ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 2; ctx.fillStyle = "rgba(243, 238, 221, 0.9)";
+    ctx.beginPath(); for (let i = 0; i < 6; i++) { const angle = (Math.PI / 3) * i; const px = x + r * Math.cos(angle); const py = y + r * Math.sin(angle); if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = PALETTE.ink; ctx.font = "bold 24px 'Cinzel Decorative', serif"; ctx.textAlign = "left"; ctx.fillText("= " + text, x + 70, y + 10);
+}
+function drawCompass(ctx, x, y, r) {
+    ctx.save(); ctx.translate(x, y); ctx.strokeStyle = PALETTE.ink; ctx.fillStyle = PALETTE.land; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(0,0,r*0.8,0,Math.PI*2); ctx.stroke(); ctx.fillStyle = "#2c241b";
+    ctx.beginPath(); ctx.moveTo(0, -r*1.4); ctx.lineTo(10, -20); ctx.lineTo(0,0); ctx.lineTo(-10, -20); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(r,0); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-r,0); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,r); ctx.stroke();
+    ctx.font = "bold 20px serif"; ctx.textAlign = "center"; ctx.fillText("N", 0, -r*1.5); ctx.restore();
+}
+function addNoise(ctx, amount) {
+    const w = ctx.canvas.width, h = ctx.canvas.height; const idata = ctx.getImageData(0,0,w,h); const data = idata.data;
+    for(let i=0; i<data.length; i+=4) { const grain = (Math.random() - 0.5) * (amount * 255); data[i] += grain; data[i+1] += grain; data[i+2] += grain; }
+    ctx.putImageData(idata, 0, 0);
+}
+function drawInkMountains(ctx, points) {
+    ctx.fillStyle = PALETTE.mountains; ctx.strokeStyle = PALETTE.ink; ctx.lineWidth = 1.5;
+    points.forEach(p => {
+        const w = 12 + Math.random() * 8; const h = 18 + Math.random() * 10;
+        ctx.beginPath(); ctx.moveTo(p.x - w, p.y); ctx.lineTo(p.x, p.y - h - (Math.random()*5)); ctx.lineTo(p.x + w, p.y); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x, p.y - h); ctx.lineTo(p.x + w*0.6, p.y); ctx.lineWidth = 0.5; ctx.stroke(); ctx.lineWidth = 1.5;
+    });
+}
+function drawTree(ctx, x, y, type) {
+    ctx.beginPath();
+    if(type === 'pine') { ctx.fillStyle = PALETTE.tree_pine; ctx.moveTo(x, y-12); ctx.lineTo(x+4, y); ctx.lineTo(x-4, y); } 
+    else if (type === 'jungle') { ctx.fillStyle = PALETTE.tree_jungle; ctx.arc(x, y-5, 5, 0, Math.PI*2); ctx.rect(x-1, y-2, 2, 4); } 
+    else { ctx.fillStyle = PALETTE.tree_oak; ctx.arc(x, y-6, 4, 0, Math.PI*2); ctx.arc(x-3, y-3, 3, 0, Math.PI*2); ctx.arc(x+3, y-3, 3, 0, Math.PI*2); }
+    ctx.fill();
+}
+function drawMapLabel(ctx, text, x, y, size, isTitle = false) {
+    ctx.font = `bold ${size}px 'Cinzel Decorative', serif`; ctx.fillStyle = "rgba(44, 36, 27, 0.9)"; ctx.textAlign = "center";
+    ctx.save(); ctx.translate(x, y);
+    if (isTitle) { ctx.shadowColor = "rgba(243, 238, 221, 1)"; ctx.shadowBlur = 10; ctx.strokeStyle = "rgba(44, 36, 27, 0.5)"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(-150, 10); ctx.lineTo(150, 10); ctx.stroke(); } else { ctx.rotate(-0.05); }
+    ctx.fillText(text.toUpperCase(), 0, 0); ctx.restore();
+}
+function generateFantasyName(isMajor = false) {
+    const sylA = ["Ael", "Cor", "Fael", "Gae", "Ith", "Oth", "Syl", "Tor", "Val", "Xar", "Zor", "Dun", "Kil", "Ros", "Bel"];
+    const sylB = ["dor", "gard", "ia", "lund", "mar", "thos", "vorn", "wick", "grad", "helm", "keep", "mont", "more", "field"];
+    return (isMajor ? "The Realm of " : "") + sylA[Math.floor(Math.random()*sylA.length)] + sylB[Math.floor(Math.random()*sylB.length)];
+}
+
 if(window.loadMapState && window.userId) window.loadMapState();
         
 
