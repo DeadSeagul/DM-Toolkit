@@ -162,6 +162,22 @@
 </div>
 
 <div class="flex items-center gap-3">
+
+    <div class="flex items-center gap-2 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-600 mr-2">
+    <span class="text-[10px] uppercase font-bold text-gray-400 hidden sm:inline">Campaign:</span>
+    
+    <select class="campaign-selector-dropdown bg-transparent text-emerald-400 font-bold text-sm outline-none cursor-pointer hover:text-emerald-300 transition w-32"
+            onchange="window.changeGlobalCampaign(this.value)">
+        <option value="Lobby">Lobby</option>
+    </select>
+
+    <button onclick="window.createNewCampaign()" class="text-gray-500 hover:text-white leading-none text-lg px-1" title="Create New">+</button>
+    
+    <button onclick="window.forceLegacyImport()" class="text-gray-600 hover:text-yellow-400 leading-none text-xs border-l border-gray-600 pl-2 ml-1" title="Import Missing Campaigns">
+        ♻️
+    </button>
+</div>
+    
     <button onclick="toggleTheme()" class="text-xl p-2 hover:bg-gray-700 rounded transition" title="Toggle Holiday Mode">🎄</button>
     <button onclick="document.getElementById('share-modal').classList.remove('hidden')" class="p-2 hover:bg-gray-700 rounded-lg transition text-gray-400 hover:text-white" title="Share App">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
@@ -6033,6 +6049,141 @@ window.addNoteToInitiative = function(name) {
     }
 };
 
+
+  // ==========================================
+// 🌍 UNIFIED CAMPAIGN MANAGER (Deep Scan Edition)
+// ==========================================
+
+// 1. Load List & Sync All Dropdowns
+window.refreshCampaignSelectors = function() {
+    if(!window.isAuthReady) return;
+
+    const docRef = getSharedDoc('meta_campaign_list');
+
+    onSnapshot(docRef, (doc) => {
+        let campaigns = ["Lobby"];
+        
+        if(doc.exists() && doc.data().names && doc.data().names.length > 0) {
+            campaigns = ["Lobby", ...doc.data().names];
+            // Filter duplicates
+            campaigns = [...new Set(campaigns)];
+        } 
+
+        // --- UPDATE UI ---
+        const allSelectors = document.querySelectorAll('.campaign-selector-dropdown');
+        const current = window.currentCampaign || localStorage.getItem('aegis_last_campaign') || "Lobby";
+        window.currentCampaign = current;
+
+        allSelectors.forEach(sel => {
+            sel.innerHTML = ''; 
+            campaigns.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                sel.appendChild(opt);
+            });
+            sel.value = current;
+        });
+
+        // Trigger initial loads
+        if(window.loadMapState) window.loadMapState();
+        if(window.loadNotes) window.loadNotes();
+    });
+};
+
+// 2. FORCE DEEP SCAN (The "Fix It" Button)
+window.forceLegacyImport = async function() {
+    if(!confirm("Scan database for old campaign lists? This will merge them into your current list.")) return;
+    
+    const newRef = getSharedDoc('meta_campaign_list');
+    let foundNames = [];
+
+    // The list of all possible filenames the old system might have used
+    const suspects = [
+        'campaigns', 
+        'campaign_list', 
+        'meta_campaigns',
+        'notes_metadata', 
+        'notes_campaigns',
+        'campaign_names',
+        'user_campaigns',
+        'saved_campaigns'
+    ];
+
+    if(window.showToast) window.showToast("🕵️‍♂️ Scanning " + suspects.length + " files...", "info");
+
+    for (const id of suspects) {
+        try {
+            const snap = await getDoc(getSharedDoc(id));
+            if (snap.exists()) {
+                const data = snap.data();
+                // Check every possible array field name
+                const list = data.list || data.names || data.campaigns || data.campaignList || [];
+                if (Array.isArray(list) && list.length > 0) {
+                    console.log(`✅ Found data in '${id}':`, list);
+                    foundNames = [...foundNames, ...list];
+                }
+            }
+        } catch(e) { console.log("Checked " + id + " - nothing."); }
+    }
+
+    if (foundNames.length > 0) {
+        // Get current list first so we don't delete what you just made
+        const currentSnap = await getDoc(newRef);
+        let currentList = currentSnap.exists() ? (currentSnap.data().names || []) : [];
+        
+        // Merge and Clean
+        const combined = [...currentList, ...foundNames];
+        const uniqueNames = [...new Set(combined)].filter(n => n && n !== "Lobby"); // Remove duplicates and blanks
+        
+        await setDoc(newRef, { names: uniqueNames }, { merge: true });
+        
+        alert("Success! Found and restored: \n" + uniqueNames.join(", "));
+        if(window.showToast) window.showToast("✅ Restored " + uniqueNames.length + " Campaigns", "success");
+    } else {
+        alert("Scan complete. No old campaign lists were found in the standard locations.\n\nTry creating the campaign again with the EXACT same name to recover its data.");
+    }
+};
+
+// 3. Handle Change
+window.changeGlobalCampaign = function(newName) {
+    console.log("🔄 Switching to:", newName);
+    window.currentCampaign = newName;
+    localStorage.setItem('aegis_last_campaign', newName);
+
+    document.querySelectorAll('.campaign-selector-dropdown').forEach(s => s.value = newName);
+
+    if(window.loadMapState) window.loadMapState();
+    if(window.loadNotes) window.loadNotes();
+    
+    if(window.showToast) window.showToast("Active: " + newName, "success");
+};
+
+// 4. Create New
+window.createNewCampaign = async function() {
+    const name = prompt("Name your new campaign:");
+    if(!name || !name.trim()) return;
+    const clean = name.trim();
+
+    const docRef = getSharedDoc('meta_campaign_list');
+    const snap = await getDoc(docRef);
+    let list = [];
+    if(snap.exists()) list = snap.data().names || [];
+
+    if(!list.includes(clean)) {
+        list.push(clean);
+        await setDoc(docRef, { names: list }, { merge: true });
+        window.changeGlobalCampaign(clean);
+    } else {
+        alert("Campaign already exists!");
+    }
+};
+
+// 5. Initialize
+setTimeout(() => {
+    if(window.refreshCampaignSelectors) window.refreshCampaignSelectors();
+}, 1000);      
+        
 
 // ==========================================
 // 🗺️ ATLAS MAP GENERATOR (Stable Load Fix)
