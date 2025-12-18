@@ -749,8 +749,10 @@
                 </div>
                 <div class="flex flex-col flex-1">
                     <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Active Campaign</label>
-                    <select id="campaign-selector" onchange="window.switchCampaign(this.value)" class="bg-transparent text-white font-bold text-sm outline-none cursor-pointer hover:text-indigo-300 transition w-full border-none p-0 focus:ring-0">
-                    </select>
+                    <select class="campaign-selector-dropdown bg-transparent text-emerald-400 font-bold text-sm outline-none cursor-pointer hover:text-emerald-300 transition w-32"
+            onchange="window.changeGlobalCampaign(this.value)">
+        <option value="Lobby">Lobby</option>
+    </select>
                 </div>
             </div>
             
@@ -6046,101 +6048,84 @@ window.addNoteToInitiative = function(name) {
     }
 };
 
-        // ==========================================
-// 🌍 GLOBAL CAMPAIGN MANAGER
+       // ==========================================
+// 🌍 UNIFIED CAMPAIGN MANAGER
 // ==========================================
 
-// 1. Load Campaign List into Header
-window.loadCampaignHeader = function() {
+// 1. Load List & Sync All Dropdowns
+window.refreshCampaignSelectors = function() {
     if(!window.isAuthReady) return;
 
-    // Connect to a shared list of campaigns
-    // If you don't have this list yet, this script will create it automatically
+    // Get the master list from database
     onSnapshot(getSharedDoc('meta_campaign_list'), (doc) => {
-        const select = document.getElementById('global-campaign-select');
-        if(!select) return;
-
-        // Keep the current selection
-        const currentVal = window.currentCampaign || "Lobby";
-        
-        // Clear options (except Lobby)
-        select.innerHTML = '<option value="Lobby">Lobby</option>';
-
-        if(doc.exists()) {
-            const list = doc.data().names || [];
-            list.forEach(name => {
-                if(name !== "Lobby") {
-                    const opt = document.createElement('option');
-                    opt.value = name;
-                    opt.innerText = name;
-                    select.appendChild(opt);
-                }
-            });
+        let campaigns = ["Lobby"]; // Default
+        if(doc.exists() && doc.data().names) {
+            campaigns = ["Lobby", ...doc.data().names]; 
         }
 
-        // Restore selection
-        select.value = currentVal;
+        // Find ALL selectors (Header, Notes, etc.)
+        const allSelectors = document.querySelectorAll('.campaign-selector-dropdown');
+        const current = window.currentCampaign || localStorage.getItem('aegis_last_campaign') || "Lobby";
+        window.currentCampaign = current;
+
+        // Update every dropdown on the page
+        allSelectors.forEach(sel => {
+            sel.innerHTML = ''; // Clear old options
+            campaigns.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                sel.appendChild(opt);
+            });
+            sel.value = current; // Set to active
+        });
+
+        // Trigger initial load for Maps/Notes
+        if(window.loadMapState) window.loadMapState();
+        if(window.loadNotes) window.loadNotes(); // Assuming you have a notes loader
     });
 };
 
-// 2. Handle Switching
-window.switchGlobalCampaign = function(name) {
-    console.log("🔄 Switching Campaign to:", name);
-    
-    // Update Global Variable
-    window.currentCampaign = name;
-    
-    // 1. Reload Map
+// 2. Handle Change (User clicks dropdown)
+window.changeGlobalCampaign = function(newName) {
+    console.log("🔄 Switching to:", newName);
+    window.currentCampaign = newName;
+    localStorage.setItem('aegis_last_campaign', newName);
+
+    // 1. Sync visual dropdowns (so Header matches Notes)
+    document.querySelectorAll('.campaign-selector-dropdown').forEach(s => s.value = newName);
+
+    // 2. Refresh contents
     if(window.loadMapState) window.loadMapState();
+    if(window.loadNotes) window.loadNotes();
     
-    // 2. Reload Combat (If you have a combat tracker function)
-    // if(window.loadCombat) window.loadCombat();
-
-    // 3. Save preference locally so it remembers next refresh
-    localStorage.setItem('aegis_last_campaign', name);
-
-    if(window.showToast) window.showToast("Campaign switched to: " + name, "success");
+    if(window.showToast) window.showToast("Active Campaign: " + newName, "success");
 };
 
-// 3. Create New Campaign (Shortcut Button)
-window.promptNewCampaign = async function() {
-    const name = prompt("Enter name for new campaign:");
-    if(!name) return;
+// 3. Create New
+window.createNewCampaign = async function() {
+    const name = prompt("Name your new campaign:");
+    if(!name || !name.trim()) return;
+    const clean = name.trim();
 
-    const cleanName = name.trim();
-    if(cleanName === "") return;
+    const docRef = getSharedDoc('meta_campaign_list');
+    const snap = await getDoc(docRef);
+    let list = [];
+    if(snap.exists()) list = snap.data().names || [];
 
-    try {
-        const docRef = getSharedDoc('meta_campaign_list');
-        const snap = await getDoc(docRef);
-        let list = [];
-        if(snap.exists()) list = snap.data().names || [];
-        
-        if(!list.includes(cleanName)) {
-            list.push(cleanName);
-            await setDoc(docRef, { names: list }, { merge: true });
-            
-            // Auto-switch to it
-            window.switchGlobalCampaign(cleanName);
-        } else {
-            alert("Campaign already exists!");
-        }
-    } catch(e) {
-        console.error(e);
-        alert("Error creating campaign.");
+    if(!list.includes(clean)) {
+        list.push(clean);
+        await setDoc(docRef, { names: list }, { merge: true });
+        // Automatically switch to it
+        window.changeGlobalCampaign(clean);
+    } else {
+        alert("Campaign already exists!");
     }
 };
 
-// 4. Init on Load
-// Check for saved local preference
+// 4. Initialize
 setTimeout(() => {
-    const lastCamp = localStorage.getItem('aegis_last_campaign');
-    if(lastCamp) {
-        window.currentCampaign = lastCamp;
-        const sel = document.getElementById('global-campaign-select');
-        if(sel) sel.value = lastCamp;
-    }
-    if(window.loadCampaignHeader) window.loadCampaignHeader();
+    if(window.refreshCampaignSelectors) window.refreshCampaignSelectors();
 }, 1000);
 
 
