@@ -6044,6 +6044,103 @@ window.addNoteToInitiative = function(name) {
     }
 };
 
+        // ==========================================
+// 🌍 GLOBAL CAMPAIGN MANAGER
+// ==========================================
+
+// 1. Load Campaign List into Header
+window.loadCampaignHeader = function() {
+    if(!window.isAuthReady) return;
+
+    // Connect to a shared list of campaigns
+    // If you don't have this list yet, this script will create it automatically
+    onSnapshot(getSharedDoc('meta_campaign_list'), (doc) => {
+        const select = document.getElementById('global-campaign-select');
+        if(!select) return;
+
+        // Keep the current selection
+        const currentVal = window.currentCampaign || "Lobby";
+        
+        // Clear options (except Lobby)
+        select.innerHTML = '<option value="Lobby">Lobby</option>';
+
+        if(doc.exists()) {
+            const list = doc.data().names || [];
+            list.forEach(name => {
+                if(name !== "Lobby") {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.innerText = name;
+                    select.appendChild(opt);
+                }
+            });
+        }
+
+        // Restore selection
+        select.value = currentVal;
+    });
+};
+
+// 2. Handle Switching
+window.switchGlobalCampaign = function(name) {
+    console.log("🔄 Switching Campaign to:", name);
+    
+    // Update Global Variable
+    window.currentCampaign = name;
+    
+    // 1. Reload Map
+    if(window.loadMapState) window.loadMapState();
+    
+    // 2. Reload Combat (If you have a combat tracker function)
+    // if(window.loadCombat) window.loadCombat();
+
+    // 3. Save preference locally so it remembers next refresh
+    localStorage.setItem('aegis_last_campaign', name);
+
+    if(window.showToast) window.showToast("Campaign switched to: " + name, "success");
+};
+
+// 3. Create New Campaign (Shortcut Button)
+window.promptNewCampaign = async function() {
+    const name = prompt("Enter name for new campaign:");
+    if(!name) return;
+
+    const cleanName = name.trim();
+    if(cleanName === "") return;
+
+    try {
+        const docRef = getSharedDoc('meta_campaign_list');
+        const snap = await getDoc(docRef);
+        let list = [];
+        if(snap.exists()) list = snap.data().names || [];
+        
+        if(!list.includes(cleanName)) {
+            list.push(cleanName);
+            await setDoc(docRef, { names: list }, { merge: true });
+            
+            // Auto-switch to it
+            window.switchGlobalCampaign(cleanName);
+        } else {
+            alert("Campaign already exists!");
+        }
+    } catch(e) {
+        console.error(e);
+        alert("Error creating campaign.");
+    }
+};
+
+// 4. Init on Load
+// Check for saved local preference
+setTimeout(() => {
+    const lastCamp = localStorage.getItem('aegis_last_campaign');
+    if(lastCamp) {
+        window.currentCampaign = lastCamp;
+        const sel = document.getElementById('global-campaign-select');
+        if(sel) sel.value = lastCamp;
+    }
+    if(window.loadCampaignHeader) window.loadCampaignHeader();
+}, 1000);
+
 
 // ==========================================
 // 🗺️ ATLAS MAP GENERATOR (Stable Load Fix)
