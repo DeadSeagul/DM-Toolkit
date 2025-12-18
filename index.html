@@ -161,25 +161,7 @@
     </h1>
 </div>
 
-            
-
 <div class="flex items-center gap-3">
-    
-   <div class="flex items-center gap-2 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-600 mr-2">
-    <span class="text-[10px] uppercase font-bold text-gray-400 hidden sm:inline">Campaign:</span>
-    
-    <select class="campaign-selector-dropdown bg-transparent text-emerald-400 font-bold text-sm outline-none cursor-pointer hover:text-emerald-300 transition w-32"
-            onchange="window.changeGlobalCampaign(this.value)">
-        <option value="Lobby">Lobby</option>
-    </select>
-
-    <button onclick="window.createNewCampaign()" class="text-gray-500 hover:text-white leading-none text-lg px-1" title="Create New">+</button>
-    
-    <button onclick="window.forceLegacyImport()" class="text-gray-600 hover:text-yellow-400 leading-none text-xs border-l border-gray-600 pl-2 ml-1" title="Import Missing Campaigns">
-        ♻️
-    </button>
-</div>
-
     <button onclick="toggleTheme()" class="text-xl p-2 hover:bg-gray-700 rounded transition" title="Toggle Holiday Mode">🎄</button>
     <button onclick="document.getElementById('share-modal').classList.remove('hidden')" class="p-2 hover:bg-gray-700 rounded-lg transition text-gray-400 hover:text-white" title="Share App">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
@@ -754,10 +736,8 @@
                 </div>
                 <div class="flex flex-col flex-1">
                     <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Active Campaign</label>
-                    <select class="campaign-selector-dropdown bg-transparent text-emerald-400 font-bold text-sm outline-none cursor-pointer hover:text-emerald-300 transition w-32"
-            onchange="window.changeGlobalCampaign(this.value)">
-        <option value="Lobby">Lobby</option>
-    </select>
+                    <select id="campaign-selector" onchange="window.switchCampaign(this.value)" class="bg-transparent text-white font-bold text-sm outline-none cursor-pointer hover:text-indigo-300 transition w-full border-none p-0 focus:ring-0">
+                    </select>
                 </div>
             </div>
             
@@ -6052,131 +6032,6 @@ window.addNoteToInitiative = function(name) {
         }
     }
 };
-
-     // ==========================================
-// 🌍 UNIFIED CAMPAIGN MANAGER (Auto-Restore)
-// ==========================================
-
-// 1. Load List & Sync All Dropdowns
-window.refreshCampaignSelectors = function() {
-    if(!window.isAuthReady) return;
-
-    const docRef = getSharedDoc('meta_campaign_list');
-
-    onSnapshot(docRef, (doc) => {
-        let campaigns = ["Lobby"]; // Default
-        
-        // A. If new list exists, use it
-        if(doc.exists() && doc.data().names && doc.data().names.length > 0) {
-            campaigns = ["Lobby", ...doc.data().names]; 
-        } 
-        // B. If new list is EMPTY, try to find the OLD list
-        else {
-            console.log("⚠️ New list empty. Searching for legacy campaign lists...");
-            window.attemptLegacyMigration();
-        }
-
-        // --- UPDATE UI ---
-        const allSelectors = document.querySelectorAll('.campaign-selector-dropdown');
-        const current = window.currentCampaign || localStorage.getItem('aegis_last_campaign') || "Lobby";
-        window.currentCampaign = current;
-
-        // Update every dropdown on the page
-        allSelectors.forEach(sel => {
-            // Don't redraw if list hasn't changed (prevents jitter)
-            if(sel.options.length === campaigns.length && sel.options[1]?.value === campaigns[1]) {
-                sel.value = current;
-                return;
-            }
-
-            sel.innerHTML = ''; 
-            campaigns.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.innerText = name;
-                sel.appendChild(opt);
-            });
-            sel.value = current;
-        });
-
-        // Trigger initial load
-        if(window.loadMapState) window.loadMapState();
-        if(window.loadNotes) window.loadNotes();
-    });
-};
-
-// 2. ONE-TIME MIGRATION (Restores names from old files)
-window.attemptLegacyMigration = async function() {
-    const newRef = getSharedDoc('meta_campaign_list');
-    
-    // List of likely places the old Notes tab saved its list
-    const candidates = ['campaigns', 'campaign_list', 'notes_metadata', 'notes_campaigns'];
-    let foundNames = [];
-
-    for (const id of candidates) {
-        try {
-            const snap = await getDoc(getSharedDoc(id));
-            if (snap.exists()) {
-                // Check common field names: 'list', 'names', 'campaigns'
-                const data = snap.data();
-                const list = data.list || data.names || data.campaigns || [];
-                if (Array.isArray(list) && list.length > 0) {
-                    console.log(`✅ Found legacy list in '${id}':`, list);
-                    foundNames = [...foundNames, ...list];
-                }
-            }
-        } catch(e) { console.log("Checked " + id + " - nothing."); }
-    }
-
-    // If we found old names, save them to the new system
-    if (foundNames.length > 0) {
-        // Remove duplicates
-        const uniqueNames = [...new Set(foundNames)].filter(n => n !== "Lobby");
-        await setDoc(newRef, { names: uniqueNames }, { merge: true });
-        if(window.showToast) window.showToast("♻️ Restored " + uniqueNames.length + " Campaigns", "success");
-    }
-};
-
-// 3. Handle Change (User clicks dropdown)
-window.changeGlobalCampaign = function(newName) {
-    console.log("🔄 Switching to:", newName);
-    window.currentCampaign = newName;
-    localStorage.setItem('aegis_last_campaign', newName);
-
-    // Sync visual dropdowns
-    document.querySelectorAll('.campaign-selector-dropdown').forEach(s => s.value = newName);
-
-    // Refresh contents
-    if(window.loadMapState) window.loadMapState();
-    if(window.loadNotes) window.loadNotes();
-    
-    if(window.showToast) window.showToast("Active Campaign: " + newName, "success");
-};
-
-// 4. Create New
-window.createNewCampaign = async function() {
-    const name = prompt("Name your new campaign:");
-    if(!name || !name.trim()) return;
-    const clean = name.trim();
-
-    const docRef = getSharedDoc('meta_campaign_list');
-    const snap = await getDoc(docRef);
-    let list = [];
-    if(snap.exists()) list = snap.data().names || [];
-
-    if(!list.includes(clean)) {
-        list.push(clean);
-        await setDoc(docRef, { names: list }, { merge: true });
-        window.changeGlobalCampaign(clean);
-    } else {
-        alert("Campaign already exists!");
-    }
-};
-
-// 5. Initialize
-setTimeout(() => {
-    if(window.refreshCampaignSelectors) window.refreshCampaignSelectors();
-}, 1000);
 
 
 // ==========================================
