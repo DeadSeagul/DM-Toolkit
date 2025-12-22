@@ -6820,32 +6820,29 @@ window.onAuthStateChanged(window.auth, async (user) => {
     }
 });
 
-        // ==========================================
-// 📧 ACCOUNT UPGRADE (Link Real Email)
+// ==========================================
+// 📧 ACCOUNT UPGRADE (Secure Verification)
 // ==========================================
 
 window.linkRealEmail = async () => {
     const user = window.auth.currentUser;
     if (!user) return;
 
-    const newEmail = prompt("Enter your real email address.\n\nThis will replace your 'Session Name' for login and allow password recovery.");
+    const newEmail = prompt("Enter your real email address.\n\nWe will send a verification link to this address. You must click it to finalize the change.");
     
     if (!newEmail || !newEmail.includes('@')) return;
 
     try {
-        await updateEmail(user, newEmail);
+        // 🔒 SECURE METHOD: Sends an email first
+        await verifyBeforeUpdateEmail(user, newEmail);
         
-        alert(`✅ Success! Your login is now: ${newEmail}\n\nPlease use this email next time you log in.`);
-        
-        // Refresh UI to hide the button
-        updateLoginUI(user);
+        alert(`✅ Verification Sent!\n\nPlease check your inbox at "${newEmail}".\n\nClick the link in the email, then refresh this page to see the update.`);
 
     } catch (error) {
         console.error(error);
         
-        // Critical Security Catch
         if (error.code === 'auth/requires-recent-login') {
-            alert("🔒 Security Check Required\n\nTo change your email, you must have logged in recently.\n\nPlease Log Out, Log In again, and try this button immediately.");
+            alert("🔒 Security Check Required\n\nFor security, you must have logged in recently to change your email.\n\nPlease Log Out, Log In again, and try immediately.");
         } else {
             alert("❌ Error: " + error.message);
         }
