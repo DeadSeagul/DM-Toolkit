@@ -6799,30 +6799,41 @@ window.onAuthStateChanged(window.auth, async (user) => {
 });
 
 // ==========================================
-// 📧 ACCOUNT UPGRADE (Secure Verification)
+// 📧 INSTANT LINK + STANDARD VERIFICATION
 // ==========================================
 
 window.linkRealEmail = async () => {
     const user = window.auth.currentUser;
     if (!user) return;
 
-    const newEmail = prompt("Enter your real email address.\n\nWe will send a verification link to this address. You must click it to finalize the change.");
-    
+    const newEmail = prompt("Enter your real email address:");
     if (!newEmail || !newEmail.includes('@')) return;
 
     try {
-        // 🔒 SECURE METHOD: Sends an email first
-        await verifyBeforeUpdateEmail(user, newEmail);
+        // 1. Force-Update the Email (Instant)
+        // This works because you unchecked the "Email change" setting.
+        await updateEmail(user, newEmail);
         
-        alert(`✅ Verification Sent!\n\nPlease check your inbox at "${newEmail}".\n\nClick the link in the email, then refresh this page to see the update.`);
+        // 2. Send Standard Verification (Reliable)
+        // This uses the same reliable system as the Password Reset email.
+        await sendEmailVerification(user);
+        
+        alert(`✅ Success! Your login is now: ${newEmail}\n\nWe sent a verification email just to be safe, but your account is already linked!`);
+        
+        // 3. Update UI immediately
+        updateLoginUI(user);
 
     } catch (error) {
         console.error(error);
         
-        if (error.code === 'auth/requires-recent-login') {
-            alert("🔒 Security Check Required\n\nFor security, you must have logged in recently to change your email.\n\nPlease Log Out, Log In again, and try immediately.");
+        if (error.code === 'auth/operation-not-allowed') {
+            alert("❌ Blocked: You must go to Firebase Console > Auth > Settings and UNCHECK 'Email change' to use this feature.");
+        } else if (error.code === 'auth/requires-recent-login') {
+            alert("🔒 Security: Please Log Out and Log In again, then try immediately.");
+        } else if (error.code === 'auth/email-already-in-use') {
+            alert("❌ That email is already taken by another user.");
         } else {
-            alert("❌ Error: " + error.message);
+            alert("Error: " + error.message);
         }
     }
 };
