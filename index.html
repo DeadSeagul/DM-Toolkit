@@ -6920,13 +6920,22 @@ window.onAuthStateChanged(window.auth, async (user) => {
 
     <div class="relative bg-gray-800/90 p-8 rounded-2xl shadow-2xl border border-gray-700 w-full max-w-md backdrop-blur-xl text-center">
         
-        <div class="mb-6">
-            <div class="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mx-auto border-2 border-indigo-500 shadow-lg shadow-indigo-500/20 text-4xl">
-                🛡️
-            </div>
+        <div class="mb-6 flex justify-center">
+    <svg class="w-24 h-24 drop-shadow-lg filter" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M32 4 L12 14 V30 C12 43 21 54 32 58 C43 54 52 43 52 30 V14 Z" fill="#1f2933" stroke="#f4d28b" stroke-width="2.5" stroke-linejoin="round" />
+        <g>
+            <path d="M31 10 L33 10 L33 48 L32 52 L31 48 Z" fill="#cbd5e1" stroke="#94a3b8" stroke-width="1"/>
+            <path d="M24 15 L40 15 L40 18 L24 18 Z" fill="#f4d28b" stroke="#b45309" stroke-width="1"/>
+            <path d="M31 2 L33 2 L33 10 L31 10 Z" fill="#8b4513" stroke="#f4d28b" stroke-width="1"/>
+            <circle cx="32" cy="2" r="2.5" fill="#f4d28b" stroke="#b45309" stroke-width="1"/>
+        </g>
+        <polygon points="32,18 24,24 24,34 32,40 40,34 40,24" fill="#8b4513" stroke="#f4d28b" stroke-width="1.5" stroke-linejoin="round" />
+        <text x="32" y="30" text-anchor="middle" font-size="8" fill="#f9f9f9" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">20</text>
+    </svg>
+
         </div>
 
-        <h1 class="text-3xl font-bold text-white mb-2 font-serif tracking-wide">Aegis Toolkit</h1>
+        <h1 class="text-3xl font-bold text-white mb-2 font-serif tracking-wide">Aegis DM Toolkit</h1>
         <p class="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-8">Session Access Required</p>
 
         <p class="text-gray-400 text-sm mb-6">
@@ -6944,6 +6953,10 @@ window.onAuthStateChanged(window.auth, async (user) => {
                 <input type="password" id="gate-pass" class="w-full p-4 rounded-lg bg-gray-900 border border-gray-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition" placeholder="••••••">
             </div>
         </div>
+
+        <p class="text-yellow-400 text-sm mb-6">
+           ⚠️ Make sure you write down your password somewhere. You cannot recover your password.
+        </p>
 
         <div id="gate-status" class="h-6 text-red-400 text-xs mt-3 font-bold"></div>
 
