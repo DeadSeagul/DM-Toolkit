@@ -1316,8 +1316,10 @@
 
     window.db = getFirestore(app);
     window.auth = getAuth(app);
+    window.onAuthStateChanged = onAuthStateChanged;
     window.userId = null; 
     window.isAuthReady = false;
+   
 
     // Expose Functions (FIX: Added limit and orderBy here)
     window.doc = doc; window.setDoc = setDoc; window.deleteDoc = deleteDoc; window.collection = collection;
@@ -6584,6 +6586,216 @@ window.closeWelcome = function() {
 // localStorage.removeItem('aegis_welcome_seen');
 
 
+// ==========================================
+// 🛠️ ROBUST GATEKEEPER (Prevents "Stuck Connecting")
+// ==========================================
+
+window.gatekeeperLogin = async () => {
+    const name = document.getElementById('gate-name').value.trim();
+    const pass = document.getElementById('gate-pass').value.trim();
+    const status = document.getElementById('gate-status');
+    const btn = document.querySelector('#session-gatekeeper button');
+
+    // 1. Basic Checks
+    if (!name || !pass) { 
+        status.textContent = "⚠️ Please enter Name & Password"; 
+        return; 
+    }
+    if (pass.length < 6) { 
+        status.textContent = "⚠️ Password must be 6+ characters"; 
+        return; 
+    }
+    
+    // 2. Lock UI
+    status.textContent = "🔄 Connecting...";
+    status.className = "h-6 text-yellow-400 text-xs mt-3 font-bold animate-pulse";
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    
+    const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
+
+    try {
+        // 3. Race Condition: Login vs 10-Second Timer
+        // This ensures the button never gets stuck forever.
+        const loginPromise = window.signInWithEmailAndPassword(window.auth, email, pass);
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Timeout")), 10000)
+        );
+
+        await Promise.race([loginPromise, timeoutPromise]);
+        
+        // Success! (onAuthStateChanged will hide the gate)
+        status.textContent = "✅ Success! Unlocking...";
+        status.className = "h-6 text-green-400 text-xs mt-3 font-bold";
+
+    } catch (error) {
+        console.error("Login Error:", error);
+        
+        // 4. Handle "User Not Found" -> Switch to Register
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            status.textContent = "🆕 Creating new session...";
+            
+            try {
+                await window.createUserWithEmailAndPassword(window.auth, email, pass);
+                status.textContent = "🎉 Created! Entering...";
+            } catch (regError) {
+                // If creating fails (e.g. weak password)
+                status.textContent = "❌ Creation Failed: " + regError.code;
+                btn.disabled = false; 
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        } 
+        // 5. Handle Network Timeout
+        else if (error.message === "Timeout") {
+            status.textContent = "⚠️ Network Timeout. Check internet.";
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } 
+        // 6. Other Errors
+        else {
+            status.textContent = "❌ Error: " + error.code;
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+};
+
+window.gatekeeperLogin = async () => {
+    const name = document.getElementById('gate-name').value.trim();
+    const pass = document.getElementById('gate-pass').value.trim();
+    const status = document.getElementById('gate-status');
+    const btn = document.querySelector('#session-gatekeeper button');
+
+    if (!name || !pass) { status.textContent = "⚠️ Enter Name & Password"; return; }
+    
+    status.textContent = "🔄 Authenticating...";
+    btn.disabled = true;
+    btn.classList.add('opacity-50');
+    
+    const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
+
+    try {
+        // 1. Attempt Login
+        await window.signInWithEmailAndPassword(window.auth, email, pass);
+        
+        // 2. Success! Force Reload to clear the gate
+        status.textContent = "✅ Success! Entering...";
+        setTimeout(() => location.reload(), 500); 
+
+    } catch (error) {
+        // 3. User Not Found -> Auto-Register
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+            status.textContent = "🆕 Creating Session...";
+            try {
+                await window.createUserWithEmailAndPassword(window.auth, email, pass);
+                status.textContent = "🎉 Created! Entering...";
+                setTimeout(() => location.reload(), 500);
+            } catch (regError) {
+                status.textContent = "❌ Error: " + regError.code;
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+            }
+        } else {
+            status.textContent = "❌ Error: " + error.code;
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+        }
+    }
+};
+
+// ==========================================
+// 🛡️ SMOOTH GATEKEEPER (Fixes the Loop)
+// ==========================================
+
+// 1. The Login Action
+window.gatekeeperLogin = async () => {
+    const name = document.getElementById('gate-name').value.trim();
+    const pass = document.getElementById('gate-pass').value.trim();
+    const status = document.getElementById('gate-status');
+    const btn = document.querySelector('#session-gatekeeper button');
+
+    if (!name || !pass) { status.textContent = "⚠️ Enter Name & Password"; return; }
+    
+    // UI Feedback
+    status.textContent = "🔄 Authenticating...";
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    
+    const email = `${name.replace(/\s+/g, '_')}@aegis.local`;
+
+    try {
+        // Attempt Login
+        // We do NOT reload the page here. We wait for the 'onAuthStateChanged' listener to fire.
+        await window.signInWithEmailAndPassword(window.auth, email, pass);
+        
+        status.textContent = "✅ Success! Loading...";
+        status.className = "h-6 text-green-400 text-xs mt-3 font-bold";
+
+    } catch (error) {
+        // Handle "User Not Found" -> Auto-Register
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+            status.textContent = "🆕 Creating Session...";
+            try {
+                await window.createUserWithEmailAndPassword(window.auth, email, pass);
+                status.textContent = "🎉 Created! Entering...";
+            } catch (regError) {
+                status.textContent = "❌ Creation Failed: " + regError.code;
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        } else {
+            status.textContent = "❌ Error: " + error.code;
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+};
+
+// 2. The Gatekeeper Watchdog
+// This runs automatically when Firebase detects a change in login status.
+window.onAuthStateChanged(window.auth, async (user) => {
+    const gate = document.getElementById('session-gatekeeper');
+    
+    // CASE A: User is Logged In
+    if (user && !user.isAnonymous) {
+        console.log("✅ Verified Session:", user.email);
+        window.userId = user.uid;
+        window.isAuthReady = true;
+        
+        // Update UI info
+        updateLoginUI(user);
+
+        // Unlock the Gate (Fade out)
+        if(gate) {
+            gate.style.opacity = '0';
+            setTimeout(() => gate.classList.add('hidden'), 500);
+        }
+
+        // Initialize Data Listeners (if not already running)
+        if(!window.unsubNotes && window.setupNotesListener) window.setupNotesListener();
+        if(!window.unsubCombat && window.setupCombatDataListeners) window.setupCombatDataListeners();
+        if(!window.unsubStats && window.setupStatblocksListener) window.setupStatblocksListener();
+        if(window.setupHomebrewListener && !window.unsubCommunity) window.setupHomebrewListener();
+        if(window.loadMapState && !window.activeMapListener) window.loadMapState();
+        
+    } 
+    // CASE B: User is NOT Logged In (Show Gate)
+    else {
+        console.log("🔒 No active session found.");
+        if(gate) {
+            gate.classList.remove('hidden');
+            gate.style.opacity = '1';
+            
+            // Reset the button if it was stuck
+            const btn = document.querySelector('#session-gatekeeper button');
+            if(btn) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    }
+});
+
 </script>
 
     <!-- Login Modal -->
@@ -6696,6 +6908,52 @@ window.closeWelcome = function() {
         </div>
         
         <p class="mt-6 text-[10px] text-gray-500">Version 1.0 • Built by DeadSeagul</p>
+    </div>
+</div>
+
+<div id="session-gatekeeper" class="fixed inset-0 z-[9999] bg-gray-900 flex flex-col items-center justify-center p-4 transition-opacity duration-500">
+    
+    <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+        <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900 rounded-full blur-[150px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-900 rounded-full blur-[150px]"></div>
+    </div>
+
+    <div class="relative bg-gray-800/90 p-8 rounded-2xl shadow-2xl border border-gray-700 w-full max-w-md backdrop-blur-xl text-center">
+        
+        <div class="mb-6">
+            <div class="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mx-auto border-2 border-indigo-500 shadow-lg shadow-indigo-500/20 text-4xl">
+                🛡️
+            </div>
+        </div>
+
+        <h1 class="text-3xl font-bold text-white mb-2 font-serif tracking-wide">Aegis Toolkit</h1>
+        <p class="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-8">Session Access Required</p>
+
+        <p class="text-gray-400 text-sm mb-6">
+            You must sign in to a Session to access these tools.
+              To register, just type in a unique Session Name and password and click Enter Session.
+        </p>
+
+        <div class="space-y-4 text-left">
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Session Name</label>
+                <input type="text" id="gate-name" class="w-full p-4 rounded-lg bg-gray-900 border border-gray-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition" placeholder="e.g. MyCampaign">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Password</label>
+                <input type="password" id="gate-pass" class="w-full p-4 rounded-lg bg-gray-900 border border-gray-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition" placeholder="••••••">
+            </div>
+        </div>
+
+        <div id="gate-status" class="h-6 text-red-400 text-xs mt-3 font-bold"></div>
+
+        <button onclick="window.gatekeeperLogin()" class="w-full mt-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 rounded-lg shadow-lg shadow-indigo-900/50 transition transform hover:scale-[1.02] active:scale-95">
+            ENTER SESSION
+        </button>
+        
+        <p class="mt-6 text-[10px] text-gray-600">
+            Don't have a session? Entering a new name will create one.
+        </p>
     </div>
 </div>
 
