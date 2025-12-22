@@ -1291,7 +1291,7 @@
 
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, sendPasswordResetEmail, updateProfile, updateEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     
     // 🟢 1. ANALYTICS IMPORT (Must be here)
@@ -1478,50 +1478,26 @@ window.structuredNotes = structuredNotes;
         window.location.reload();
     };
 
-    // ==========================================
-// 👤 SMART USER PROFILE UI
-// ==========================================
-function updateLoginUI(user) {
-    const loginBtn = document.getElementById('login-btn');
-    const userProfile = document.getElementById('user-profile');
-    const userName = document.getElementById('user-name');
-    const userAvatar = document.getElementById('user-avatar');
-
-    if (user && !user.isAnonymous) {
-        if(loginBtn) loginBtn.classList.add('hidden');
-        if(userProfile) userProfile.classList.remove('hidden');
-
-        // Clean up display name
-        const rawName = user.displayName || user.email.split('@')[0];
-        const displayName = rawName.replace(/_/g, ' '); 
-
-        // Check if they need to link an email (If email contains 'aegis.local')
-        const needsUpgrade = user.email.includes('aegis.local');
-        
-        let upgradeBtn = "";
-        if (needsUpgrade) {
-            upgradeBtn = `<button onclick="window.linkRealEmail()" class="ml-2 text-[10px] bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-0.5 rounded font-bold shadow animate-pulse" title="Link real email to enable recovery">🔗 Link Email</button>`;
+    function updateLoginUI(user) {
+        const loginBtn = document.getElementById('login-btn');
+        const userProfile = document.getElementById('user-profile');
+        const userName = document.getElementById('user-name');
+        const userAvatar = document.getElementById('user-avatar');
+        if (user && !user.isAnonymous) {
+            if(loginBtn) loginBtn.classList.add('hidden');
+            if(userProfile) userProfile.classList.remove('hidden');
+            const rawName = user.email.split('@')[0];
+            const displayName = rawName.replace(/_/g, ' '); 
+            if(userName) {
+                userName.innerHTML = `<span class="text-indigo-300 font-bold">${displayName}</span>`;
+                userName.innerHTML += `<div class="text-[10px] text-green-400">● Private Session</div>`;
+            }
+            if(userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${rawName}&background=6366f1&color=fff&size=128`;
+        } else {
+            if(loginBtn) loginBtn.classList.remove('hidden');
+            if(userProfile) userProfile.classList.add('hidden');
         }
-
-        if(userName) {
-            userName.innerHTML = `
-                <div class="flex items-center justify-end gap-2">
-                    <span class="text-indigo-300 font-bold">${displayName}</span>
-                </div>
-                <div class="flex items-center justify-end mt-0.5">
-                    <span class="text-[9px] text-green-400">● Online</span>
-                    ${upgradeBtn}
-                </div>
-            `;
-        }
-        
-        if(userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${displayName}&background=6366f1&color=fff&size=128`;
-    
-    } else {
-        if(loginBtn) loginBtn.classList.remove('hidden');
-        if(userProfile) userProfile.classList.add('hidden');
     }
-}
 
     // --- 5. ROBUST DATA LISTENERS ---
     window.unsubNotes = null; window.unsubCombat = null; window.unsubStats = null; window.unsubTurn = null;
@@ -6819,38 +6795,6 @@ window.onAuthStateChanged(window.auth, async (user) => {
         }
     }
 });
-
-        // ==========================================
-// 📧 ACCOUNT UPGRADE (Link Real Email)
-// ==========================================
-
-window.linkRealEmail = async () => {
-    const user = window.auth.currentUser;
-    if (!user) return;
-
-    const newEmail = prompt("Enter your real email address.\n\nThis will replace your 'Session Name' for login and allow password recovery.");
-    
-    if (!newEmail || !newEmail.includes('@')) return;
-
-    try {
-        await updateEmail(user, newEmail);
-        
-        alert(`✅ Success! Your login is now: ${newEmail}\n\nPlease use this email next time you log in.`);
-        
-        // Refresh UI to hide the button
-        updateLoginUI(user);
-
-    } catch (error) {
-        console.error(error);
-        
-        // Critical Security Catch
-        if (error.code === 'auth/requires-recent-login') {
-            alert("🔒 Security Check Required\n\nTo change your email, you must have logged in recently.\n\nPlease Log Out, Log In again, and try this button immediately.");
-        } else {
-            alert("❌ Error: " + error.message);
-        }
-    }
-};
 
 </script>
 
