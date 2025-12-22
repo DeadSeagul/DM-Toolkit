@@ -1274,19 +1274,7 @@
 
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { 
-    getAuth, 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged, 
-    signInAnonymously,
-    sendPasswordResetEmail,
-    updateProfile,
-    updateEmail,           // 👈 Required for Step 1
-    verifyBeforeUpdateEmail, // (You can keep or remove this)
-    sendEmailVerification   // 👈 Required for Step 2
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, sendPasswordResetEmail, updateProfile, verifyBeforeUpdateEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     
     // 🟢 1. ANALYTICS IMPORT (Must be here)
@@ -6811,41 +6799,28 @@ window.onAuthStateChanged(window.auth, async (user) => {
 });
 
 // ==========================================
-// 📧 INSTANT LINK + RELIABLE VERIFICATION
+// 📧 ACCOUNT UPGRADE (Secure Verification)
 // ==========================================
 
 window.linkRealEmail = async () => {
     const user = window.auth.currentUser;
     if (!user) return;
 
-    const newEmail = prompt("Enter your real email address:");
+    const newEmail = prompt("Enter your real email address.\n\nWe will send a verification link to this address. You must click it to finalize the change.");
+    
     if (!newEmail || !newEmail.includes('@')) return;
 
     try {
-        // 1. Force-Update the Email (Instant)
-        // On Standard Firebase, this just works. 
-        // On New Firebase, it works if 'Email Enumeration' is off.
-        await updateEmail(user, newEmail);
+        // 🔒 SECURE METHOD: Sends an email first
+        await verifyBeforeUpdateEmail(user, newEmail);
         
-        // 2. Send Standard Verification (Reliable)
-        // This uses the EXACT same system as the console test you ran earlier.
-        await sendEmailVerification(user);
-        
-        alert(`✅ Success! Your login is now: ${newEmail}\n\nWe sent a verification email to be safe, but your account is ALREADY linked.`);
-        
-        // 3. Update UI immediately
-        updateLoginUI(user);
+        alert(`✅ Verification Sent!\n\nPlease check your inbox at "${newEmail}".\n\nClick the link in the email, then refresh this page to see the update.`);
 
     } catch (error) {
         console.error(error);
         
-        // SPECIFIC ERROR HANDLING
-        if (error.code === 'auth/operation-not-allowed') {
-            alert("❌ Firebase Blocked It.\n\nSince you don't have the 'User Actions' setting, you likely need to enable 'Email/Password' in the Sign-in Method tab if it isn't already green.");
-        } else if (error.code === 'auth/requires-recent-login') {
-            alert("🔒 Security Check: Please Log Out and Log In again, then try this button immediately.");
-        } else if (error.code === 'auth/email-already-in-use') {
-            alert("❌ That email is already taken by another user.");
+        if (error.code === 'auth/requires-recent-login') {
+            alert("🔒 Security Check Required\n\nFor security, you must have logged in recently to change your email.\n\nPlease Log Out, Log In again, and try immediately.");
         } else {
             alert("❌ Error: " + error.message);
         }
