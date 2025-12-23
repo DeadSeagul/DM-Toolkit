@@ -3053,56 +3053,47 @@ const renderDetailedSrdMonster = (m, index) => {
     list.innerHTML = '<div class="loading-spinner mx-auto mt-10"></div>';
     
     try {
-        let url = `https://api.open5e.com/monsters/?limit=50`;
+        // 🟢 FIX 1: Increase limit and force Alphabetical Ordering (A-Z) from the server
+        let url = `https://api.open5e.com/monsters/?limit=200&ordering=name`;
+        
+        // We use the search param to cast a wide net, then filter strictly below
         if (rawQuery) url += `&search=${rawQuery}`;
         if (cr) url += `&challenge_rating=${cr}`;
         
         const res = await fetch(url);
         const data = await res.json();
         let results = data.results;
-        
-        if (cr) { results = results.filter(m => m.challenge_rating == cr); }
+
+        // 🟢 FIX 2: THE STRICT FILTER
+        // If searching for "B", this removes "Aboleth" because it doesn't start with "B"
+        if (rawQuery) {
+            const query = rawQuery.toLowerCase();
+            results = results.filter(m => m.name.toLowerCase().startsWith(query));
+        }
 
         if (results.length === 0) {
-            list.innerHTML = '<p class="text-center text-gray-500 text-xs mt-5">No monsters found matching your criteria.</p>';
+            list.innerHTML = `<p class="text-center text-gray-500 text-xs mt-5">No monsters found starting with "${rawQuery}".</p>`;
             window.currentSrdResults = []; 
             return;
         }
 
-        // --- FETCH FULL DETAILS FOR EACH MONSTER ---
-        // This array ensures we fetch the full data for each monster by its slug.
+        // --- FETCH FULL DETAILS (Remaining code kept identical to yours) ---
         const fetchDetails = results.map(m => fetch(`https://api.open5e.com/monsters/${m.slug}/`).then(res => {
             if (!res.ok) throw new Error(`Failed to fetch details for ${m.name}`);
             return res.json();
         }));
         
         const detailedResults = await Promise.all(fetchDetails);
-        window.currentSrdResults = detailedResults; // Save full data globally
-
-        // Sorting (Keep for relevance)
-        if (rawQuery) {
-            const query = rawQuery.toLowerCase();
-            detailedResults.sort((a, b) => {
-                const nameA = a.name.toLowerCase();
-                const nameB = b.name.toLowerCase();
-                if (nameA === query && nameB !== query) return -1;
-                if (nameB === query && nameA !== query) return 1;
-                return nameA.length - nameB.length;
-            });
-        } else {
-            detailedResults.sort((a, b) => a.name.localeCompare(b.name));
-        }
+        window.currentSrdResults = detailedResults; 
 
         list.innerHTML = '';
-        
-        // --- RENDER FULL STATBLOCKS ---
         detailedResults.forEach((m, index) => {
             list.appendChild(renderDetailedSrdMonster(m, index));
         });
             
     } catch (error) {
         console.error("Compendium Error:", error);
-        list.innerHTML = `<p class="text-center text-red-400 text-xs">Error fetching full data. Try again or search by name. (${error.message})</p>`;
+        list.innerHTML = `<p class="text-center text-red-400 text-xs">Error fetching full data. (${error.message})</p>`;
     }
 };
         // --- THE MISSING IMPORT FUNCTION ---
