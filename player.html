@@ -293,6 +293,21 @@
 
         // --- Startup ---
         document.addEventListener('DOMContentLoaded', initPlayerView);
+
+        // Ensure players sign in as guests automatically
+onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+        try {
+            await signInAnonymously(auth);
+            console.log("Guest access granted.");
+        } catch (e) {
+            console.error("Guest login failed:", e);
+        }
+    }
+    // After login (or if already logged in), start listening to the DM's ID from the URL
+    startPlayerListener(); 
+});
+        
     </script>
 </body>
 </html>
