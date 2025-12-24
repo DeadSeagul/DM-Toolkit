@@ -6815,51 +6815,37 @@ window.onAuthStateChanged(window.auth, async (user) => {
 };
 
     const associateItems = [
-    { name: "2024 Player's Handbook", link: "https://amzn.to/4jfgKRh", img: "https://m.media-amazon.com/images/I/81S5vNf93AL._AC_SL1500_.jpg" },
-    { name: "Dungeon Master's Guide", link: "https://amzn.to/4qn2lVl", img: "https://m.media-amazon.com/images/I/81mD39D80TL._AC_SL1500_.jpg" },
-    { name: "Monster Manual", link: "https://amzn.to/4arU261", img: "https://m.media-amazon.com/images/I/817I+y6NoHL._AC_SL1500_.jpg" },
-    { name: "Metal Cheese Dice Set", link: "https://amzn.to/49s6Gkj", img: "https://m.media-amazon.com/images/I/718y91N-pRL._AC_SL1500_.jpg" },
-    { name: "Mimic Dice Chest", link: "https://amzn.to/497kbVn", img: "https://m.media-amazon.com/images/I/71p0WfO8GkL._AC_SL1500_.jpg" },
-    { name: "Dice Tower", link: "https://amzn.to/4asxrpS", img: "https://m.media-amazon.com/images/I/719h1f6pXpL._AC_SL1500_.jpg" },
-    { name: "Ultimate Battle Mat Set", link: "https://amzn.to/49oqCoe", img: "https://m.media-amazon.com/images/I/81TAn2K57uL._AC_SL1500_.jpg" }
+    { 
+        name: "Metal Cheese Dice Set", 
+        link: "https://amzn.to/49s6Gkj", 
+        img: "https://m.media-amazon.com/images/I/81HTlPcs28L._AC_SL1500_.jpg" 
+    },
+    { 
+        name: "2024 Player's Handbook", 
+        link: "https://amzn.to/4jfgKRh", 
+        img: "https://m.media-amazon.com/images/I/71uMMLxNz2L._AC_SX679_.jpg" 
+    },
+    { 
+        name: "Dungeon Master's Guide", 
+        link: "https://amzn.to/4qn2lVl", 
+        img: "https://m.media-amazon.com/images/I/81mD39D80TL._AC_SL1500_.jpg" 
+    },
+    { 
+        name: "Monster Manual", 
+        link: "https://amzn.to/4arU261", 
+        img: "https://m.media-amazon.com/images/I/817I+y6NoHL._AC_SL1500_.jpg" 
+    },
+    { 
+        name: "Mimic Dice Storage Chest", 
+        link: "https://amzn.to/497kbVn", 
+        img: "https://m.media-amazon.com/images/I/71p0WfO8GkL._AC_SL1500_.jpg" 
+    },
+    { 
+        name: "Ultimate Battle Mat Set", 
+        link: "https://amzn.to/49oqCoe", 
+        img: "https://m.media-amazon.com/images/I/81TAn2K57uL._AC_SL1500_.jpg" 
+    }
 ];
-
-function cycleAds() {
-    const el = document.getElementById('ad-spotlight');
-    const item = associateItems[Math.floor(Math.random() * associateItems.length)];
-
-    // 1. Set data while hidden
-    document.getElementById('ad-name').innerText = item.name;
-    document.getElementById('ad-img').src = item.img;
-    document.getElementById('ad-link').href = item.link;
-
-    // 2. Reset position (hidden)
-    el.style.transition = 'none';
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(150px) scale(0.9)';
-    el.style.pointerEvents = 'none';
-
-    // 3. Force Reflow (The Magic Fix)
-    void el.offsetWidth; 
-
-    // 4. Slide In
-    el.style.transition = 'all 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-    el.style.opacity = '1';
-    el.style.transform = 'translateY(0) scale(1)';
-    el.style.pointerEvents = 'auto';
-
-    // 5. Hide after 12 seconds
-    setTimeout(() => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(150px) scale(0.9)';
-        el.style.pointerEvents = 'none';
-    }, 12000);
-}
-
-// Show every 45 seconds
-setInterval(cycleAds, 45000);
-// Initial delay
-setTimeout(cycleAds, 3000);
 
 </script>
 
