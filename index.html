@@ -6847,6 +6847,51 @@ window.onAuthStateChanged(window.auth, async (user) => {
     }
 ];
 
+function cycleAds() {
+    const el = document.getElementById('ad-spotlight');
+    const nameEl = document.getElementById('ad-name');
+    const imgEl = document.getElementById('ad-img');
+    const linkEl = document.getElementById('ad-link');
+
+    // Safety check: stop if elements are missing
+    if (!el || !nameEl || !imgEl || !linkEl) return;
+
+    // Pick a random item
+    const item = associateItems[Math.floor(Math.random() * associateItems.length)];
+
+    // 1. Update content
+    nameEl.innerText = item.name;
+    imgEl.src = item.img;
+    linkEl.href = item.link;
+
+    // 2. Reset position (Force it to hidden state)
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(150px) scale(0.9)';
+    el.style.pointerEvents = 'none';
+
+    // 3. Force Browser Reflow
+    void el.offsetWidth; 
+
+    // 4. Animate In
+    el.style.transition = 'all 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0) scale(1)';
+    el.style.pointerEvents = 'auto';
+
+    // 5. Hide after 12 seconds
+    setTimeout(() => {
+        el.style.transition = 'all 0.7s ease-in';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(150px) scale(0.9)';
+        el.style.pointerEvents = 'none';
+    }, 12000);
+}
+
+// Ensure the cycle starts
+setInterval(cycleAds, 45000); // Shows every 45 seconds
+setTimeout(cycleAds, 3000);   // First show after 3 seconds
+
 </script>
 
     <!-- Login Modal -->
