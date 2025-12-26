@@ -125,7 +125,20 @@
     color: #a5b4fc;
 }
 
-/* SW5e Mode Button Overrides */
+/* --- 🚀 MASTER SW5E SYSTEM STYLES --- */
+body.sw5e-mode {
+    --bg-main: #020b14;
+    --card-bg: #0b1929;
+    --accent: #00d2ff;
+    --text-highlight: #39ff14;
+}
+
+body.sw5e-mode .card {
+    background-color: var(--card-bg);
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
+}
+
 body.sw5e-mode .system-btn {
     border-color: #00d2ff;
     background: rgba(0, 210, 250, 0.1);
@@ -133,26 +146,202 @@ body.sw5e-mode .system-btn {
     box-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
 }
 
-/* Ensure the header expands to fit the button without jumping */
-header {
-    min-height: 64px;
+/* --- 🛰️ FUTURISTIC HOLONET STATBLOCK --- */
+.sw5e-mode .stat-block {
+    /* 1. Reset Parchment & Apply Tech Background */
+    background-color: #020810 !important;
+    background-image: 
+        linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px) !important;
+    background-size: 20px 20px !important; 
+    border: 2px solid #00ffff !important;
+    border-radius: 0px !important; 
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2), inset 0 0 15px rgba(0, 255, 255, 0.1) !important;
+    color: #00ffff !important;
+    font-family: 'Share Tech Mono', 'Courier New', monospace !important;
+    padding: 24px !important;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 2. Scanning Line Animation */
+.sw5e-mode .stat-block::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.5), transparent);
+    animation: scanline 4s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(1000%); }
+}
+
+/* 3. Header & Text Styling */
+.sw5e-mode .stat-header h2 {
+    color: #00ffff !important;
+    text-transform: uppercase !important;
+    letter-spacing: 3px !important;
+    border-bottom: 2px solid #00ffff !important;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5) !important;
+}
+
+.sw5e-mode .ability-score {
+    background: rgba(0, 255, 255, 0.1) !important;
+    border: 1px solid #00ffff !important;
+    border-radius: 0px !important;
+    color: #00ffff !important;
+}
+
+.sw5e-mode .stat-property-label {
+    color: #ffaa00 !important; /* Amber for technical readout */
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    font-size: 0.75rem !important;
+}
+
+.sw5e-mode hr {
+    border-color: #004444 !important;
+    opacity: 0.5 !important;
+}
+
+/* Import Futuristic Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&display=swap');
+
+/* Default Header Style (D&D) */
+#site-title {
+    transition: all 0.5s ease;
+    font-family: 'Cinzel Decorative', cursive; /* Your existing D&D font */
+}
+
+/* 🚀 SW5E NEON LIGHTSABER STYLE */
+.sw5e-mode #site-title {
+    font-family: 'Orbitron', sans-serif !important;
+    letter-spacing: 5px;
+    color: #fff !important;
+    /* Neon Blue Lightsaber Glow */
+    text-shadow: 
+        0 0 5px #fff, 
+        0 0 10px #fff, 
+        0 0 20px #00ffff, 
+        0 0 30px #00ffff, 
+        0 0 40px #00ffff, 
+        0 0 55px #00ffff, 
+        0 0 75px #00ffff !important;
+    animation: lightsaber-flicker 2s infinite alternate;
+}
+
+/* Subtle flicker to make it look like a humming blade */
+@keyframes lightsaber-flicker {
+    0%, 100% { opacity: 1; }
+    92% { opacity: 0.95; }
+    96% { opacity: 1; }
+    98% { opacity: 0.9; }
+}
+
+/* Target only the AEGIS span */
+#aegis-text {
+    transition: all 0.5s ease;
+}
+
+/* Lightsaber look for AEGIS only */
+.sw5e-mode #aegis-text {
+    font-family: 'Orbitron', sans-serif !important;
+    color: #fff !important;
+    text-shadow: 
+        0 0 5px #fff, 
+        0 0 10px #fff, 
+        0 0 20px #00ffff, 
+        0 0 40px #00ffff !important;
+    animation: lightsaber-flicker 2s infinite alternate;
+}
+
+/* Base style for the Aegis part */
+.aegis-title {
+    transition: all 0.5s ease;
+}
+
+/* 🚀 NEON LIGHTSABER IGNITION */
+.sw5e-mode .aegis-title {
+    font-family: 'Orbitron', sans-serif !important;
+    color: #fff !important;
+    /* Electric Cyan Glow */
+    text-shadow: 
+        0 0 5px #fff, 
+        0 0 10px #fff, 
+        0 0 20px #00ffff, 
+        0 0 30px #00ffff, 
+        0 0 40px #00ffff !important;
+    letter-spacing: 2px;
+    animation: lightsaber-hum 2s infinite alternate;
+}
+
+/* Subtle hum flicker */
+@keyframes lightsaber-hum {
+    0% { opacity: 1; text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff; }
+    100% { opacity: 0.9; text-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff; }
+}
+
+/* Optional: Make the subtitle look like terminal text */
+.sw5e-mode .aegis-subtitle {
+    color: #00ffff !important;
+    opacity: 0.7;
+    font-family: 'Share Tech Mono', monospace !important;
+}
+
+/* High-Contrast Sci-Fi Text */
+.sw5e-mode .neon-text {
+    color: #e0ffff !important; /* Very bright Cyan-White */
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.sw5e-mode .neon-label {
+    color: #ffcc00 !important; /* Bright Amber for Action Names */
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Ensure the container doesn't darken the children */
+.sw5e-mode .stat-block div {
+    color: inherit;
+}
+
+.art-placeholder {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #0f172a;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    transition: all 0.3s ease;
+    justify-content: center;
+    border: 1px solid #334155;
+    position: relative;
+    overflow: hidden;
 }
 
-/* Add to your CSS */
-body.sw5e-mode {
-    --bg-main: #020b14;
-    --card-bg: #0b1929;
-    --accent: #00d2ff;
-    --text-highlight: #39ff14; /* Lightsaber Green */
+.art-placeholder::after {
+    content: "SIGNAL LOST";
+    font-family: 'Share Tech Mono', monospace;
+    color: #ef4444;
+    font-size: 10px;
+    letter-spacing: 2px;
+    font-weight: bold;
+    z-index: 2;
 }
 
-body.sw5e-mode .card {
-    background-color: var(--card-bg);
-    border-color: var(--accent);
-    box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
+/* Optional: Animated Scanline for the placeholder */
+.art-placeholder::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    animation: scanline 3s linear infinite;
 }
         
     </style>
@@ -258,6 +447,7 @@ body.sw5e-mode .card {
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('soundboard')">🔊 Sound</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('notes')">📜 Notes</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('maps')">🗺️ Maps</button>
+            <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('gallery')">🎨 Art</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold transition duration-300 active min-w-[100px]" onclick="switchTab('homebrew')">🍺 Homebrew</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('rules')">📖 Rules</button>
             <button class="tab-button p-3 flex-1 text-sm font-semibold text-gray-400 transition duration-300 min-w-[100px]" onclick="switchTab('help')">❓ Help & Questions</button>
@@ -284,43 +474,51 @@ body.sw5e-mode .card {
 
                 <!-- Combat NPC Stats -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-green-300">Combat NPC Stats</h2>
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div><label class="block text-xs font-medium text-gray-400 mb-1">Level/CR</label><input type="text" id="npc-level" value="3" class="w-full p-2 rounded-lg input-style text-sm"></div>
-                        <div><label class="block text-xs font-medium text-gray-400 mb-1">NPC Type</label><input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style text-sm"></div>
-                    </div>
-                    <button onclick="window.generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-combat-text">Generate Stats</span><div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
-                    <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
-                </div>
-                
-                <!-- Name Generator -->
-                <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-pink-300">Name Generator</h2>
-                    <div class="flex gap-2 mb-4">
-                       <select id="name-race" class="flex-1 p-2 rounded-lg input-style text-sm">
-                            <option value="Human">Human</option>
-                            <option value="Elf">Elf</option>
-                            <option value="Dwarf">Dwarf</option>
-                            <option value="Orc">Orc/Half-Orc</option>
-                            <option value="Halfling">Halfling</option>
-                            <option value="Tiefling">Tiefling</option>
-                            <option value="Dragonborn">Dragonborn</option>
-                            <option value="Gnome">Gnome</option>
-                            <option value="Goblin">Goblin</option>
-                            <option value="Tabaxi">Tabaxi (Catfolk)</option>
-                            <option value="Kenku">Kenku</option>
-                            <option value="Genasi">Genasi</option>
-                        </select>
-                        <select id="name-gender" class="w-24 p-2 rounded-lg input-style text-sm">
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                        </select>
-                        <button onclick="window.generateNames()" class="bg-pink-700 hover:bg-pink-600 text-white font-bold px-4 rounded-lg text-sm">Generate</button>
-                    </div>
-                    <div id="name-output" class="text-gray-300 text-sm min-h-[2rem] flex flex-col gap-1">
-                        <p class="text-gray-500 text-xs italic">Select options to generate names.</p>
-                    </div>
-                </div>
+    <h2 id="prep-npc-title" class="text-xl font-semibold mb-4 text-green-300">Combat NPC Stats</h2>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Level/CR</label>
+            <input type="text" id="npc-level" value="3" class="w-full p-2 rounded-lg input-style text-sm">
+        </div>
+        <div>
+            <label id="npc-type-label" class="block text-xs font-medium text-gray-400 mb-1">NPC Type</label>
+            <input type="text" id="npc-type" value="Shadow Rogue" class="w-full p-2 rounded-lg input-style text-sm">
+        </div>
+    </div>
+    <button onclick="window.generateCombatNpc()" id="generate-combat-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center">
+        <span id="generate-combat-text">Generate Stats</span>
+        <div id="combat-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+    </button>
+    <p id="combat-status-message" class="mt-2 text-sm text-center text-red-400 hidden"></p>
+</div>
+
+<div class="card p-4 rounded-lg shadow-xl mb-6">
+    <h2 id="name-gen-title" class="text-xl font-semibold mb-4 text-pink-300">Name Generator</h2>
+    <div class="flex gap-2 mb-4">
+       <select id="name-race" class="flex-1 p-2 rounded-lg input-style text-sm">
+            <option value="Human" id="race-1">Human</option>
+            <option value="Elf" id="race-2">Elf</option>
+            <option value="Dwarf" id="race-3">Dwarf</option>
+            <option value="Orc" id="race-4">Orc/Half-Orc</option>
+            <option value="Halfling" id="race-5">Halfling</option>
+            <option value="Tiefling" id="race-6">Tiefling</option>
+            <option value="Dragonborn" id="race-7">Dragonborn</option>
+            <option value="Gnome" id="race-8">Gnome</option>
+            <option value="Goblin" id="race-9">Goblin</option>
+            <option value="Tabaxi" id="race-10">Tabaxi (Catfolk)</option>
+            <option value="Kenku" id="race-11">Kenku</option>
+            <option value="Genasi" id="race-12">Genasi</option>
+        </select>
+        <select id="name-gender" class="w-24 p-2 rounded-lg input-style text-sm">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+        </select>
+        <button onclick="window.generateNames()" class="bg-pink-700 hover:bg-pink-600 text-white font-bold px-4 rounded-lg text-sm">Generate</button>
+    </div>
+    <div id="name-output" class="text-gray-300 text-sm min-h-[2rem] flex flex-col gap-1">
+        <p class="text-gray-500 text-xs italic">Select options to generate names.</p>
+    </div>
+</div>
 
                 <!-- Creative Lore -->
                 <div class="card p-4 rounded-lg shadow-xl mb-6">
@@ -591,45 +789,73 @@ body.sw5e-mode .card {
             </div>
             
             <!-- Loot Tab -->
-            <div id="loot" class="tab-content hidden">
-                <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-yellow-300">Loot Generator</h2>
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div class="col-span-2"><label class="block text-xs font-medium text-gray-400 mb-1">Source</label>
-                            <select id="loot-source" class="w-full p-2 rounded-lg input-style text-sm">
-                                <option value="ai">AI Generator (Creative)</option>
-                                <option value="wiki">Official Wiki (Rules)</option>
-                            </select>
-                        </div>
-                        <div><label class="block text-xs font-medium text-gray-400 mb-1">Level/CR</label><input type="text" id="loot-level" value="3" class="w-full p-2 rounded-lg input-style text-sm"></div>
-                        <div><label class="block text-xs font-medium text-gray-400 mb-1">Type</label><select id="loot-type" class="w-full p-2 rounded-lg input-style text-sm"><option value="Individual">Individual</option><option value="Hoard">Hoard</option><option value="Shop Inventory">Shop</option></select></div>
-                    </div>
-                    <button onclick="generateLoot()" id="generate-loot-button" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg flex items-center justify-center"><span id="generate-loot-text">Generate</span><div id="loot-loading-spinner" class="loading-spinner ml-2 hidden"></div></button>
-                </div>
-                <div class="card p-4 rounded-lg shadow-xl mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
-                    <div id="loot-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Loot appears here.</div>
-                    <button onclick="saveGeneratedContent('lootNotes')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg text-sm">Save to Loot Notes</button>
-                </div>
-                
-                <div class="card p-4 rounded-lg shadow-xl mt-6 border border-yellow-700/30">
-                    <h2 class="text-xl font-semibold mb-4 text-yellow-400">💰 Loot Splitter</h2>
-                    <div class="grid grid-cols-5 gap-2 mb-1 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wider"><div>PP</div><div>GP</div><div>EP</div><div>SP</div><div>CP</div></div>
-                    <div class="grid grid-cols-5 gap-2 mb-4">
-                        <input type="number" id="loot-pp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                        <input type="number" id="loot-gp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                        <input type="number" id="loot-ep" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                        <input type="number" id="loot-sp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                        <input type="number" id="loot-cp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
-                    </div>
-                    <div class="flex gap-3 items-center mb-4 bg-gray-900/30 p-2 rounded">
-                        <span class="text-sm text-gray-300 font-bold">Party Size:</span>
-                        <input type="number" id="loot-party-size" value="4" class="w-16 p-2 rounded bg-gray-800 text-white text-center border border-gray-600 font-bold">
-                        <button onclick="window.splitLoot()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded transition shadow-lg shadow-yellow-900/20">Split Loot</button>
-                    </div>
-                    <div id="loot-split-result" class="text-sm text-yellow-100 text-center min-h-[1.5em] font-mono bg-gray-800/50 p-2 rounded border border-gray-700">Enter amounts to split...</div>
-                </div>
+           <div id="loot" class="tab-content hidden">
+    <div class="card p-4 rounded-lg shadow-xl mb-6">
+        <h2 id="loot-gen-title" class="text-xl font-semibold mb-4 text-yellow-300">Loot Generator</h2>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="col-span-2">
+                <label class="block text-xs font-medium text-gray-400 mb-1">Source</label>
+                <select id="loot-source" class="w-full p-2 rounded-lg input-style text-sm">
+                    <option value="ai">AI Generator (Creative)</option>
+                    <option value="wiki">Official Wiki (Rules)</option>
+                </select>
             </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">Level/CR</label>
+                <input type="text" id="loot-level" value="3" class="w-full p-2 rounded-lg input-style text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">Type</label>
+                <select id="loot-type" class="w-full p-2 rounded-lg input-style text-sm">
+                    <option value="Individual">Individual</option>
+                    <option value="Hoard">Hoard</option>
+                    <option value="Shop Inventory">Shop</option>
+                </select>
+            </div>
+        </div>
+        <button onclick="generateLoot()" id="generate-loot-button" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg flex items-center justify-center">
+            <span id="generate-loot-text">Generate</span>
+            <div id="loot-loading-spinner" class="loading-spinner ml-2 hidden"></div>
+        </button>
+    </div>
+
+    <div class="card p-4 rounded-lg shadow-xl mb-6">
+        <h2 id="loot-result-title" class="text-xl font-semibold mb-4 text-indigo-300">Result</h2>
+        <div id="loot-output" class="whitespace-pre-wrap min-h-[100px] bg-gray-700/30 p-3 rounded-lg text-gray-300">Loot appears here.</div>
+        <button onclick="saveGeneratedContent('lootNotes')" class="mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg text-sm">Save to Loot Notes</button>
+    </div>
+    
+    <div class="card p-4 rounded-lg shadow-xl mt-6 border border-yellow-700/30">
+    <h2 id="splitter-title" class="text-xl font-semibold mb-4 text-yellow-400">💰 Loot Splitter</h2>
+    
+    <div id="coin-headers" class="grid grid-cols-5 gap-2 mb-1 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+        <div>PP</div><div>GP</div><div>EP</div><div>SP</div><div>CP</div>
+    </div>
+    
+    <div id="coin-inputs" class="grid grid-cols-5 gap-2 mb-4">
+        <input type="number" id="loot-pp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-gp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-ep" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-sp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+        <input type="number" id="loot-cp" class="p-2 rounded bg-gray-800 text-white text-center border border-gray-600 focus:border-yellow-500 outline-none" placeholder="0">
+    </div>
+
+    <div class="flex gap-3 items-center mb-4 bg-gray-900/30 p-2 rounded">
+        <span class="text-sm text-gray-300 font-bold">Party Size:</span>
+        <input type="number" id="loot-party-size" value="4" class="w-16 p-2 rounded bg-gray-800 text-white text-center border border-gray-600 font-bold">
+        <button onclick="window.splitLoot()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded transition shadow-lg shadow-yellow-900/20">Split Loot</button>
+    </div>
+
+    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <h3 id="quick-split-label" class="text-sm font-bold text-gray-400 uppercase mb-3">Quick Total Splitter</h3>
+        <div class="flex items-center gap-2">
+    <input type="number" id="total-loot" placeholder="Total" class="bg-gray-900 border border-gray-600 rounded p-2 text-white w-full">
+    <span id="splitter-currency" class="font-bold text-yellow-500 min-w-[30px]">GP</span>
+</div>
+        <div id="split-results" class="mt-3 text-sm text-gray-300 italic">Enter total to split...</div>
+    </div>
+</div>
+</div>
 
             <div id="travel" class="tab-content hidden">
                 
@@ -1187,6 +1413,21 @@ body.sw5e-mode .card {
                 <button onclick="document.getElementById('pin-modal').classList.add('hidden')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 px-4 rounded transition">Cancel</button>
                 <button onclick="window.savePin()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-4 rounded transition shadow-lg">Save Pin</button>
             </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div id="gallery" class="tab-content hidden">
+    <div class="card p-4 rounded-lg shadow-xl border border-pink-500/30">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-semibold text-pink-300">🎨 Community Artist Spotlight</h2>
+            <p class="text-[10px] text-gray-500 uppercase tracking-widest">Support Small Creators</p>
+        </div>
+
+        <div id="artist-gallery-list" class="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4">
+            <div class="text-center text-gray-500 py-10 col-span-full">Loading the gallery...</div>
         </div>
     </div>
 </div>
@@ -2119,102 +2360,100 @@ window.generateCombatNpc = async () => {
     
     btn.disabled = true;
     spinner.classList.remove('hidden');
-    outputDiv.textContent = "Generating full character sheet...";
+    outputDiv.textContent = "Generating character sheet...";
     
-    // 1. Reset Global Variable immediately
-    window.lastGeneratedNpc = null;    
+    window.lastGeneratedNpc = null;     
 
     try {
-        const txt = document.getElementById('npc-type').value, lvl = document.getElementById('npc-level').value;
+        const txt = document.getElementById('npc-type').value;
+        const lvl = document.getElementById('npc-level').value;
         
-        // 🟢 NEW PROMPT: Requesting ALL sheet data
-        const prompt = `Generate a D&D 5e combat NPC stat block optimized for quick combat (Level ${lvl}, ${txt}). Return strictly JSON. Ensure all saving throws, skills, and ability scores reflect the NPC's type and level.`;
+        // 🟢 SYSTEM AWARE PROMPT
+        const isSW5e = (window.currentSystem === 'sw5e');
+        const systemContext = isSW5e ? "Star Wars 5e (SW5e)" : "D&D 5e";
+        const extraInstructions = isSW5e 
+            ? "Use Star Wars species and mechanics. Actions should include blasters, vibroweapons, or Tech/Force powers." 
+            : "Use standard fantasy races and magic.";
+
+        const prompt = `Generate a ${systemContext} combat NPC stat block optimized for quick combat (Level ${lvl}, ${txt}). 
+        ${extraInstructions} 
+        Return strictly JSON. Ensure all saving throws, skills, and ability scores reflect the NPC's type and level.`;
         
         const data = await callAI(API_URL, {    
             contents: [{ parts: [{ text: prompt }] }],    
             generationConfig: { responseMimeType: "application/json", responseSchema: combatSchema }    
         });
         
-        // 2. Parse and Assign to Global Variable 
         const parsedNpc = JSON.parse(data.candidates[0].content.parts[0].text);
         
         if (!parsedNpc || !parsedNpc.name || !parsedNpc.ability_scores) {
-             throw new Error("AI returned empty or invalid NPC data (missing scores).");
+             throw new Error("AI returned invalid data.");
         }
         
-        // 🟢 Guarantee the structured data is assigned globally.
-        window.lastGeneratedNpc = parsedNpc;    
-        const n = window.lastGeneratedNpc;
-        const scores = n.ability_scores; // Access ability scores object directly
-        
-        // Helper to format ability score lines (e.g. 18 (+4))
-        const fmtScoreLine = (score) => {
-            const val = parseInt(score) || 10;
-            const mod = fmtMod(val); // Assuming fmtMod is defined globally
-            return `${val} (${mod})`;
-        };
+        window.lastGeneratedNpc = parsedNpc;     
+        const n = parsedNpc;
+        const scores = n.ability_scores; 
+        const getMod = (s) => Math.floor(((parseInt(s)||10) - 10) / 2);
+        const fmtMod = (s) => { const m = getMod(s); return m >= 0 ? `+${m}` : m; };
+        const fmtScoreLine = (s) => `${s} (${fmtMod(s)})`;
 
-        // 3. Render FULL Character Sheet HTML
+        // 🔵 DYNAMIC COLORS & LABELS
+        const titleColor = isSW5e ? "text-blue-400" : "text-green-400";
+        const typeLabel = isSW5e ? "Galactic NPC / Droid" : "Combat NPC";
+
+        // Render the Visual Card
         outputDiv.innerHTML = `
-            <div class="text-2xl font-bold text-green-400 mb-2">${n.name}</div>
-            <div class="text-gray-300 text-sm mb-4">Level/CR: ${n.level_or_cr || 'N/A'}</div>
+            <div class="text-2xl font-bold ${titleColor} mb-1">${n.name}</div>
+            <div class="text-gray-400 text-xs mb-4 uppercase tracking-widest">Level ${n.level_or_cr} • ${typeLabel}</div>
 
             <div class="grid grid-cols-3 gap-3 mb-4">
-                <div class="p-2 bg-gray-700 rounded-lg border border-gray-600 text-center">
-                    <div class="text-xs text-gray-400 uppercase">AC</div>
-                    <div class="font-bold text-2xl text-blue-300">${n.armor_class_ac}</div>
+                <div class="p-2 bg-gray-800 rounded border border-gray-600 text-center">
+                    <div class="text-[10px] text-gray-500 uppercase">AC</div>
+                    <div class="font-bold text-xl text-blue-300">${n.armor_class_ac}</div>
                 </div>
-                <div class="p-2 bg-gray-700 rounded-lg border border-gray-600 text-center">
-                    <div class="text-xs text-gray-400 uppercase">HP</div>
-                    <div class="font-bold text-2xl text-green-300">${n.max_hit_points}</div>
+                <div class="p-2 bg-gray-800 rounded border border-gray-600 text-center">
+                    <div class="text-[10px] text-gray-500 uppercase">HP</div>
+                    <div class="font-bold text-xl text-green-300">${n.max_hit_points}</div>
                 </div>
-                <div class="p-2 bg-gray-700 rounded-lg border border-gray-600 text-center">
-                    <div class="text-xs text-gray-400 uppercase">Init Bonus</div>
-                    <div class="font-bold text-xl text-yellow-300">${fmtMod(scores.DEX || 10)}</div>
-                </div>
-            </div>
-
-            <div class="p-3 bg-gray-700 rounded-lg border border-gray-600 mb-4">
-                <h4 class="text-sm font-bold text-red-300 mb-2 border-b border-gray-600 pb-1">Ability Scores</h4>
-                <div class="grid grid-cols-6 text-center text-xs font-bold text-white">
-                    <div>STR</div><div>DEX</div><div>CON</div><div>INT</div><div>WIS</div><div>CHA</div>
-                </div>
-                <div class="grid grid-cols-6 text-center text-sm font-mono text-gray-200 mt-1">
-                    <div>${fmtScoreLine(scores.STR)}</div>
-                    <div>${fmtScoreLine(scores.DEX)}</div>
-                    <div>${fmtScoreLine(scores.CON)}</div>
-                    <div>${fmtScoreLine(scores.INT)}</div>
-                    <div>${fmtScoreLine(scores.WIS)}</div>
-                    <div>${fmtScoreLine(scores.CHA)}</div>
+                <div class="p-2 bg-gray-800 rounded border border-gray-600 text-center">
+                    <div class="text-[10px] text-gray-500 uppercase">Init</div>
+                    <div class="font-bold text-xl text-yellow-300">${fmtMod(scores.DEX)}</div>
                 </div>
             </div>
 
-            <div class="p-3 bg-gray-700 rounded-lg border border-gray-600 mb-4 text-sm text-white">
-                ${(n.saving_throws && n.saving_throws.length) ? 
-                    `<p class="mb-1"><strong class="text-yellow-300">Saves:</strong> ${n.saving_throws.join(', ')}</p>` : ''}
-                ${(n.skills && n.skills.length) ? 
-                    `<p><strong class="text-yellow-300">Skills:</strong> ${n.skills.join(', ')}</p>` : ''}
+            <div class="grid grid-cols-6 text-center text-[10px] font-bold text-gray-400 mb-1">
+                <div>STR</div><div>DEX</div><div>CON</div><div>INT</div><div>WIS</div><div>CHA</div>
+            </div>
+            <div class="grid grid-cols-6 text-center text-xs font-mono text-white mb-4 bg-gray-800 p-2 rounded">
+                <div>${fmtScoreLine(scores.STR)}</div>
+                <div>${fmtScoreLine(scores.DEX)}</div>
+                <div>${fmtScoreLine(scores.CON)}</div>
+                <div>${fmtScoreLine(scores.INT)}</div>
+                <div>${fmtScoreLine(scores.WIS)}</div>
+                <div>${fmtScoreLine(scores.CHA)}</div>
             </div>
 
-            <div class="p-3 bg-gray-700 rounded-lg border border-gray-600 mb-4">
-                <h4 class="text-sm font-bold text-red-300 mb-2 border-b border-gray-600 pb-1">Main Action</h4>
-                <p class="text-sm text-white">${n.main_attack_action}</p>
-                ${n.key_feature ? `<p class="text-xs text-green-400 mt-2">Feature: ${n.key_feature}</p>` : ''}
+            <div class="bg-gray-800 p-3 rounded border border-gray-700 mb-4">
+                <h4 class="text-xs font-bold text-red-300 uppercase mb-2 border-b border-gray-600 pb-1">Actions</h4>
+                <p class="text-sm text-white mb-2">${n.main_attack_action}</p>
+                ${n.key_feature ? `<p class="text-xs text-green-300 italic border-t border-gray-700 pt-2">${n.key_feature}</p>` : ''}
             </div>
 
-            <button onclick="window.addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg mb-2">💾 Add to Statblocks</button>
+            <button onclick="window.addNpcToStatblocks()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg mb-2 shadow-lg">💾 Add to Tracker</button>
             <div class="grid grid-cols-3 gap-2">
-                <button onclick="window.saveCombatNpcToNotes('prepNotes')" class="bg-gray-600 py-1 rounded text-xs">Note</button>
-                <button onclick="window.saveCombatNpcToNotes('enemyNotes')" class="bg-yellow-800 py-1 rounded text-xs">Enemy</button>
-                <button onclick="window.saveCombatNpcToNotes('npcNotes')" class="bg-blue-800 py-1 rounded text-xs">NPC</button>
-            </div>`;
+                <button onclick="window.saveCombatNpcToNotes('prepNotes')" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs font-bold border border-gray-500">Note</button>
+                <button onclick="window.saveCombatNpcToNotes('enemyNotes')" class="bg-red-900/80 hover:bg-red-800 text-white py-2 rounded text-xs font-bold border border-red-700">Enemy</button>
+                <button onclick="window.saveCombatNpcToNotes('npcNotes')" class="bg-blue-900/80 hover:bg-blue-800 text-white py-2 rounded text-xs font-bold border border-blue-700">NPC</button>
+            </div>
+        `;
         
-        // 4. Reveal the generic save buttons
-        document.getElementById('save-options-creative').classList.remove('hidden');
+        if(document.getElementById('save-options-creative')) {
+            document.getElementById('save-options-creative').classList.add('hidden');
+        }
 
     } catch(e) {    
         outputDiv.textContent = "Error: " + e.message;    
-        window.lastGeneratedNpc = null; // Clear on error
+        window.lastGeneratedNpc = null;
     } finally {    
         spinner.classList.add('hidden');    
         btn.disabled = false;    
@@ -2547,55 +2786,69 @@ window.saveMonsterToNotes = async function() {
 
    // 🟢 FIXED: Loot Generator (Shows Errors & Formatting)
     window.generateLoot = async () => {
-        const btn = document.getElementById('generate-loot-button'); 
-        const spinner = document.getElementById('loot-loading-spinner');
-        const output = document.getElementById('loot-output');
+    const btn = document.getElementById('generate-loot-button'); 
+    const spinner = document.getElementById('loot-loading-spinner');
+    const output = document.getElementById('loot-output');
+    
+    // 1. UI Prep
+    if (btn) btn.disabled = true;
+    if (spinner) spinner.classList.remove('hidden');
+    output.innerHTML = '<span class="text-gray-400 animate-pulse">Scanning cargo containers...</span>';
+    
+    try {
+        const level = document.getElementById('loot-level').value;
+        const type = document.getElementById('loot-type').value;
+        const isSW5e = window.currentSystem === 'sw5e';
         
-        // 1. UI Prep
-        btn.disabled = true;
-        spinner.classList.remove('hidden');
-        output.innerHTML = '<span class="text-gray-400 animate-pulse">Rolling on loot tables...</span>';
-        
-        try {
-            // 2. Build Prompt
-            const level = document.getElementById('loot-level').value;
-            const type = document.getElementById('loot-type').value;
-            const source = document.getElementById('loot-source').value; // 'ai' or 'wiki'
-
-            // If user selected Wiki (which we don't have an API for yet), warn them or fallback to AI
-            // For now, we will force AI but customize the prompt
-            let prompt = `Generate a D&D 5e loot table for a Level ${level} party. Context: ${type}. 
-            Include values (GP). Format as a clean list.`;
-
-            if (type === 'Shop Inventory') {
-                prompt = `Generate a D&D 5e fantasy shop inventory for a Level ${level} party. 
-                Include item names, descriptions, and gold prices.`;
-            }
-
-            // 3. Call AI
-            const data = await callAI(API_URL, { 
-                contents: [{ parts: [{ text: prompt }] }] 
-            });
-            
-            // 4. Format & Display
-            const rawText = data.candidates[0].content.parts[0].text;
-            
-            // Convert newlines to HTML breaks and bold text
-            const formattedText = rawText
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-yellow-400">$1</strong>'); // Bold text becomes yellow
-
-            output.innerHTML = formattedText;
-
-        } catch(e) { 
-            console.error(e);
-            // 🟢 THIS SHOWS THE ACTUAL ERROR
-            output.innerHTML = `<span class="text-red-400 font-bold">Error:</span> ${e.message}`; 
-        } finally { 
-            spinner.classList.add('hidden'); 
-            btn.disabled = false; 
+        // 🟢 REFINED DYNAMIC PROMPT (Strictly Gear)
+        let prompt = "";
+        if (isSW5e) {
+            prompt = `Generate a list of physical rewards for a Level ${level} Star Wars 5e (SW5e) ${type}. 
+            DO NOT generate NPC statblocks, characters, or enemies. 
+            Focus strictly on: 
+            - SW5e Enhanced Items (Chassis or Modifications like Kyber Crystals and Scopes).
+            - Consumables (Medpacs, Stimpacs, Thermal Detonators).
+            - Galactic Credits (cr).
+            Format as a clean, bolded list with short descriptions. Ensure items are mechanically appropriate for SW5e.`;
+        } else {
+            prompt = `Generate a list of loot rewards for a Level ${level} D&D 5e ${type}. 
+            DO NOT generate NPC statblocks or monsters. 
+            Focus strictly on:
+            - Magic items, weapons, and armor.
+            - Valuables (Gemstones, jewelry, art).
+            - Gold Pieces (gp).
+            Format as a clean, bolded list with short descriptions.`;
         }
-    };
+
+        // 3. Call AI
+        const data = await callAI(API_URL, { 
+            contents: [{ parts: [{ text: prompt }] }] 
+        });
+        
+        // 4. Format & Display
+        const rawText = data.candidates[0].content.parts[0].text;
+        const accentColor = isSW5e ? 'text-cyan-400' : 'text-yellow-500';
+        const bgStyle = isSW5e ? 'bg-slate-950/80 border-cyan-500' : 'bg-orange-50/10 border-yellow-900/30';
+        
+        const formattedText = rawText
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, `<strong class="${accentColor}">$1</strong>`);
+
+        output.innerHTML = `
+            <div class="p-4 rounded border ${bgStyle} font-mono text-sm shadow-inner">
+                ${isSW5e ? '<div class="text-[10px] text-cyan-500 mb-2 font-bold tracking-widest border-b border-cyan-900 pb-1">IDENTIFIED ASSETS // NO LIVING SIGNATURES</div>' : ''}
+                ${formattedText}
+            </div>
+        `;
+
+    } catch(e) { 
+        console.error(e);
+        output.innerHTML = `<span class="text-red-400 font-bold">Signal Error:</span> ${e.message}`; 
+    } finally { 
+        if (spinner) spinner.classList.add('hidden'); 
+        if (btn) btn.disabled = false; 
+    }
+};
 
     window.generateCreativeIdea = async () => {
         const btn = document.getElementById('generate-button'); btn.disabled = true;
@@ -2935,41 +3188,35 @@ window.saveMonsterToNotes = async function() {
         
         // --- END OF SOUNDBOARD LOGIC ---
 
-        window.splitLoot = function() {
-            const pp = parseInt(document.getElementById('loot-pp').value) || 0;
-            const gp = parseInt(document.getElementById('loot-gp').value) || 0;
-            const ep = parseInt(document.getElementById('loot-ep').value) || 0;
-            const sp = parseInt(document.getElementById('loot-sp').value) || 0;
-            const cp = parseInt(document.getElementById('loot-cp').value) || 0;
-            const count = parseInt(document.getElementById('loot-party-size').value) || 1;
+     window.splitLoot = function() {
+    const isSW5e = (window.currentSystem === 'sw5e');
+    const partySize = parseInt(document.getElementById('loot-party-size').value) || 1;
+    const output = document.getElementById('split-results');
+    
+    // Get values
+    const gp = parseInt(document.getElementById('loot-gp').value) || 0;
+    const totalInput = parseInt(document.getElementById('total-loot').value) || 0;
 
-            if (count < 1) return;
-
-            // Convert everything to copper to divide evenly
-            const totalCopper = cp + (sp * 10) + (ep * 50) + (gp * 100) + (pp * 1000);
-            const shareCopper = Math.floor(totalCopper / count);
-            const remainder = totalCopper % count;
-
-            // Convert the share back up to highest denominations
-            let rest = shareCopper;
-            const rPP = Math.floor(rest / 1000); rest %= 1000;
-            const rGP = Math.floor(rest / 100); rest %= 100;
-            const rEP = Math.floor(rest / 50); rest %= 50;
-            const rSP = Math.floor(rest / 10); rest %= 10;
-            const rCP = rest;
-
-            let result = [];
-            if(rPP) result.push(`${rPP}pp`);
-            if(rGP) result.push(`${rGP}gp`);
-            if(rEP) result.push(`${rEP}ep`);
-            if(rSP) result.push(`${rSP}sp`);
-            if(rCP) result.push(`${rCP}cp`);
-            
-            const resultText = result.length > 0 ? "Each gets: " + result.join(", ") : "Nothing to split.";
-            const remainderText = remainder > 0 ? ` <span class='text-red-400'>(${remainder}cp left)</span>` : "";
-
-            document.getElementById('loot-split-result').innerHTML = resultText + remainderText;
-        };
+    if (isSW5e) {
+        const totalCredits = totalInput > 0 ? totalInput : gp;
+        const perPerson = (totalCredits / partySize).toFixed(2);
+        
+        output.innerHTML = `
+            <div class="mt-2 p-3 bg-black border border-blue-900 rounded font-mono text-[10px] text-blue-400">
+                <div class="text-center border-b border-blue-900 pb-1 mb-2 uppercase">Galactic Bank Record</div>
+                <div class="flex justify-between"><span>TOTAL DEPOSIT:</span> <span>${totalCredits} CR</span></div>
+                <div class="flex justify-between"><span>SHARES:</span> <span>${partySize}</span></div>
+                <div class="border-t border-dashed border-blue-900 mt-2 pt-2 text-sm font-bold text-cyan-300 flex justify-between">
+                    <span>PER SHARE:</span> <span>${perPerson} CR</span>
+                </div>
+            </div>
+        `;
+    } else {
+        // Standard D&D math...
+        const total = totalInput > 0 ? totalInput : gp;
+        output.innerText = `Each player receives: ${(total / partySize).toFixed(2)} GP`;
+    }
+};
     });
     
 // --- 12. MONSTER COMPENDIUM (Strict CR Filtering) ---
@@ -2988,22 +3235,40 @@ const fmtSrdSection = (title, items) => {
     // 1. If there's no data, don't show the section header
     if (!items || (Array.isArray(items) && items.length === 0)) return '';
 
-    // 2. Ensure we have an array to work with
+    const isSW5e = (window.currentSystem === 'sw5e');
     const dataArray = Array.isArray(items) ? items : [items];
 
-    let html = `<div class="dnd-section-title mt-4 border-b border-red-200 text-red-800 font-bold uppercase text-xs tracking-wide mb-2">${title}</div>`;
+    // 2. DYNAMIC HEADERS
+    const headerClass = isSW5e 
+        ? "border-b border-cyan-500/50 text-cyan-400 font-bold uppercase text-[11px] tracking-widest mb-3 mt-6 pb-1" 
+        : "dnd-section-title mt-4 border-b border-red-200 text-red-800 font-bold uppercase text-xs tracking-wide mb-2";
+
+    let html = `<div class="${headerClass}">${title}</div>`;
     
     dataArray.forEach(item => {
-        // 🟢 THE UNIVERSAL SEARCH: Look for ANY text field that contains the info
         const name = item.name || "Ability";
         const content = item.description || item.desc || item.text || "";
         
         if (content) {
-            html += `
-                <div class="mb-3 text-sm leading-relaxed text-black">
-                    <strong class="text-red-900 font-bold italic">${name}.</strong> 
-                    ${content}
-                </div>`;
+            if (isSW5e) {
+                // 🚀 NEON SCI-FI LAYOUT (High Contrast)
+                html += `
+                    <div class="mb-4 bg-cyan-900/10 p-2 rounded border-l-2 border-cyan-500/30">
+                        <div class="neon-label text-yellow-400 font-black text-xs uppercase tracking-wider mb-1">
+                           <span class="opacity-50">>></span> ${name}
+                        </div> 
+                        <div class="neon-text text-cyan-50 font-mono text-sm leading-relaxed antialiased">
+                            ${content}
+                        </div>
+                    </div>`;
+            } else {
+                // 🐉 TRADITIONAL PARCHMENT LAYOUT
+                html += `
+                    <div class="mb-3 text-sm leading-relaxed text-black">
+                        <strong class="text-red-900 font-bold italic">${name}.</strong> 
+                        ${content}
+                    </div>`;
+            }
         }
     });
 
@@ -3015,80 +3280,117 @@ const fmtList = (val) => Array.isArray(val) ? val.join(', ') : (val || '-');
 
 // The core function to build the full, collapsable statblock card
 const renderDetailedSrdMonster = (m, index) => {
-    // 1. NORMALIZE BASIC STATS
+    // 1. SYSTEM CHECK
+    const isSW5e = (window.currentSystem === 'sw5e');
+    const uniqueId = `monster-${index}`;
+
+    // 2. NORMALIZE BASIC STATS
     const hp = m.hitPoints || m.hit_points || 10;
     const ac = m.armorClass || m.armor_class || 10;
     const cr = m.challengeRating || m.challenge_rating || "0";
     const dex = m.dexterity || 10;
     const speedRaw = m.speed || m.speed_desc || "30 ft.";
     const safeName = m.name.replace(/'/g, "\\'");
-    const uniqueId = `monster-${index}`;
 
-    // 2. SW5E DEEP-DATA EXTRACTION (Fixes the missing Actions)
-    // We force-extract any array that might contain combat info
-    const monsterTraits = m.traits || m.special_abilities || [];
-    const monsterActions = m.actions || [];
-    const monsterReactions = m.reactions || [];
-    const monsterLegendary = m.legendaryActions || m.legendary_actions || [];
+    // 3. 🚀 SW5E DEEP-DATA MAPPING (The Fix)
+    // Star Wars API stores combat logic in 'behaviors' and 'actions'
+    let monsterTraits = [];
+    let monsterActions = [];
+    let monsterReactions = [];
+    let monsterLegendary = [];
 
-    // 3. ABILITY SCORES
-    const str = m.strength || 10;
-    const con = m.constitution || 10;
-    const int = m.intelligence || 10;
-    const wis = m.wisdom || 10;
-    const cha = m.charisma || 10;
-    const initMod = Math.floor((dex - 10) / 2);
+    if (isSW5e) {
+        // Star Wars data normalization
+        monsterTraits = m.behaviors ? m.behaviors.filter(b => b.monsterBehaviorTypeEnum === 1 || b.name === "Traits") : [];
+        monsterActions = m.behaviors ? m.behaviors.filter(b => b.monsterBehaviorTypeEnum === 2 || b.name === "Actions") : [];
+        monsterReactions = m.behaviors ? m.behaviors.filter(b => b.monsterBehaviorTypeEnum === 3 || b.name === "Reactions") : [];
+        monsterLegendary = m.behaviors ? m.behaviors.filter(b => b.monsterBehaviorTypeEnum === 4 || b.name === "Legendary Actions") : [];
+    } else {
+        // Standard D&D mapping
+        monsterTraits = m.traits || m.special_abilities || [];
+        monsterActions = m.actions || [];
+        monsterReactions = m.reactions || [];
+        monsterLegendary = m.legendaryActions || m.legendary_actions || [];
+    }
 
-    // 4. FORMATTING UTILITIES
+    // 4. DYNAMIC STYLING
+    const blockClass = isSW5e ? "stat-block" : "dnd-statblock"; 
+    const headerColor = isSW5e ? "text-cyan-400" : "text-red-800";
+    const ruleStyle = isSW5e ? "border-b border-cyan-900/50 my-3" : "tapered-rule";
+    const subTextColor = isSW5e ? "text-cyan-100/80" : "text-black";
+
     const speedDisplay = typeof speedRaw === 'object' ? 
         Object.entries(speedRaw).map(([k, v]) => `${k} ${v}`).join(', ') : speedRaw;
     
     let saves = [];
-    const sMap = { "Str": m.strengthSave ?? m.strength_save, "Dex": m.dexteritySave ?? m.dexterity_save, "Con": m.constitutionSave ?? m.constitution_save, "Int": m.intelligenceSave ?? m.intelligence_save, "Wis": m.wisdomSave ?? m.wisdom_save, "Cha": m.charismaSave ?? m.charisma_save };
+    const sMap = { "Str": m.strengthSave, "Dex": m.dexteritySave, "Con": m.constitutionSave, "Int": m.intelligenceSave, "Wis": m.wisdomSave, "Cha": m.charismaSave };
     Object.entries(sMap).forEach(([k, v]) => { if (v != null) saves.push(`${k} ${v >= 0 ? '+' : ''}${v}`); });
 
     const div = document.createElement('div');
-    div.className = 'bg-gray-800 rounded border border-gray-700 overflow-hidden mb-2';
+    div.className = `bg-gray-800 rounded border ${isSW5e ? 'border-cyan-500/30' : 'border-gray-700'} overflow-hidden mb-2`;
+    
     div.innerHTML = `
         <div class="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition" onclick="document.getElementById('${uniqueId}').classList.toggle('hidden')">
             <div>
-                <div class="font-bold text-blue-200 text-sm">${m.name} <span class="text-[10px] text-gray-500">▼</span></div>
-                <div class="text-[10px] text-gray-400">CR ${cr} • AC ${ac} • HP ${hp}</div>
+                <div class="font-bold ${isSW5e ? 'text-cyan-300' : 'text-blue-200'} text-sm">
+                    ${isSW5e ? '🛰️ ' : ''}${m.name} <span class="text-[10px] text-gray-500">▼</span>
+                </div>
+                <div class="text-[10px] text-gray-500 uppercase tracking-tighter">
+                    ${isSW5e ? 'Threat' : 'CR'} ${cr} • AC ${ac} • HP ${hp}
+                </div>
             </div>
-            <div class="flex gap-2">
-                <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${initMod})" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded border border-green-500">+ Add</button>
-            </div>
+            <button onclick="event.stopPropagation(); window.importCompendiumMonster('${safeName}', ${hp}, ${ac}, ${Math.floor((dex-10)/2)})" 
+                    class="${isSW5e ? 'bg-cyan-950 border-cyan-500 text-cyan-300' : 'bg-green-700 border-green-500 text-white'} text-[10px] font-bold py-1 px-3 rounded border">
+                ${isSW5e ? 'DATA-LINK' : '+ Add'}
+            </button>
         </div>
-        <div id="${uniqueId}" class="hidden border-t border-gray-600">
-            <div class="dnd-statblock text-left text-sm bg-white p-4">
-                <div class="text-red-800 font-serif text-xl border-b-2 border-red-800 mb-1 font-bold uppercase">${m.name}</div>
-                <div class="italic text-xs mb-2 text-black">${m.size || ''} ${m.type || ''}, ${m.alignment || m.align || ''}</div>
-                <div class="tapered-rule"></div>
-                <div class="text-red-900 font-serif">
-                    <p><strong>Armor Class</strong> ${ac} (${m.armorDesc || m.armor_class_desc || 'natural armor'})</p>
-                    <p><strong>Hit Points</strong> ${hp} (${m.hitDice || m.hit_dice || ''})</p>
+        <button onclick="event.stopPropagation(); window.saveCompendiumToNotes(${index})" 
+            class="${isSW5e ? 'bg-indigo-900 border-indigo-500 text-indigo-200' : 'bg-blue-700 border-blue-500 text-white'} text-[10px] font-bold py-1 px-3 rounded border">
+        💾 ${isSW5e ? 'ARCHIVE' : 'Save'}
+    </button>
+</div>
+        
+        <div id="${uniqueId}" class="hidden border-t ${isSW5e ? 'border-cyan-900' : 'border-gray-600'}">
+            <div class="${blockClass} text-left text-sm p-4">
+                <div class="${headerColor} text-xl border-b-2 ${isSW5e ? 'border-cyan-400' : 'border-red-800'} mb-1 font-bold uppercase tracking-widest">
+                    ${m.name}
+                </div>
+                <div class="italic text-xs mb-2 ${subTextColor}">
+                    ${m.size || ''} ${m.type || ''}, ${m.alignment || m.align || ''}
+                </div>
+                
+                <div class="${ruleStyle}"></div>
+                
+                <div class="${isSW5e ? 'text-cyan-100' : 'text-red-900'} font-serif">
+                    <p><strong>Armor Class</strong> ${ac} <span class="opacity-60 text-xs">(${m.armorDesc || m.armor_class_desc || 'natural'})</span></p>
+                    <p><strong>Hit Points</strong> ${hp} <span class="opacity-60 text-xs">(${m.hitDice || m.hit_dice || ''})</span></p>
                     <p><strong>Speed</strong> ${speedDisplay}</p>
                 </div>
-                <div class="tapered-rule"></div>
-                <div class="grid grid-cols-6 text-center text-red-900 text-xs font-bold my-2">
-                    <div>STR<br>${str} (${fmtMod(str)})</div><div>DEX<br>${dex} (${fmtMod(dex)})</div><div>CON<br>${con} (${fmtMod(con)})</div>
-                    <div>INT<br>${int} (${fmtMod(int)})</div><div>WIS<br>${wis} (${fmtMod(wis)})</div><div>CHA<br>${cha} (${fmtMod(cha)})</div>
+
+                <div class="${ruleStyle}"></div>
+
+                <div class="grid grid-cols-6 text-center ${isSW5e ? 'text-cyan-400' : 'text-red-900'} text-[10px] font-bold my-2">
+                    <div>STR<br>${m.strength||10}</div>
+                    <div>DEX<br>${m.dexterity||10}</div>
+                    <div>CON<br>${m.constitution||10}</div>
+                    <div>INT<br>${m.intelligence||10}</div>
+                    <div>WIS<br>${m.wisdom||10}</div>
+                    <div>CHA<br>${m.charisma||10}</div>
                 </div>
-                <div class="tapered-rule"></div>
-                <div class="text-xs text-red-900 space-y-1 mt-2">
-                    <p><strong>Saves:</strong> <span class="text-black">${saves.join(', ') || '-'}</span></p>
-                    <p><strong>Damage Resistances:</strong> <span class="text-black">${m.damageResistances || m.damage_resistances || '-'}</span></p>
-                    <p><strong>Condition Immunities:</strong> <span class="text-black">${m.conditionImmunities || m.condition_immunities || '-'}</span></p>
-                    <p><strong>Senses:</strong> <span class="text-black">${m.senses || 'passive Perception 10'}</span></p>
-                    <p><strong>Languages:</strong> <span class="text-black">${m.languages || m.languagesKnown || '-'}</span></p>
-                    <p><strong>Challenge:</strong> <span class="text-black">${cr}</span></p>
+
+                <div class="${ruleStyle}"></div>
+
+                <div class="text-xs ${isSW5e ? 'text-cyan-200' : 'text-red-900'} space-y-1 mt-2">
+                    <p><strong>Saving Throws:</strong> <span class="${isSW5e ? 'text-white' : 'text-black'}">${saves.join(', ') || '-'}</span></p>
+                    <p><strong>Senses:</strong> <span class="${isSW5e ? 'text-white' : 'text-black'}">${m.senses || 'passive Perception 10'}</span></p>
+                    <p><strong>Languages:</strong> <span class="${isSW5e ? 'text-white' : 'text-black'}">${m.languages || m.languagesKnown || '-'}</span></p>
                 </div>
-                <div class="tapered-rule"></div>
-                <div class="text-black mt-2 space-y-3 font-serif">
-                    ${fmtSrdSection("Traits", monsterTraits)}
-                    ${fmtSrdSection("Actions", monsterActions)}
-                    ${fmtSrdSection("Reactions", monsterReactions)}
-                    ${fmtSrdSection("Legendary Actions", monsterLegendary)}
+
+                <div class="mt-4 space-y-3 ${isSW5e ? 'text-cyan-50' : 'text-black'}">
+                    ${fmtSrdSection(isSW5e ? "Passive Subroutines" : "Traits", monsterTraits)}
+                    ${fmtSrdSection(isSW5e ? "Combat Behaviors" : "Actions", monsterActions)}
+                    ${fmtSrdSection(isSW5e ? "Countermeasures" : "Reactions", monsterReactions)}
+                    ${fmtSrdSection(isSW5e ? "Legendary Cycles" : "Legendary Actions", monsterLegendary)}
                 </div>
             </div>
         </div>
@@ -6963,22 +7265,384 @@ setTimeout(cycleAds, 3000);   // First show after 3 seconds
 
 window.currentSystem = 'dnd5e';
 
+// --- GLOBAL STATE ---
+window.currentSystem = 'dnd5e';
+window.mapState = { pins: [] };
+
+// --- HELPERS ---
+const updateLabelText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = text;
+};
+
+// --- 1. THE MASTER SYSTEM TOGGLE (FULL & UNCUT) ---
 window.toggleSystem = () => {
     const body = document.body;
     const btn = document.getElementById('system-toggle');
-    
-    if (window.currentSystem === 'dnd5e') {
-        window.currentSystem = 'sw5e';
+    const siteTitle = document.getElementById('site-title'); // Targeted for Lightsaber effect
+    const searchInput = document.getElementById('compendium-search');
+    const settlementVibe = document.getElementById('settlement-vibe');
+    const travelIcon = document.getElementById('travel-header-icon');
+    const coinHeaders = document.getElementById('coin-headers');
+    const coinInputs = document.getElementById('coin-inputs');
+    const splitterCurrency = document.getElementById('splitter-currency');
+    const mapWrapper = document.getElementById('map-wrapper');
+    const npcType = document.getElementById('npc-type');
+    const npcLevel = document.getElementById('npc-level');
+
+    window.currentSystem = (window.currentSystem === 'dnd5e') ? 'sw5e' : 'dnd5e';
+
+    if (window.currentSystem === 'sw5e') {
+        // --- 🚀 START SW5E MODE ---
         body.classList.add('sw5e-mode');
-        btn.innerHTML = "🐉 Mode: D&D 5e";
-        // Optional: Update placeholders
-        document.getElementById('compendium-search').placeholder = "Search SW5e Scum & Villainy...";
-    } else {
-        window.currentSystem = 'dnd5e';
-        body.classList.remove('sw5e-mode');
         btn.innerHTML = "🚀 Mode: SW5e";
-        document.getElementById('compendium-search').placeholder = "Search SRD Monsters...";
+
+        // ⚔️ LIGHTSABER HEADER IGNITION
+        if (siteTitle) {
+            siteTitle.innerText = "AEGIS"; 
+        }
+
+        // TAB NAVIGATION SWAPS
+        updateLabelText('tab-prep', '📂 Mission Brief');
+        updateLabelText('tab-maps', '🌌 Star Chart');
+        updateLabelText('tab-loot', '📦 Cargo Bay');
+        updateLabelText('tab-travel', '🚀 Astrogation');
+        updateLabelText('tab-sounds', '📟 Comms Link');
+
+        // PREP TAB SWAPS
+        updateLabelText('prep-npc-title', '👤 Personnel Dossiers');
+        updateLabelText('prep-lore-title', '💾 Datacron Archives');
+        updateLabelText('prep-settlement-title', '🪐 Planetary Data');
+        updateLabelText('name-gen-title', 'Xeno-Name Generator');
+        if (npcType) npcType.value = "Trandoshan Bounty Hunter";
+        if (npcLevel) npcLevel.value = "CR 5";
+
+        // LOOT UI & CREDITS
+        updateLabelText('loot-gen-title', '⚙️ Equipment Fabricator');
+        updateLabelText('splitter-title', '💳 Credit Chip Splitter');
+        updateLabelText('quick-split-label', 'Credit Distribution');
+        if (splitterCurrency) {
+            splitterCurrency.innerText = "CREDITS";
+            splitterCurrency.style.color = "#60a5fa"; 
+        }
+        if (coinHeaders) {
+            coinHeaders.innerHTML = '<div></div><div></div><div style="color:#60a5fa">CREDITS</div><div></div><div></div>';
+        }
+        if (coinInputs) {
+            const inputs = coinInputs.querySelectorAll('input');
+            if (inputs.length >= 5) {
+                inputs[0].style.display = 'none'; inputs[2].style.display = 'none';
+                inputs[3].style.display = 'none'; inputs[4].style.display = 'none';
+                inputs[1].style.display = 'block'; inputs[1].placeholder = "CREDITS";
+            }
+        }
+
+        // TRAVEL / ASTROGATION
+        updateLabelText('travel-title', '🌌 Hyperspace Navigator');
+        if (travelIcon) travelIcon.innerText = '🌌';
+        updateLabelText('dist-label', 'Distance (Parsecs)');
+        updateLabelText('pace-label', 'Hyperdrive Class');
+        updateLabelText('travel-calc-btn', 'Plot Course');
+
+        // MAPS / STAR CHART
+        updateLabelText('map-main-title', '🌌 Galactic Star Chart');
+        updateLabelText('map-gen-btn', '🎲 Scan Sector');
+        updateLabelText('label-forests', '🪐 Planets'); 
+        updateLabelText('label-mountains', '🛰️ Stations');
+        updateLabelText('label-rivers', '☄️ Asteroids');
+        updateLabelText('label-cities', '🎷 Cantinas');
+        updateLabelText('label-secrets', '👹 Sith Lore');
+        if (mapWrapper) {
+            mapWrapper.style.aspectRatio = "16 / 9";
+            mapWrapper.style.boxShadow = "0 0 25px rgba(0, 255, 255, 0.2)";
+        }
+        if (searchInput) searchInput.placeholder = "Search the Holocron...";
+
+    } else {
+        // --- 🐉 RESET TO D&D 5E ---
+        body.classList.remove('sw5e-mode');
+        btn.innerHTML = "🐉 Mode: D&D 5e";
+
+        // ⚔️ RESET HEADER TO FANTASY
+        if (siteTitle) {
+            siteTitle.innerText = "AEGIS"; 
+        }
+
+        // RESET TAB NAVIGATION
+        updateLabelText('tab-prep', '📜 Prep');
+        updateLabelText('tab-maps', '🗺️ Maps');
+        updateLabelText('tab-loot', '💰 Loot');
+        updateLabelText('tab-travel', '⛺ Travel');
+        updateLabelText('tab-sounds', '🔊 Sounds');
+
+        // RESET PREP TAB
+        updateLabelText('prep-npc-title', '👤 NPC Generator');
+        updateLabelText('prep-lore-title', '📜 Lore & History');
+        updateLabelText('prep-settlement-title', '🏘️ Settlements');
+        updateLabelText('name-gen-title', 'Name Generator');
+        if (npcType) npcType.value = "Shadow Rogue";
+        if (npcLevel) npcLevel.value = "3";
+
+        // RESET LOOT & CURRENCY
+        updateLabelText('loot-gen-title', 'Loot Generator');
+        updateLabelText('splitter-title', '💰 Loot Splitter');
+        updateLabelText('quick-split-label', 'Quick Total Splitter');
+        if (splitterCurrency) {
+            splitterCurrency.innerText = "GP";
+            splitterCurrency.style.color = "#eab308"; 
+        }
+        if (coinHeaders) {
+            coinHeaders.innerHTML = '<div>PP</div><div>GP</div><div>EP</div><div>SP</div><div>CP</div>';
+        }
+        if (coinInputs) {
+            const inputs = coinInputs.querySelectorAll('input');
+            inputs.forEach(input => { 
+                input.style.display = 'block'; 
+                input.placeholder = "0"; 
+            });
+        }
+
+        // RESET TRAVEL
+        updateLabelText('travel-title', 'Travel Calculator');
+        if (travelIcon) travelIcon.innerText = '⛺';
+        updateLabelText('dist-label', 'Distance (Miles)');
+        updateLabelText('pace-label', 'Travel Pace');
+        updateLabelText('travel-calc-btn', 'Calculate Travel');
+
+        // RESET MAPS
+        updateLabelText('map-main-title', 'Realm Cartographer');
+        updateLabelText('map-gen-btn', '🎲 Generate Land');
+        updateLabelText('label-forests', '🌲 Forests'); 
+        updateLabelText('label-mountains', '⛰️ Mountains');
+        updateLabelText('label-rivers', '💧 Rivers');
+        updateLabelText('label-cities', '🏰 Cities');
+        updateLabelText('label-secrets', '💀 Secrets');
+        if (mapWrapper) {
+            mapWrapper.style.boxShadow = "";
+        }
+        if (searchInput) searchInput.placeholder = "Search SRD Monsters...";
     }
+};
+
+window.renderStatblock = function(data) {
+    const isSW5e = (window.currentSystem === 'sw5e');
+    const container = document.getElementById('compendium-result');
+    if (!data) return;
+
+    // Encode data to safely pass through the button
+    const encodedData = btoa(JSON.stringify(data));
+
+    container.innerHTML = `
+        <div class="stat-block relative mt-4 overflow-hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold ${isSW5e ? 'text-cyan-400' : 'text-red-900'}">${data.name}</h2>
+                <button onclick="window.saveToEnemies('${encodedData}')" 
+                        class="px-4 py-2 rounded font-bold text-xs border transition-all 
+                        ${isSW5e ? 'border-cyan-500 text-cyan-400 hover:bg-cyan-900' : 'border-red-800 text-red-800 hover:bg-red-100'}">
+                    ${isSW5e ? '➕ MARK AS HOSTILE' : '➕ ADD TO ENEMIES'}
+                </button>
+            </div>
+            <div class="text-sm italic opacity-70">${data.size} ${data.type}</div>
+        </div>
+    `;
+};
+
+window.saveToEnemies = function(encodedData) {
+    const monster = JSON.parse(atob(encodedData));
+    let enemies = JSON.parse(localStorage.getItem('enemyNotes') || '[]');
+
+    // Check if monster is already in the list
+    if (!enemies.find(e => e.name === monster.name)) {
+        enemies.push({
+            name: monster.name,
+            cr: monster.challenge_rating,
+            hp: monster.hit_points,
+            data: monster // Store full data to re-open it later
+        });
+        localStorage.setItem('enemyNotes', JSON.stringify(enemies));
+        alert(window.currentSystem === 'sw5e' ? "Target locked in Personnel Dossier." : "Enemy added to notes.");
+        window.renderEnemyNotes();
+    } else {
+        alert("Target is already being tracked.");
+    }
+};
+
+window.renderEnemyNotes = function() {
+    const container = document.getElementById('enemy-notes-list');
+    if (!container) return;
+
+    const enemies = JSON.parse(localStorage.getItem('enemyNotes') || '[]');
+    const isSW5e = (window.currentSystem === 'sw5e');
+
+    if (enemies.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center opacity-40 italic">No hostile targets acquired.</div>`;
+        return;
+    }
+
+    container.innerHTML = enemies.map((enemy, index) => `
+        <div class="flex justify-between items-center p-3 mb-2 bg-black/30 border-l-4 ${isSW5e ? 'border-cyan-500' : 'border-red-800'} rounded">
+            <div class="cursor-pointer flex-1" onclick='window.renderStatblock(${JSON.stringify(enemy.data)})'>
+                <div class="font-bold text-lg">${enemy.name}</div>
+                <div class="text-xs opacity-60">HP: ${enemy.hp} | ${isSW5e ? 'Threat' : 'CR'}: ${enemy.cr}</div>
+            </div>
+            <button onclick="window.removeEnemy(${index})" class="text-red-500 font-bold hover:scale-110 px-2">✕</button>
+        </div>
+    `).join('');
+};
+
+window.removeEnemy = function(index) {
+    let enemies = JSON.parse(localStorage.getItem('enemyNotes') || '[]');
+    enemies.splice(index, 1);
+    localStorage.setItem('enemyNotes', JSON.stringify(enemies));
+    window.renderEnemyNotes();
+};
+
+// Initial load
+document.addEventListener('DOMContentLoaded', window.renderEnemyNotes);
+
+const sw5eLootTables = {
+    standard: ["Medpac", "Stimpac", "Adrenal", "Repair Kit", "Power Cell (High Capacity)", "Thermal Detonator"],
+    premium: ["Fine Vibroweapon (+1)", "Enhanced Blaster Scope", "Combat Suit (Reinforced)", "Kyber Crystal (Blue/Green)", "Targeting Computer Mk I"],
+    prototype: ["Prototype Lightsaber", "Heavy Exoskeleton", "Shield Generator Mk II", "Advanced Medpac", "Wrist-Mounted Grappling Hook"],
+    advanced: ["Vibro-Greatsword (Advanced)", "Personal Cloaking Device", "Armor Modification (Absorptive)", "Holocron (Minor)"],
+    legendary: ["Legendary Kyber Crystal (Red/Purple)", "Sith/Jedi Robes of the Force", "Masterwork Starship Part", "Prototype Jetpack"]
+};
+
+window.generateSW5eLoot = function() {
+    const level = parseInt(document.getElementById('npc-level')?.value.replace(/\D/g, '')) || 1;
+    let rarity = "standard";
+
+    // Determine Rarity based on Level
+    if (level >= 17) rarity = "legendary";
+    else if (level >= 13) rarity = "advanced";
+    else if (level >= 9) rarity = "prototype";
+    else if (level >= 5) rarity = "premium";
+
+    const items = sw5eLootTables[rarity];
+    const rolledItem = items[Math.floor(Math.random() * items.length)];
+    const credits = Math.floor(Math.random() * (level * 200)) + 50;
+
+    return { item: rolledItem, credits: credits, rarity: rarity.toUpperCase() };
+};
+
+window.saveCompendiumToNotes = async function(index) {
+    // 1. Check if logged in
+    if (!window.userId) { 
+        alert("🔒 Please log in to a Session to save data."); 
+        window.openLoginModal(); 
+        return; 
+    }
+
+    // 2. Locate the monster data from the current results
+    // We assume your search results are stored in a variable or we grab the specific HTML element
+    const uniqueId = `monster-${index}`;
+    const cardElement = document.getElementById(uniqueId);
+    
+    if (!cardElement) {
+        alert("Error: Could not find the statblock content.");
+        return;
+    }
+
+    // 3. Ask for Campaign (Using your existing prompt system)
+    const targetCampaign = await window.promptForCampaign();
+    if (!targetCampaign) return;
+
+    // 4. Extract Name (from the header inside the card)
+    const nameEl = cardElement.querySelector('.dnd-header, .text-xl');
+    const monsterName = nameEl ? nameEl.innerText.trim() : "Unknown Creature";
+
+    // 5. Build Note Content
+    // We clone the inner HTML so we get all the styling (Parchment or Neon)
+    const content = cardElement.innerHTML;
+
+    const newNote = {
+        id: crypto.randomUUID(),
+        title: `${monsterName} (Imported)`,
+        content: content,
+        campaign: targetCampaign,
+        timestamp: new Date().toISOString()
+    };
+
+    // 6. Push to Notes
+    if (!window.structuredNotes.enemyNotes) window.structuredNotes.enemyNotes = [];
+    window.structuredNotes.enemyNotes.unshift(newNote);
+
+    // 7. Sync to Firebase
+    await window.saveStructuredNotes('enemyNotes', window.structuredNotes.enemyNotes);
+
+    // 8. Feedback
+    if(confirm(`✅ ${monsterName} saved to Enemies in "${targetCampaign}".\n\nGo to Notes now?`)) {
+        window.switchTab('notes');
+        window.switchSubTab('enemyNotes');
+    }
+};
+
+// 1. Define the Artist Collection
+const getArtCol = () => window.collection(window.db, 'community_art');
+
+// 2. Function to Load and Render Art
+window.loadArtistGallery = () => {
+    const list = document.getElementById('artist-gallery-list');
+    if (!list) return;
+
+    // We query for the latest 50 pieces of art
+    // Update your Firebase query
+const q = window.query(getArtCol(), window.limit(50));
+
+    window.onSnapshot(q, (snap) => {
+        if (snap.empty) {
+            list.innerHTML = '<p class="text-center text-gray-500 text-xs py-10 col-span-full">The gallery is currently empty. Check back soon!</p>';
+            return;
+        }
+
+        list.innerHTML = ''; // Clear loading state
+
+    snap.forEach(doc => {
+    const item = doc.data();
+    const card = document.createElement('div');
+    const uniqueId = `art-${doc.id}`;
+    
+    card.className = "break-inside-avoid mb-4 bg-gray-900 rounded-xl border border-gray-700 shadow-lg overflow-hidden group hover:border-pink-500/50 transition-all duration-300";
+    
+    card.innerHTML = `
+        <div class="relative overflow-hidden cursor-zoom-in" onclick="window.openFullArt('${item.imageUrl}')">
+            <img id="img-${uniqueId}" src="${item.imageUrl}" alt="${item.title}" 
+                 onerror="this.style.display='none'; document.getElementById('err-${uniqueId}').classList.remove('hidden')"
+                 class="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105">
+            
+            <div id="err-${uniqueId}" class="hidden art-placeholder">
+                <span class="text-2xl mb-2 opacity-20">📡</span>
+            </div>
+
+            <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                <p class="text-white font-bold text-sm">${item.title}</p>
+                <p class="text-pink-400 text-[10px] uppercase font-bold">By ${item.artistName}</p>
+            </div>
+        </div>
+        <div class="p-3 bg-gray-800/50 border-t border-gray-700">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[9px] bg-pink-900/40 text-pink-300 px-2 py-0.5 rounded border border-pink-500/30 uppercase font-black tracking-tighter">${item.type || 'Art'}</span>
+                <a href="${item.socialLink}" target="_blank" class="text-[10px] text-indigo-400 hover:text-white transition">Visit Artist ➜</a>
+            </div>
+        </div>
+    `;
+    list.appendChild(card);
+});
+    });
+};
+
+// 3. Trigger Load when Tab is Switched
+const originalSwitchTab = window.switchTab;
+window.switchTab = function(tabId) {
+    originalSwitchTab(tabId);
+    if (tabId === 'gallery') {
+        window.loadArtistGallery();
+  
+  }
+};
+
+window.openFullArt = (url) => {
+    window.open(url, '_blank');
 };
 
 </script>
