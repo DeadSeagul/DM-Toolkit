@@ -1,6 +1,2 @@
 User-agent: *
-Allow: /
-Sitemap: https://yourusername.github.io/DM-Toolkit/sitemap.xml
-
-# Note: The Sitemap line is a placeholder. If your app becomes large, 
-# you can generate a real sitemap and place it at this link.
+Disallow: /
