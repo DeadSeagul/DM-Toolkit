@@ -10117,13 +10117,11 @@ window.closeTokenModal = () => {
     document.getElementById('new-token-file').value = "";
 };
 
-// 🟢 UPDATED: Saves Vision Status
 window.confirmCreateToken = async () => {
     const nameInput = document.getElementById('new-token-name');
     const fileInput = document.getElementById('new-token-file');
     const sizeInput = document.getElementById('new-token-size');
-    // 1. GET CHECKBOX
-    const visionInput = document.getElementById('new-token-vision'); 
+    const visionInput = document.getElementById('new-token-vision'); // 🟢 GET CHECKBOX
     
     const sizeMultiplier = parseFloat(sizeInput.value) || 1;
     const btn = document.getElementById('btn-create-token');
@@ -10150,7 +10148,7 @@ window.confirmCreateToken = async () => {
         }
 
         const tokenId = crypto.randomUUID();
-        await window.setDoc(window.doc(window.db, `artifacts/default/sessions/${window.auth.currentUser.uid}/vtt_tokens`, tokenId), {
+        await window.setDoc(window.doc(window.db, `artifacts/default/sessions/${window.userId}/vtt_tokens`, tokenId), {
             id: tokenId,
             label: name,
             shortLabel: name.substring(0, 2).toUpperCase(),
@@ -10159,7 +10157,7 @@ window.confirmCreateToken = async () => {
             x: 50,
             y: 50,
             size: sizeMultiplier,
-            // 2. SAVE VISION STATUS (Default to false if unchecked)
+            // 🟢 SAVE VISION STATUS (Defaults to false if unchecked)
             hasSight: visionInput ? visionInput.checked : false 
         });
 
@@ -10173,74 +10171,60 @@ window.confirmCreateToken = async () => {
     }
 };
 
-// 3. RENDER TOKENS (Now supports Images!)
 window.setupTokenListener = () => {
-    if (!window.auth.currentUser) return;
-    const tokenCol = window.collection(window.db, `artifacts/default/sessions/${window.auth.currentUser.uid}/vtt_tokens`);
+    if (!window.userId) return;
+    const tokenLayer = document.getElementById('vtt-token-layer');
     
-    window.onSnapshot(tokenCol, (snapshot) => {
-        const layer = document.getElementById('vtt-token-layer');
-        if (!layer) return;
-        
-        // 1. Get Grid Size for scaling
-        const input = document.getElementById('grid-size-input');
-        const gridSize = input ? (parseInt(input.value) || 50) : 50;
+    window.onSnapshot(window.collection(window.db, `artifacts/default/sessions/${window.userId}/vtt_tokens`), (snapshot) => {
+        tokenLayer.innerHTML = ''; 
 
-        layer.innerHTML = ''; 
-        
-        snapshot.forEach((docSnapshot) => { 
+        snapshot.forEach((docSnapshot) => {
             const t = docSnapshot.data();
-            const dbId = docSnapshot.id; 
-
             const el = document.createElement('div');
             
-            // 🟢 2. UPDATED CLASSES: Removed fixed w-10 h-10, added transition
-            el.className = `token absolute border-[3px] rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)] flex items-center justify-center font-black text-[10px] select-none cursor-move hover:z-50 transition-all z-40 pointer-events-auto bg-cover bg-center`;
+            // 🟢 ATTACH SIGHT DATA TO THE DOM ELEMENT
+            el.dataset.hasSight = t.hasSight || false; 
+            el.dataset.size = t.size || 1;
             
-            el.dataset.hasSight = t.hasSight || false;
-
-            // 🟢 3. APPLY SIZE (Grid Size * Multiplier)
-            const sizeMultiplier = t.size || 1;
-            el.dataset.size = sizeMultiplier; // Store for later updates
-            const fixedBaseSize = 50; // Tokens are always based on 50px
-const finalSize = fixedBaseSize * sizeMultiplier;
-            el.style.width = `${finalSize}px`;
-            el.style.height = `${finalSize}px`;
-
-            // 🟢 4. APPLY POSITION (Keeps your saved X/Y)
+            // Base Class
+            el.className = `token absolute border-[3px] rounded-full shadow-md flex items-center justify-center cursor-move select-none transition-transform duration-100 hover:z-50 active:z-50 group pointer-events-auto`;
+            el.id = `token-${docSnapshot.id}`;
+            
+            // Size & Position
+            const sizePx = (t.size || 1) * 50; 
+            el.style.width = `${sizePx}px`;
+            el.style.height = `${sizePx}px`;
             el.style.left = `${t.x}%`;
             el.style.top = `${t.y}%`;
-            el.style.transform = "translate(-50%, -50%)"; // Centers token on the coordinate
-            el.id = `token-${dbId}`; 
+            el.style.transform = "translate(-50%, -50%)"; // Center anchor
+            
+            // Color / Image Logic
+            const colorMap = { red: 'border-red-500 bg-red-900', blue: 'border-blue-500 bg-blue-900', green: 'border-green-500 bg-green-900', purple: 'border-purple-500 bg-purple-900', orange: 'border-orange-500 bg-orange-900' };
+            const colorClass = colorMap[t.color] || colorMap['blue'];
 
-            // Image vs Color Logic
             if (t.image) {
+                el.classList.add(colorClass.split(' ')[0]); // Border only
+                el.style.backgroundColor = '#000';
                 el.style.backgroundImage = `url('${t.image}')`;
-                el.style.borderColor = "#ffffff"; 
-                el.innerText = ""; 
+                el.style.backgroundSize = 'cover';
             } else {
-                el.style.backgroundColor = t.color === 'red' ? '#ef4444' : t.color === 'blue' ? '#3b82f6' : t.color === 'green' ? '#22c55e' : t.color === 'purple' ? '#a855f7' : '#f97316';
-                el.style.borderColor = "rgba(255,255,255,0.8)";
-                el.innerText = t.shortLabel || "?";
+                el.className += ` ${colorClass}`;
+                el.innerText = t.shortLabel;
                 el.style.color = "white";
-                el.style.textShadow = "0px 1px 2px black";
+                el.style.fontWeight = "bold";
+                el.style.fontSize = `${10 * (t.size||1)}px`;
             }
 
-            // Tooltip
-            const tooltip = document.createElement('div');
-            tooltip.className = "absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity z-[60]";
-            tooltip.innerText = t.label;
-            el.classList.add("group");
-            el.appendChild(tooltip);
-
             // Events
-            el.onmousedown = (e) => window.startTokenDrag(e, dbId);
-            
-            // 🟢 5. NEW CONTEXT MENU (Right-click)
-            el.oncontextmenu = (e) => window.handleTokenContextMenu(e, dbId);
+            el.onmousedown = (e) => window.startDragToken(e, docSnapshot.id);
+            el.oncontextmenu = (e) => window.handleTokenContextMenu(e, docSnapshot.id);
+            el.ontouchstart = (e) => window.startDragToken(e, docSnapshot.id);
 
-            layer.appendChild(el);
+            tokenLayer.appendChild(el);
         });
+
+        // 🟢 UPDATE FOG AFTER RELOAD (To hide/show vision instantly)
+        setTimeout(window.revealTokenVision, 100);
     });
 };
 
@@ -11734,79 +11718,59 @@ function endMeasure() {
 }
 
 
-// 3. DYNAMIC LIGHTING LITE (Token Vision) - FIXED SCALING
+// 3. DYNAMIC LIGHTING LITE (Token Vision) - CHECKED
 window.revealTokenVision = async () => {
-    
-    // 1. Get Fog Canvas & Context
     const canvas = document.getElementById('fow-canvas');
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // 2. Get All Tokens
     const tokens = document.querySelectorAll('#vtt-token-layer > div');
-    if(tokens.length === 0) return; // Don't show error toast, just exit silently
+    if(tokens.length === 0) return;
 
-    // 🟢 CRITICAL FIX: Calculate Scale (Internal Resolution vs Screen Size)
+    // Scaling Calculation
     const rect = canvas.getBoundingClientRect();
-
-    // 🛑 SAFETY CHECK: Stop if canvas is hidden/zero-size (Prevents "non-finite" crash)
-    if (rect.width === 0 || rect.height === 0) {
-        console.warn("Skipping vision update: Canvas is hidden.");
-        return;
-    }
-
+    if (rect.width === 0 || rect.height === 0) return;
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
-    // 3. Cut Holes
+    // Cut Holes
     ctx.globalCompositeOperation = 'destination-out';
-    let revealedCount = 0;
 
     tokens.forEach(token => {
-
+        // 🟢 CRITICAL CHECK: IGNORE TOKENS WITHOUT SIGHT
         if (token.dataset.hasSight !== "true") return;
 
         const tokenRect = token.getBoundingClientRect();
         
-        // A. Calculate Center Position in CSS Pixels (Screen math)
+        // Calculate Center
         const screenX = tokenRect.left - rect.left + (tokenRect.width / 2);
         const screenY = tokenRect.top - rect.top + (tokenRect.height / 2);
-
-        // B. Convert to Canvas Internal Pixels (Bitmap math)
         const x = screenX * scaleX;
         const y = screenY * scaleY;
 
-        // Vision Radius (Default ~150px on screen)
+        // Calculate Radius (3 squares = ~150px)
         const gridSizeInput = document.getElementById('grid-size-input');
         const gridSizeVal = gridSizeInput ? (parseInt(gridSizeInput.value) || 50) : 50;
         const radius = (gridSizeVal * 3) * scaleX; 
 
-        // 🟢 PREVENT CRASH: Ensure calculated values are finite numbers
         if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius)) return;
 
         // Draw Soft Gradient Hole
         const gradient = ctx.createRadialGradient(x, y, radius * 0.4, x, y, radius);
-        gradient.addColorStop(0, 'rgba(0,0,0,1)'); // Solid cut in center
-        gradient.addColorStop(1, 'rgba(0,0,0,0)'); // Fade at edge
-        
+        gradient.addColorStop(0, 'rgba(0,0,0,1)'); 
+        gradient.addColorStop(1, 'rgba(0,0,0,0)'); 
+
         ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
-        revealedCount++;
     });
 
-    // Reset drawing mode
     ctx.globalCompositeOperation = 'source-over';
 
-    // 4. Save & Sync
+    // Broadcast change to players
     if(window.fog && window.fog.broadcast) {
-        window.fog.broadcast(); 
-    }
-    
-    // Only show toast if we actually did something (reduces spam on drag)
-    if (revealedCount > 0 && window.draggedId === null) {
-        // window.showToast(`Vision Updated`, "success");
+        window.fog.broadcast();
     }
 };
 
