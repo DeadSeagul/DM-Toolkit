@@ -586,7 +586,7 @@ canvas {
             <span>🏠</span> <span>Home Dashboard</span>
         </button>
 
-        <div class="mt-auto pt-4 border-t border-gray-800">
+       <div class="mt-auto pt-4 border-t border-gray-800">
     <button onclick="document.getElementById('pro-modal').classList.remove('hidden')" class="w-full group relative overflow-hidden rounded-lg bg-gradient-to-r from-yellow-600 to-amber-500 p-3 text-center shadow-lg transition-transform hover:scale-105">
         <div class="relative z-10 flex items-center justify-center gap-2 font-black text-black uppercase tracking-widest text-xs">
             <span>👑</span> Upgrade to Pro
@@ -594,6 +594,7 @@ canvas {
         <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-1000 group-hover:translate-x-full"></div>
     </button>
 </div>
+
         
         <div class="flex items-center gap-1 group">
 
@@ -10939,16 +10940,10 @@ window.loadScene = async (sceneName) => {
         // 🟢 STEP 3: FINAL RENDER
         // Only render walls/vision if map actually loaded
         if (mapImg && mapImg.naturalWidth > 0) {
-            
-            // 1. Force Visibility (Crucial for getting the right size)
-            mapImg.style.display = "block";
-            mapImg.style.opacity = "1";
-
-            // 2. Initial Render
             if (window.renderWalls) window.renderWalls();
             if (window.fog && window.fog.broadcast) window.fog.broadcast();
             
-            // 3. Safety Redraw (Catches any layout lagging)
+            // Safety Redraw (Fixes invisible wall bug)
             setTimeout(() => {
                 if (window.renderWalls) window.renderWalls();
                 if (window.revealTokenVision) window.revealTokenVision();
@@ -11597,10 +11592,7 @@ window.vttSettings = {
 
 // 1. SNAP TOGGLE (Physics only)
 window.toggleGridSnap = () => {
-    if (!window.isProUser) {
-    if (window.event && window.event.isTrusted) window.openProMenu();
-    return; 
-}
+    
     window.vttSettings.snapEnabled = !window.vttSettings.snapEnabled;
     const btn = document.getElementById('btn-snap');
     
@@ -11619,10 +11611,7 @@ window.toggleGridSnap = () => {
 window.isGridVisible = false;
 
 window.toggleGridVisibility = () => {
-    if (!window.isProUser) {
-    if (window.event && window.event.isTrusted) window.openProMenu();
-    return; 
-}
+    
     window.isGridVisible = !window.isGridVisible;
     const btn = document.getElementById('btn-grid-vis');
     
@@ -11639,10 +11628,7 @@ window.toggleGridVisibility = () => {
 
 // 🟢 UPDATED: Snap to CENTER of Grid Square
 window.snapToGrid = (x, y) => {
-    if (!window.isProUser) {
-    if (window.event && window.event.isTrusted) window.openProMenu();
-    return; 
-}
+    
     // 1. Check if snapping is actually enabled
     if (!window.vttSettings.snapEnabled) return { x, y };
 
@@ -11668,10 +11654,7 @@ window.snapToGrid = (x, y) => {
 
 // 2. MEASURE TOOL (RULER)
 window.activateRuler = () => {
-    if (!window.isProUser) {
-    if (window.event && window.event.isTrusted) window.openProMenu();
-    return; 
-}
+    
     window.vttSettings.isMeasuring = !window.vttSettings.isMeasuring;
     const btn = document.getElementById('btn-ruler');
     const viewport = document.getElementById('vtt-token-layer'); // Use token layer for clicks
@@ -11835,10 +11818,7 @@ window.isDrawingWall = false;
 
 // 1. WALL DRAWING TOOL
 window.toggleWallTool = () => {
-    if (!window.isProUser) {
-    if (window.event && window.event.isTrusted) window.openProMenu();
-    return; 
-}
+    
     window.isDrawingWall = !window.isDrawingWall;
     const btn = document.getElementById('btn-wall');
     const container = document.getElementById('dm-map-container');
@@ -11929,10 +11909,7 @@ window.saveActiveWalls = async () => {
 
 // 🟢 2. REPLACE YOUR EXISTING clearWalls WITH THIS (Now it actually saves the deletion)
 window.clearWalls = () => {
-    if (!window.isProUser) {
-        if (window.event && window.event.isTrusted) window.openProMenu();
-        return; 
-    }
+    
 
     if(confirm("Delete all walls?")) {
         window.walls = []; // Clear the array
@@ -11973,11 +11950,7 @@ function getIntersection(ray, segment) {
 
 // 🟢 PRO FEATURE: Auto-Reveal Vision
 window.revealTokenVision = async () => {
-    // 🔒 Silent Lock
-    if (!window.isProUser) {
-        if (window.event && window.event.type === 'click') window.openProMenu();
-        return; 
-    }
+    
 
     const canvas = document.getElementById('fow-canvas');
     if(!canvas) return;
@@ -12106,10 +12079,7 @@ window.isWallEraserActive = false;
 
 // 1. TOGGLE ERASER MODE
 window.toggleWallEraser = () => {
-    if (!window.isProUser) {
-    if (window.event && window.event.isTrusted) window.openProMenu();
-    return; 
-}
+    
     // Turn off Draw Mode if active
     if(window.isDrawingWall) window.toggleWallTool();
 
@@ -12171,7 +12141,7 @@ function deleteWallAtClick(e) {
 
 // 🟢 BONUS: UNDO LAST WALL
 window.undoLastWall = () => {
-    if (!window.isProUser) return window.openProMenu();
+    
     if(window.walls.length > 0) {
         window.walls.pop();
         renderWalls();
@@ -12205,10 +12175,7 @@ window.isGridVisible = false;
 
 // 1. TOGGLE VISIBILITY
 window.toggleGridVisibility = () => {
-    if (!window.isProUser) {
-    if (window.event && window.event.isTrusted) window.openProMenu();
-    return; 
-}
+    
     window.isGridVisible = !window.isGridVisible;
     const btn = document.getElementById('btn-grid-vis');
     
@@ -12227,10 +12194,7 @@ window.toggleGridVisibility = () => {
 // 🟢 RENDER GRID (DM Side - Saves Native Size)
 // ==========================================
 window.renderGrid = () => {
-    if (!window.isProUser) {
-        if (window.event && window.event.isTrusted) window.openProMenu();
-        return; 
-    }
+    
 
     // 1. Get Elements
     const container = document.getElementById('dm-map-container');
@@ -12541,44 +12505,6 @@ window.clearUplinkImage = async () => {
         console.error("Clear Error:", err);
         alert("Error clearing map: " + err.message);
     }
-};
-
-// 📂 RENDER WALLS (Updated to fix Disappearing Issue)
-window.renderWalls = () => {
-    const canvas = document.getElementById('vtt-canvas');
-    const img = document.getElementById('active-battlemap');
-    
-    if (!canvas || !img) return;
-
-    // 🟢 FORCE RESIZE: Ensure canvas matches image exactly
-    if (canvas.width !== img.offsetWidth || canvas.height !== img.offsetHeight) {
-        canvas.width = img.offsetWidth;
-        canvas.height = img.offsetHeight;
-    }
-
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Safety: If no walls, just stop (but we kept the resize!)
-    if (!window.walls || window.walls.length === 0) return;
-
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#ef4444'; // Red color for DM view
-    
-    // Draw existing walls
-    window.walls.forEach(wall => {
-        ctx.beginPath();
-        // Handle percentage-based coordinates vs absolute
-        const startX = (wall.x1 / 100) * canvas.width;
-        const startY = (wall.y1 / 100) * canvas.height;
-        const endX = (wall.x2 / 100) * canvas.width;
-        const endY = (wall.y2 / 100) * canvas.height;
-        
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(endX, endY);
-        ctx.stroke();
-    });
 };
 
 setTimeout(() => { 
@@ -13048,8 +12974,8 @@ setTimeout(() => {
                 <h3 class="text-xl font-bold text-yellow-400 mb-4">Warlord (Pro)</h3>
                 
                 <ul class="space-y-3 text-sm text-gray-300">
-                    <li class="flex gap-2"><span class="text-yellow-400">👑</span> <strong>Save and Load Maps & Tokens</li>
-                    <li class="flex gap-2"><span class="text-yellow-400">👑</span> <strong>Website Customization (Change Website Color)</li>
+                    <li class="flex gap-2"><span class="text-yellow-400">👑</span> <strong>Support the Adventure!</li>
+                    <li class="flex gap-2"><span class="text-yellow-400">👑</span> <strong>Website Customization (Change Website Color and Notes UI)</li>
                     <li class="flex gap-2"><span class="text-yellow-400">👑</span> <strong>Get rid of Pop-Up Ads</li>
                 </ul>
                 
