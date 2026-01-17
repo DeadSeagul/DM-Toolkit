@@ -1042,7 +1042,7 @@ canvas {
 
     <svg id="wall-layer" class="absolute inset-0 w-full h-full z-[15] pointer-events-none"></svg>
 
-    <div id="vtt-token-layer" class="absolute inset-0 w-full h-full z-10 pointer-events-auto"></div>
+    <div id="vtt-token-layer" class="absolute inset-0 w-full h-full z-50 pointer-events-none"></div>
     
 
             
@@ -10187,7 +10187,8 @@ window.setupTokenListener = () => {
             el.dataset.size = t.size || 1;
             
             // Base Class
-            el.className = `token absolute border-[3px] rounded-full shadow-md flex items-center justify-center cursor-move select-none transition-transform duration-100 hover:z-50 active:z-50 group pointer-events-auto`;
+            // Ensure this line has 'pointer-events-auto' at the end
+el.className = `token absolute border-[3px] rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)] flex items-center justify-center font-black text-[10px] select-none cursor-move hover:z-50 transition-all z-40 pointer-events-auto bg-cover bg-center`;
             el.id = `token-${docSnapshot.id}`;
             
             // Size & Position
@@ -10226,6 +10227,122 @@ window.setupTokenListener = () => {
         // 🟢 UPDATE FOG AFTER RELOAD (To hide/show vision instantly)
         setTimeout(window.revealTokenVision, 100);
     });
+};
+
+// ==========================================
+// 🟢 TOKEN DRAG ENGINE (MISSING CODE)
+// ==========================================
+window.draggedTokenId = null;
+window.dragOffsetX = 0;
+window.dragOffsetY = 0;
+
+window.startDragToken = (e, tokenId) => {
+    if (window.vttSettings.isMeasuring) return; // Don't drag if measuring
+    if (window.isDrawingWall) return; // Don't drag if drawing walls
+    
+    // Prevent default browser dragging of images
+    e.preventDefault(); 
+    e.stopPropagation();
+
+    window.draggedTokenId = tokenId;
+    const token = document.getElementById(`token-${tokenId}`);
+    const rect = token.getBoundingClientRect();
+
+    // Calculate offset so token doesn't "snap" to center of mouse
+    // We handle both Mouse and Touch events
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    window.dragOffsetX = clientX - rect.left;
+    window.dragOffsetY = clientY - rect.top;
+
+    // Attach global listeners to document (so you can drag fast outside the token)
+    document.addEventListener('mousemove', window.dragToken);
+    document.addEventListener('mouseup', window.stopDragToken);
+    document.addEventListener('touchmove', window.dragToken, { passive: false });
+    document.addEventListener('touchend', window.stopDragToken);
+};
+
+window.dragToken = (e) => {
+    if (!window.draggedTokenId) return;
+    e.preventDefault(); // Stop scrolling on mobile
+
+    const container = document.getElementById('dm-map-container');
+    const containerRect = container.getBoundingClientRect();
+    
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    // 1. Calculate raw position relative to map container
+    let x = clientX - containerRect.left - window.dragOffsetX;
+    let y = clientY - containerRect.top - window.dragOffsetY;
+
+    // 2. Adjust for token center (since CSS uses center anchor)
+    // We want the mouse to hold the part of the token we clicked, 
+    // but the math below assumes we are setting the Top-Left.
+    // However, your CSS uses `transform: translate(-50%, -50%)`, so left/top are the CENTER.
+    
+    // Let's reverse the offset logic slightly for centered tokens:
+    // We want to calculate the new CENTER percentage.
+    
+    const tokenEl = document.getElementById(`token-${window.draggedTokenId}`);
+    const width = tokenEl.offsetWidth;
+    const height = tokenEl.offsetHeight;
+
+    // Add half-width to get the center point from the top-left coordinate
+    let centerX = x + (width / 2);
+    let centerY = y + (height / 2);
+
+    // 3. Snap to Grid (If Enabled)
+    if (window.vttSettings && window.vttSettings.snapEnabled) {
+        const snapped = window.snapToGrid(centerX, centerY);
+        centerX = snapped.x;
+        centerY = snapped.y;
+    }
+
+    // 4. Convert to Percentages (for responsive resizing)
+    const xPercent = (centerX / containerRect.width) * 100;
+    const yPercent = (centerY / containerRect.height) * 100;
+
+    // 5. Update Visuals Instantly
+    tokenEl.style.left = `${xPercent}%`;
+    tokenEl.style.top = `${yPercent}%`;
+};
+
+window.stopDragToken = async () => {
+    if (!window.draggedTokenId) return;
+
+    const tokenId = window.draggedTokenId;
+    const tokenEl = document.getElementById(`token-${tokenId}`);
+
+    // Clean up listeners
+    document.removeEventListener('mousemove', window.dragToken);
+    document.removeEventListener('mouseup', window.stopDragToken);
+    document.removeEventListener('touchmove', window.dragToken);
+    document.removeEventListener('touchend', window.stopDragToken);
+
+    window.draggedTokenId = null;
+
+    // 6. SAVE TO DATABASE
+    // Read the final style values we set during drag
+    const finalX = parseFloat(tokenEl.style.left);
+    const finalY = parseFloat(tokenEl.style.top);
+
+    if (!window.userId) return;
+
+    try {
+        await window.updateDoc(window.doc(window.db, `artifacts/default/sessions/${window.userId}/vtt_tokens`, tokenId), {
+            x: finalX,
+            y: finalY
+        });
+        
+        // Update Vision if needed
+        if (tokenEl.dataset.hasSight === "true") {
+            window.revealTokenVision();
+        }
+    } catch (err) {
+        console.error("Token Save Error:", err);
+    }
 };
 
 // Dragging Logic
